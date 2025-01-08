@@ -87,11 +87,14 @@ const DefaultLayout = ({ children }) => {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
+  const [chatWidth, setChatWidth] = useState(450);
+  const [isResizing, setIsResizing] = useState(false);
   const location = useLocation();
   const isDashboard = location.pathname.includes('/dashboard');
 
-  const handleAskQuestion = (question) => {
-    console.log('Question asked:', question);
+  // Handle chat width changes
+  const handleChatResize = (newWidth) => {
+    setChatWidth(newWidth);
   };
 
   return (
@@ -114,9 +117,12 @@ const DefaultLayout = ({ children }) => {
         />
         
         {/* Main content */}
-        <main className={`flex-1 w-full transition-all duration-300
-          ${isDashboard ? 'md:pl-64' : ''} 
-          ${isDashboard && isChatOpen && !isFullScreen ? 'md:pr-[320px]' : ''}`}
+        <main 
+          className={`flex-1 w-full ${isDashboard ? 'md:pl-64' : ''}`}
+          style={{
+            paddingRight: isDashboard && isChatOpen && !isFullScreen ? `${chatWidth}px` : '0',
+            transition: isResizing ? 'none' : 'padding-right 0.2s ease-out'
+          }}
         >
           <div className="h-full p-4 md:p-6">
             {children}
@@ -137,16 +143,30 @@ const DefaultLayout = ({ children }) => {
         {/* ChatBot - Only shown in dashboard */}
         {isDashboard && (
           <div 
-            className={`fixed transition-all duration-300 transform
-              ${isFullScreen ? 'inset-0 z-50' : 'right-0 top-16 bottom-0 w-[320px]'}
+            className={`fixed transform
+              ${isFullScreen ? 'inset-0 z-50' : 'right-0 top-16 bottom-0'}
               ${isChatOpen ? 'translate-x-0' : 'translate-x-full'}`}
+            style={{ 
+              width: isFullScreen ? '100%' : `${chatWidth}px`,
+              transition: isResizing ? 'none' : 'all 0.2s ease-out'
+            }}
           >
             <ChatBot 
-              onAskQuestion={handleAskQuestion}
               isOpen={isChatOpen}
               setIsOpen={setIsChatOpen}
               isFullScreen={isFullScreen}
               setIsFullScreen={setIsFullScreen}
+              subject={location.pathname.split('/')[2]}
+              topic={location.pathname.split('/')[4]}
+              onResize={(width) => {
+                setIsResizing(true);
+                handleChatResize(width);
+                // Debounce the resize end
+                clearTimeout(window.resizeTimer);
+                window.resizeTimer = setTimeout(() => {
+                  setIsResizing(false);
+                }, 100);
+              }}
             />
           </div>
         )}

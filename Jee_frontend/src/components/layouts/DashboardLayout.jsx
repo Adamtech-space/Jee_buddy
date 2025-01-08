@@ -84,6 +84,7 @@ Sidebar.propTypes = {
 const DashboardLayout = ({ children }) => {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const [isFullScreen, setIsFullScreen] = useState(false);
 
   const handleAskQuestion = (question) => {
     console.log('Asked:', question);
@@ -109,18 +110,20 @@ const DashboardLayout = ({ children }) => {
         />
         
         {/* Main content - with left padding for sidebar on desktop */}
-        <main className="flex-1 w-full md:pl-64 pr-0 md:pr-[320px]">
+        <main className="flex-1 w-full md:pl-64 pr-0 md:pr-[450px]">
           <div className="h-full p-4 md:p-6">
             {children}
           </div>
         </main>
 
         {/* ChatBot - Fixed width */}
-        <div className="hidden md:block fixed right-0 top-16 bottom-0 w-[320px]">
+        <div className="hidden md:block fixed right-0 top-16 bottom-0 w-[450px]">
           <ChatBot 
             onAskQuestion={handleAskQuestion}
             isOpen={isChatOpen}
             setIsOpen={setIsChatOpen}
+            isFullScreen={isFullScreen}
+            setIsFullScreen={setIsFullScreen}
           />
         </div>
       </div>

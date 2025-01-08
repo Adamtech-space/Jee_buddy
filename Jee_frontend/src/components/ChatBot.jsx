@@ -6,12 +6,14 @@ import {
   PaperClipIcon,
   PaperAirplaneIcon,
   UserCircleIcon,
-  XCircleIcon
+  XCircleIcon,
+  QuestionMarkCircleIcon
 } from '@heroicons/react/24/outline';
 import PropTypes from 'prop-types';
 import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { aiService } from '../interceptors/ai.service';
 
 const PinIcon = ({ className }) => (
   <svg 
@@ -34,14 +36,35 @@ PinIcon.propTypes = {
   className: PropTypes.string
 };
 
-const ChatBot = ({ onAskQuestion, isOpen, setIsOpen, isFullScreen, setIsFullScreen }) => {
+// Add a new KeyboardShortcut component
+const KeyboardShortcut = ({ shortcut }) => (
+  <span className="inline-flex items-center text-[9px] text-gray-500 mt-0.5">
+    <span className="opacity-60">Press :</span>
+    {shortcut.split('+').map((key, index) => (
+      <span key={key}>
+        {index > 0 && <span className="mx-0.5 opacity-60">+</span>}
+        <span className="font-medium opacity-75">{key}</span>
+      </span>
+    ))}
+  </span>
+);
+
+KeyboardShortcut.propTypes = {
+  shortcut: PropTypes.string.isRequired
+};
+
+const ChatBot = ({ isOpen, setIsOpen, isFullScreen, setIsFullScreen, subject, topic, onResize }) => {
   const [message, setMessage] = useState('');
   const [selectedText, setSelectedText] = useState('');
   const [pinnedText, setPinnedText] = useState('');
   const [messages, setMessages] = useState([]);
+  const [showHelpButtons, setShowHelpButtons] = useState(false);
+  const [width, setWidth] = useState(450); // Initial width
+  const [isResizing, setIsResizing] = useState(false);
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
   const inputRef = useRef(null);
+  const resizeRef = useRef(null);
 
   const helpButtons = [
     { type: "explain", icon: "📝", text: "Step-by-Step" },
@@ -61,32 +84,35 @@ const ChatBot = ({ onAskQuestion, isOpen, setIsOpen, isFullScreen, setIsFullScre
 
   const visibleButtons = isFullScreen ? helpButtons : helpButtons.slice(0, 6);
 
-  const handleHelpClick = (type) => {
-    const helpMessages = {
-      explain: "Please explain this step by step",
-      basics: "What are the basic concepts I need to understand?",
-      test: "Test my understanding with some questions",
-      similar: "Show me similar examples",
-      solve: "Help me solve this problem",
-      keypoints: "What are the key points to remember?",
-      challenge: "Give me a challenging problem",
-      mistakes: "What are common mistakes to avoid?",
-      realworld: "How is this used in the real world?",
-      related: "What are related topics I should know?",
-      mnemonic: "Is there a shortcut or trick to remember this?",
-      "ask-similar": "Show me similar questions"
-    };
+  const handleHelpClick = async (type) => {
+    try {
+      // Add user's help request to messages
+      const helpMessage = {
+        sender: 'user',
+        content: `Help me with: ${type}`
+      };
+      setMessages(prev => [...prev, helpMessage]);
 
-    // Send the help message directly without showing in input
-    onAskQuestion({ message: helpMessages[type] });
-    
-    // Add only the AI response
-    setTimeout(() => {
+      // Get AI response
+      const response = await aiService.getHelpResponse(type, {
+        subject,
+        topic,
+        selectedText,
+        pinnedText
+      });
+
+      // Add AI response to messages
       setMessages(prev => [...prev, {
         sender: 'assistant',
-        content: "I understand your question. Let me help you with that..."
+        content: response.message
       }]);
-    }, 1000);
+    } catch (error) {
+      console.error('Help request failed:', error);
+      setMessages(prev => [...prev, {
+        sender: 'assistant',
+        content: "I'm sorry, I couldn't process your request at the moment. Please try again."
+      }]);
+    }
   };
 
   // Handle keyboard shortcuts
@@ -110,32 +136,71 @@ const ChatBot = ({ onAskQuestion, isOpen, setIsOpen, isFullScreen, setIsFullScre
     scrollToBottom();
   }, [messages]);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!message.trim() && !pinnedText) return;
 
+    const userMessage = pinnedText ? `${pinnedText}\n\n${message}`.trim() : message;
+
+    // Add user message to chat
     const newMessage = { 
       sender: 'user', 
-      content: pinnedText ? `${pinnedText}\n\n${message}`.trim() : message 
+      content: userMessage
     };
     setMessages(prev => [...prev, newMessage]);
-    onAskQuestion({ message: newMessage.content });
     setMessage('');
-    // Don't clear pinned text after sending - it stays until unpinned
 
-    // Simulate AI response
-    setTimeout(() => {
+    try {
+      // Get AI response
+      const response = await aiService.askQuestion(userMessage, {
+        subject,
+        topic,
+        selectedText,
+        pinnedText
+      });
+
+      // Add AI response to messages
       setMessages(prev => [...prev, {
         sender: 'assistant',
-        content: "I understand your question. Let me help you with that..."
+        content: response.message
       }]);
-    }, 1000);
+    } catch (error) {
+      console.error('Chat request failed:', error);
+      setMessages(prev => [...prev, {
+        sender: 'assistant',
+        content: "I'm sorry, I couldn't process your message at the moment. Please try again."
+      }]);
+    }
   };
 
-  const handleFileUpload = (e) => {
+  const handleFileUpload = async (e) => {
     const file = e.target.files[0];
     if (file) {
-      console.log('File selected:', file);
+      try {
+        // Add file upload message
+        setMessages(prev => [...prev, {
+          sender: 'user',
+          content: `Uploading file: ${file.name}`
+        }]);
+
+        // Analyze file
+        const response = await aiService.analyzeFile(file, {
+          subject,
+          topic
+        });
+
+        // Add analysis response
+        setMessages(prev => [...prev, {
+          sender: 'assistant',
+          content: response.message
+        }]);
+      } catch (error) {
+        console.error('File analysis failed:', error);
+        setMessages(prev => [...prev, {
+          sender: 'assistant',
+          content: "I'm sorry, I couldn't analyze the file at the moment. Please try again."
+        }]);
+      }
     }
   };
 
@@ -159,11 +224,110 @@ const ChatBot = ({ onAskQuestion, isOpen, setIsOpen, isFullScreen, setIsFullScre
     setSelectedText('');
   };
 
+  // Handle resize functionality
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      if (!isResizing) return;
+      e.preventDefault();
+      
+      // Calculate new width from right edge to mouse position
+      const newWidth = window.innerWidth - e.clientX;
+      
+      // Set minimum and maximum width constraints with smoother bounds
+      if (newWidth >= 350 && newWidth <= 800) {
+        requestAnimationFrame(() => {
+          setWidth(newWidth);
+          onResize?.(newWidth);
+        });
+      } else if (newWidth < 350) {
+        requestAnimationFrame(() => {
+          setWidth(350);
+          onResize?.(350);
+        });
+      } else if (newWidth > 800) {
+        requestAnimationFrame(() => {
+          setWidth(800);
+          onResize?.(800);
+        });
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+      document.body.style.cursor = 'default';
+      document.body.style.userSelect = 'auto';
+      document.body.classList.remove('resize-active');
+    };
+
+    if (isResizing) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      document.body.classList.add('resize-active');
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = 'default';
+      document.body.style.userSelect = 'auto';
+      document.body.classList.remove('resize-active');
+    };
+  }, [isResizing, onResize]);
+
   return (
-    <div className={`flex flex-col h-full bg-gray-900 border-l border-gray-800 ${!isOpen ? 'hidden' : ''}`}>
+    <div 
+      className={`flex flex-col h-full bg-gray-900 border-l border-gray-800 ${!isOpen ? 'hidden' : ''}`}
+      style={{ 
+        width: isFullScreen ? '100%' : `${width}px`,
+        transition: isResizing ? 'none' : 'width 0.2s ease-out'
+      }}
+    >
+      {/* Resize Handle */}
+      {!isFullScreen && (
+        <>
+          {/* Resize overlay when resizing */}
+          {isResizing && (
+            <div className="fixed inset-0 bg-black bg-opacity-0 z-50" />
+          )}
+          
+          {/* Resize handle */}
+          <div
+            ref={resizeRef}
+            className="absolute left-0 top-0 bottom-0 w-2 hover:w-1 group z-50 transition-all"
+            style={{ cursor: 'ew-resize' }}
+            onMouseDown={(e) => {
+              e.preventDefault();
+              setIsResizing(true);
+              document.body.style.cursor = 'ew-resize';
+              document.body.style.userSelect = 'none';
+            }}
+          >
+            {/* Visual handle indicator */}
+            <div className="absolute left-0 top-0 bottom-0 w-1 bg-transparent group-hover:bg-blue-500 transition-colors" />
+            
+            {/* Active resize indicator */}
+            {isResizing && (
+              <div className="absolute left-0 top-0 bottom-0 w-1 bg-blue-500" />
+            )}
+          </div>
+        </>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-gray-800">
-        <h3 className="text-xl font-bold text-white">AI Study Assistant</h3>
+        <div className="flex items-center space-x-3">
+          <div className="flex flex-col">
+            <h3 className="text-xl font-bold text-white">AI Study Assistant</h3>
+            <KeyboardShortcut shortcut=" Ctrl+Shift+L" />
+          </div>
+          <button
+            onClick={() => setShowHelpButtons(!showHelpButtons)}
+            className="p-1 text-gray-400 hover:text-white transition-colors rounded-full hover:bg-gray-800"
+            aria-label="Toggle help options"
+          >
+            <QuestionMarkCircleIcon className="w-6 h-6" />
+          </button>
+        </div>
         <div className="flex items-center space-x-2">
           <button
             onClick={() => setIsFullScreen(!isFullScreen)}
@@ -186,19 +350,24 @@ const ChatBot = ({ onAskQuestion, isOpen, setIsOpen, isFullScreen, setIsFullScre
         </div>
       </div>
 
-      {/* Help Buttons */}
-      <div className={`p-2 border-b border-gray-800 ${isFullScreen ? 'grid grid-cols-4 gap-2' : 'flex flex-wrap gap-2'}`}>
-        {visibleButtons.map((button) => (
-          <button
-            key={button.type}
-            onClick={() => handleHelpClick(button.type)}
-            className="flex items-center space-x-2 px-3 py-2 bg-gray-800 rounded-lg hover:bg-gray-700 transition-colors text-sm text-gray-300 hover:text-white"
-          >
-            <span>{button.icon}</span>
-            <span>{button.text}</span>
-          </button>
-        ))}
-      </div>
+      {/* Help Buttons - Now conditionally rendered */}
+      {showHelpButtons && (
+        <div className={`p-2 border-b border-gray-800 ${isFullScreen ? 'grid grid-cols-4 gap-2' : 'flex flex-wrap gap-2'}`}>
+          {visibleButtons.map((button) => (
+            <button
+              key={button.type}
+              onClick={() => {
+                handleHelpClick(button.type);
+                setShowHelpButtons(false); // Close help buttons after selection
+              }}
+              className="flex items-center space-x-2 px-3 py-2 bg-gray-800 rounded-lg hover:bg-gray-700 transition-colors text-sm text-gray-300 hover:text-white"
+            >
+              <span>{button.icon}</span>
+              <span>{button.text}</span>
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -355,11 +524,13 @@ const ChatBot = ({ onAskQuestion, isOpen, setIsOpen, isFullScreen, setIsFullScre
 };
 
 ChatBot.propTypes = {
-  onAskQuestion: PropTypes.func.isRequired,
   isOpen: PropTypes.bool.isRequired,
   setIsOpen: PropTypes.func.isRequired,
   isFullScreen: PropTypes.bool.isRequired,
-  setIsFullScreen: PropTypes.func.isRequired
+  setIsFullScreen: PropTypes.func.isRequired,
+  subject: PropTypes.string,
+  topic: PropTypes.string,
+  onResize: PropTypes.func
 };
 
 export default ChatBot; 

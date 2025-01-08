@@ -16,11 +16,6 @@ const envVarsSchema = Joi.object()
     JWT_RESET_PASSWORD_EXPIRATION_MINUTES: Joi.number().default(10),
     JWT_VERIFY_EMAIL_EXPIRATION_MINUTES: Joi.number().default(10),
     
-    // Google OAuth
-    GOOGLE_CLIENT_ID: Joi.string().required(),
-    GOOGLE_CLIENT_SECRET: Joi.string().required(),
-    GOOGLE_CALLBACK_URL: Joi.string().required(),
-    
     // SMTP
     SMTP_HOST: Joi.string().required(),
     SMTP_PORT: Joi.number().required(),
@@ -32,6 +27,10 @@ const envVarsSchema = Joi.object()
     NEXT_PUBLIC_SUPABASE_URL: Joi.string().required(),
     NEXT_PUBLIC_SUPABASE_ANON_KEY: Joi.string().required(),
     SUPABASE_SERVICE_ROLE_KEY: Joi.string().required(),
+
+    // Razorpay
+    RAZORPAY_KEY_ID: Joi.string().required(),
+    RAZORPAY_KEY_SECRET: Joi.string().required(),
   })
   .unknown();
 
@@ -55,12 +54,6 @@ const config = {
     verifyEmailExpirationMinutes: envVars.JWT_VERIFY_EMAIL_EXPIRATION_MINUTES,
   },
   
-  google: {
-    clientId: envVars.GOOGLE_CLIENT_ID,
-    clientSecret: envVars.GOOGLE_CLIENT_SECRET,
-    callbackUrl: envVars.GOOGLE_CALLBACK_URL,
-  },
-  
   email: {
     smtp: {
       host: envVars.SMTP_HOST,
@@ -77,6 +70,11 @@ const config = {
     url: envVars.NEXT_PUBLIC_SUPABASE_URL,
     anonKey: envVars.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     serviceRoleKey: envVars.SUPABASE_SERVICE_ROLE_KEY,
+  },
+
+  razorpay: {
+    keyId: envVars.RAZORPAY_KEY_ID,
+    keySecret: envVars.RAZORPAY_KEY_SECRET,
   },
 };
 

@@ -1,13 +1,27 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import PropTypes from 'prop-types';
 import { motion } from 'framer-motion';
 
 const Navbar = ({ isMobileOpen, setIsMobileOpen }) => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [user, setUser] = useState(null);
   const location = useLocation();
   const navigate = useNavigate();
-  const isDashboard = location.pathname.includes('/dashboard');
+  const isDashboard = location.pathname.includes('/dashboard') || location.pathname.includes('/subject-selection');
+
+  useEffect(() => {
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
+      setUser(JSON.parse(userStr));
+    }
+  }, []);
+
+  const handleLogout = () => {
+    localStorage.removeItem('user');
+    localStorage.removeItem('tokens');
+    navigate('/login');
+  };
 
   return (
     <nav className="fixed top-0 w-full bg-black border-b-2 border-blue-500 z-50">
@@ -42,7 +56,7 @@ const Navbar = ({ isMobileOpen, setIsMobileOpen }) => {
 
           {/* Right side - Navigation links and profile */}
           <div className="hidden md:flex items-center space-x-4">
-            {!isDashboard && (
+            {!user && !isDashboard && (
               <>
                 <Link to="/#features" className="text-gray-300 hover:text-white px-3 py-2">Features</Link>
                 <Link to="/#resources" className="text-gray-300 hover:text-white px-3 py-2">Resources</Link>
@@ -56,15 +70,26 @@ const Navbar = ({ isMobileOpen, setIsMobileOpen }) => {
               </>
             )}
 
-            {isDashboard && (
+            {user && (
               <div className="relative">
                 <button
                   onClick={() => setIsProfileOpen(!isProfileOpen)}
-                  className="flex items-center space-x-2 text-gray-300 hover:text-white focus:outline-none"
+                  className="flex items-center space-x-3 text-gray-300 hover:text-white focus:outline-none"
                 >
-                  <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center">
-                    <span className="text-white font-medium">U</span>
-                  </div>
+                  {user.picture ? (
+                    <img 
+                      src={user.picture} 
+                      alt={user.name} 
+                      className="w-8 h-8 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center">
+                      <span className="text-white font-medium">
+                        {user.name?.charAt(0)}
+                      </span>
+                    </div>
+                  )}
+                  <span className="text-sm font-medium">{user.name}</span>
                 </button>
 
                 {isProfileOpen && (
@@ -76,7 +101,7 @@ const Navbar = ({ isMobileOpen, setIsMobileOpen }) => {
                       Settings
                     </Link>
                     <button
-                      onClick={() => navigate('/login')}
+                      onClick={handleLogout}
                       className="block w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-700"
                     >
                       Logout
@@ -101,7 +126,7 @@ const Navbar = ({ isMobileOpen, setIsMobileOpen }) => {
         </div>
 
         {/* Mobile menu for landing page */}
-        {isMobileOpen && !isDashboard && (
+        {isMobileOpen && !isDashboard && !user && (
           <div className="md:hidden pb-4">
             <div className="flex flex-col space-y-2">
               <Link to="/#features" className="text-gray-300 hover:text-white px-3 py-2">Features</Link>

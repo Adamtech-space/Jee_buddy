@@ -26,8 +26,7 @@ import StudyResources from '../components/StudyResources';
 
 // Protected Route Component
 const ProtectedRoute = () => {
-  // Add your auth check logic here
-  const isAuthenticated = true; // Replace with actual auth check
+  const isAuthenticated = localStorage.getItem('tokens') && localStorage.getItem('user');
   
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
@@ -37,25 +36,31 @@ const ProtectedRoute = () => {
 };
 
 const AppRoutes = ({ quote }) => {
+  const isAuthenticated = localStorage.getItem('tokens') && localStorage.getItem('user');
+
   return (
     <Routes>
-      {/* Public Routes */}
+      {/* Public Routes - Only accessible when not logged in */}
       <Route path="/" element={
-        <DefaultLayout>
-          <Hero quote={quote} />
-          <Features />
-          <StudyResources />
-          <Demo />
-        </DefaultLayout>
+        isAuthenticated ? (
+          <Navigate to="/subject-selection" replace />
+        ) : (
+          <DefaultLayout>
+            <Hero quote={quote} />
+            <Features />
+            <StudyResources />
+            <Demo />
+          </DefaultLayout>
+        )
       } />
 
-      {/* Auth Routes */}
-      <Route path="/login" element={<Login />} />
-      <Route path="/register" element={<Register />} />
-      <Route path="/forgot-password" element={<ForgotPassword />} />
+      {/* Auth Routes - Only accessible when not logged in */}
+      <Route path="/login" element={isAuthenticated ? <Navigate to="/subject-selection" replace /> : <Login />} />
+      <Route path="/register" element={isAuthenticated ? <Navigate to="/subject-selection" replace /> : <Register />} />
+      <Route path="/forgot-password" element={isAuthenticated ? <Navigate to="/subject-selection" replace /> : <ForgotPassword />} />
       <Route path="/auth/callback" element={<AuthCallback />} />
 
-      {/* Protected Routes */}
+      {/* Protected Routes - Only accessible when logged in */}
       <Route element={<ProtectedRoute />}>
         <Route path="/subject-selection" element={
           <DefaultLayout>
