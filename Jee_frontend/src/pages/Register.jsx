@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate, Link } from 'react-router-dom';
+import { supabase } from '../config/supabase';
+import { toast } from 'react-hot-toast';
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -15,11 +17,33 @@ const Register = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
-    // Simulate registration process
-    setTimeout(() => {
+
+    if (formData.password !== formData.confirmPassword) {
+      toast.error('Passwords do not match');
       setIsLoading(false);
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+        options: {
+          data: {
+            name: formData.username
+          }
+        }
+      });
+
+      if (error) throw error;
+
+      toast.success('Registration successful! Please check your email to verify your account.');
       navigate('/login');
-    }, 1500);
+    } catch (error) {
+      toast.error(error.message);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleChange = (e) => {

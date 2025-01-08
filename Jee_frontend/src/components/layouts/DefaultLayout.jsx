@@ -1,15 +1,15 @@
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import PropTypes from 'prop-types';
+import { ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline';
 import Navbar from '../Navbar';
 import ChatBot from '../ChatBot';
-
-
 
 const Sidebar = ({ isMobileOpen, setIsMobileOpen }) => {
   const location = useLocation();
   const { subject } = useParams();
   const navigate = useNavigate();
+  const isDashboard = location.pathname.includes('/dashboard');
 
   const menuItems = [
     { icon: "📚", label: "Books", path: "books" },
@@ -21,6 +21,8 @@ const Sidebar = ({ isMobileOpen, setIsMobileOpen }) => {
   useEffect(() => {
     setIsMobileOpen(false);
   }, [location.pathname, setIsMobileOpen]);
+
+  if (!isDashboard) return null;
 
   return (
     <>
@@ -81,12 +83,15 @@ Sidebar.propTypes = {
   setIsMobileOpen: PropTypes.func.isRequired
 };
 
-const DashboardLayout = ({ children }) => {
+const DefaultLayout = ({ children }) => {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const [isFullScreen, setIsFullScreen] = useState(false);
+  const location = useLocation();
+  const isDashboard = location.pathname.includes('/dashboard');
 
   const handleAskQuestion = (question) => {
-    console.log('Asked:', question);
+    console.log('Question asked:', question);
   };
 
   return (
@@ -102,34 +107,56 @@ const DashboardLayout = ({ children }) => {
       </div>
 
       <div className="flex min-h-screen pt-16">
-        {/* Sidebar - Fixed width on desktop */}
+        {/* Sidebar - Only shown in dashboard */}
         <Sidebar 
           isMobileOpen={isMobileOpen}
           setIsMobileOpen={setIsMobileOpen}
         />
         
-        {/* Main content - with left padding for sidebar on desktop */}
-        <main className="flex-1 w-full md:pl-64 pr-0 md:pr-[320px]">
+        {/* Main content */}
+        <main className={`flex-1 w-full transition-all duration-300
+          ${isDashboard ? 'md:pl-64' : ''} 
+          ${isDashboard && isChatOpen && !isFullScreen ? 'md:pr-[320px]' : ''}`}
+        >
           <div className="h-full p-4 md:p-6">
             {children}
           </div>
         </main>
 
-        {/* ChatBot - Fixed width */}
-        <div className="hidden md:block fixed right-0 top-16 bottom-0 w-[320px]">
-          <ChatBot 
-            onAskQuestion={handleAskQuestion}
-            isOpen={isChatOpen}
-            setIsOpen={setIsChatOpen}
-          />
-        </div>
+        {/* Chat toggle button - Only shown in dashboard */}
+        {isDashboard && !isChatOpen && (
+          <button
+            onClick={() => setIsChatOpen(true)}
+            className="fixed bottom-6 right-6 w-14 h-14 bg-blue-500 rounded-full flex items-center justify-center shadow-lg z-50 hover:bg-blue-600 transition-colors"
+            aria-label="Open AI Chat"
+          >
+            <ChatBubbleLeftRightIcon className="w-6 h-6 text-white" />
+          </button>
+        )}
+
+        {/* ChatBot - Only shown in dashboard */}
+        {isDashboard && (
+          <div 
+            className={`fixed transition-all duration-300 transform
+              ${isFullScreen ? 'inset-0 z-50' : 'right-0 top-16 bottom-0 w-[320px]'}
+              ${isChatOpen ? 'translate-x-0' : 'translate-x-full'}`}
+          >
+            <ChatBot 
+              onAskQuestion={handleAskQuestion}
+              isOpen={isChatOpen}
+              setIsOpen={setIsChatOpen}
+              isFullScreen={isFullScreen}
+              setIsFullScreen={setIsFullScreen}
+            />
+          </div>
+        )}
       </div>
     </div>
   );
 };
 
-DashboardLayout.propTypes = {
+DefaultLayout.propTypes = {
   children: PropTypes.node.isRequired
 };
 
-export default DashboardLayout;
+export default DefaultLayout; 

@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import Navbar from './components/Navbar';
 import AppRoutes from './routes';
 
 function App() {
@@ -10,10 +9,7 @@ function App() {
 
   return (
     <div className="min-h-screen bg-black text-white">
-      <Navbar />
-      <main className="pt-16">
-        <AppRoutes quote={quote} />
-      </main>
+      <AppRoutes quote={quote} />
     </div>
   );
 }

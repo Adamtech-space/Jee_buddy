@@ -1,11 +1,71 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ChatBubbleLeftIcon } from '@heroicons/react/24/outline';
+import PropTypes from 'prop-types';
+
+const FloatingReplyButton = ({ selectedText, onReply }) => {
+  return (
+    <motion.button
+      initial={{ opacity: 0, scale: 0.8 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.8 }}
+      onClick={() => onReply(selectedText)}
+      className="fixed bg-blue-500 text-white rounded-lg px-4 py-2 flex items-center space-x-2 shadow-lg hover:bg-blue-600 transition-colors"
+      style={{ 
+        left: window.getSelection().getRangeAt(0).getBoundingClientRect().left,
+        top: window.getSelection().getRangeAt(0).getBoundingClientRect().bottom + window.scrollY + 10
+      }}
+    >
+      <ChatBubbleLeftIcon className="w-5 h-5" />
+      <span>Ask about this</span>
+    </motion.button>
+  );
+};
+
+FloatingReplyButton.propTypes = {
+  selectedText: PropTypes.string.isRequired,
+  onReply: PropTypes.func.isRequired
+};
 
 const TopicContent = () => {
   const { subject, topicId } = useParams();
   const navigate = useNavigate();
   const [content, setContent] = useState(null);
+  const [selectedText, setSelectedText] = useState('');
+  const [showReplyButton, setShowReplyButton] = useState(false);
+
+  // Custom event for chat communication
+  const askQuestion = useCallback((text) => {
+    const event = new CustomEvent('askAboutSelection', { 
+      detail: { text }
+    });
+    window.dispatchEvent(event);
+    setShowReplyButton(false);
+  }, []);
+
+  // Handle text selection
+  useEffect(() => {
+    const handleSelection = () => {
+      const selection = window.getSelection();
+      const text = selection.toString().trim();
+      
+      if (text.length > 0) {
+        setSelectedText(text);
+        setShowReplyButton(true);
+      } else {
+        setShowReplyButton(false);
+      }
+    };
+
+    document.addEventListener('mouseup', handleSelection);
+    document.addEventListener('keyup', handleSelection);
+
+    return () => {
+      document.removeEventListener('mouseup', handleSelection);
+      document.removeEventListener('keyup', handleSelection);
+    };
+  }, []);
 
   useEffect(() => {
     // Simulated content based on subject and topic
@@ -91,7 +151,7 @@ const TopicContent = () => {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="max-w-4xl"
+        className="max-w-4xl relative"
       >
         <h1 className="text-3xl font-bold mb-8">{content.title}</h1>
 
@@ -114,6 +174,16 @@ const TopicContent = () => {
             })}
           </div>
         </div>
+
+        {/* Floating Reply Button */}
+        <AnimatePresence>
+          {showReplyButton && (
+            <FloatingReplyButton 
+              selectedText={selectedText}
+              onReply={askQuestion}
+            />
+          )}
+        </AnimatePresence>
 
         {content.formulas && (
           <section className="mt-8">
