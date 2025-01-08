@@ -1,46 +1,37 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate, Link } from 'react-router-dom';
-import { supabase } from '../config/supabase';
-import { toast } from 'react-hot-toast';
+import { userRegister } from '../interceptors/services';
 
 const Register = () => {
   const [formData, setFormData] = useState({
-    username: '',
+    name: '',
     email: '',
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
+    phonenumber: ''
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
+    setError('');
 
     if (formData.password !== formData.confirmPassword) {
-      toast.error('Passwords do not match');
+      setError('Passwords do not match');
       setIsLoading(false);
       return;
     }
 
     try {
-      const { data, error } = await supabase.auth.signUp({
-        email: formData.email,
-        password: formData.password,
-        options: {
-          data: {
-            name: formData.username
-          }
-        }
-      });
-
-      if (error) throw error;
-
-      toast.success('Registration successful! Please check your email to verify your account.');
+      const { confirmPassword, ...registrationData } = formData;
+      await userRegister(registrationData);
       navigate('/login');
-    } catch (error) {
-      toast.error(error.message);
+    } catch (err) {
+      setError(err.message || 'Registration failed. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -62,22 +53,44 @@ const Register = () => {
           <h2 className="mt-6 text-3xl font-bold text-white">Create Account</h2>
           <p className="mt-2 text-sm text-gray-400">Join our learning community</p>
         </div>
+
+        {error && (
+          <div className="bg-red-500 bg-opacity-10 border border-red-500 text-red-500 px-4 py-3 rounded relative" role="alert">
+            <span className="block sm:inline">{error}</span>
+          </div>
+        )}
         
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           <div className="space-y-4">
             <div>
-              <label htmlFor="username" className="text-sm font-medium text-gray-300">
-                Username
+              <label htmlFor="name" className="text-sm font-medium text-gray-300">
+                Full Name
               </label>
               <input
-                id="username"
-                name="username"
+                id="name"
+                name="name"
                 type="text"
                 required
-                value={formData.username}
+                value={formData.name}
                 onChange={handleChange}
                 className="appearance-none relative block w-full px-3 py-2 mt-1 border border-gray-700 rounded-md bg-gray-800 text-white placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Choose a username"
+                placeholder="Enter your full name"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="phonenumber" className="text-sm font-medium text-gray-300">
+                Phone Number
+              </label>
+              <input
+                id="phonenumber"
+                name="phonenumber"
+                type="tel"
+                required
+                value={formData.phonenumber}
+                onChange={handleChange}
+                className="appearance-none relative block w-full px-3 py-2 mt-1 border border-gray-700 rounded-md bg-gray-800 text-white placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Enter your phone number"
               />
             </div>
             

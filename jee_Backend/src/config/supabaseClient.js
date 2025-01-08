@@ -16,7 +16,7 @@ async function testConnection() {
   try {
     const { data, error } = await supabase.auth.getSession();
     if (error) throw error;
-    logger.info('Connected to Supabase successfully.....');
+    logger.info('Connected to Supabase successfully');
   } catch (error) {
     logger.error('Failed to connect to Supabase:', error.message);
     throw error;

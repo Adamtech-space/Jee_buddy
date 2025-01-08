@@ -1,29 +1,24 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { supabase } from '../config/supabase';
-import { toast } from 'react-hot-toast';
+import { forgotPassword } from '../interceptors/services';
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [error, setError] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
+    setError('');
 
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
-      });
-
-      if (error) throw error;
-
+      await forgotPassword(email);
       setIsSubmitted(true);
-      toast.success('Password reset instructions sent to your email');
-    } catch (error) {
-      toast.error(error.message);
+    } catch (err) {
+      setError(err.message || 'Failed to send reset email. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -43,6 +38,12 @@ const ForgotPassword = () => {
             Enter your email to receive password reset instructions
           </p>
         </div>
+
+        {error && (
+          <div className="bg-red-500 bg-opacity-10 border border-red-500 text-red-500 px-4 py-3 rounded relative" role="alert">
+            <span className="block sm:inline">{error}</span>
+          </div>
+        )}
 
         {!isSubmitted ? (
           <form className="mt-8 space-y-6" onSubmit={handleSubmit}>

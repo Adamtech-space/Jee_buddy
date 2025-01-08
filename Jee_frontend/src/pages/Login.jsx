@@ -1,55 +1,41 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate, Link } from 'react-router-dom';
-import { supabase } from '../config/supabase';
-import { toast } from 'react-hot-toast';
+import { userLogin, googleSignIn } from '../interceptors/services';
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
+    setError('');
 
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (error) throw error;
-
-      toast.success('Logged in successfully!');
+      await userLogin({ email, password });
       navigate('/subject-selection');
-    } catch (error) {
-      toast.error(error.message);
+    } catch (err) {
+      setError(err.message || 'Login failed. Please try again.');
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleGoogleSignIn = async () => {
+    setIsLoading(true);
+    setError('');
+
     try {
-      setIsLoading(true);
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback`
-        }
-      });
-
-      if (error) throw error;
-
-      if (data) {
-        toast.success('Logged in with Google successfully!');
-        navigate('/subject-selection');
+      const response = await googleSignIn();
+      if (response.url) {
+        window.location.href = response.url;
       }
-    } catch (error) {
-      toast.error('Google sign-in failed');
-    } finally {
+    } catch (err) {
+      setError(err.message || 'Google sign-in failed. Please try again.');
       setIsLoading(false);
     }
   };
@@ -66,6 +52,12 @@ const Login = () => {
           <h2 className="mt-6 text-3xl font-bold text-white">Welcome to JEE Buddy</h2>
           <p className="mt-2 text-sm text-gray-400">Sign in to your account</p>
         </div>
+
+        {error && (
+          <div className="bg-red-500 bg-opacity-10 border border-red-500 text-red-500 px-4 py-3 rounded relative" role="alert">
+            <span className="block sm:inline">{error}</span>
+          </div>
+        )}
 
         <form className="space-y-6" onSubmit={handleSubmit}>
           <div className="space-y-4">
@@ -141,6 +133,7 @@ const Login = () => {
           </div>
         </div>
 
+        {/* Google Sign In Button */}
         <div>
           <button
             onClick={handleGoogleSignIn}

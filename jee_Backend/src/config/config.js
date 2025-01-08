@@ -5,29 +5,33 @@ dotenv.config({ path: path.join(__dirname, "../../.env") });
 
 const envVarsSchema = Joi.object()
   .keys({
-    PORT: Joi.number().default(3333),
-    NEXT_PUBLIC_SUPABASE_URL: Joi.string().required().description("Supabase URL"),
-    NEXT_PUBLIC_SUPABASE_ANON_KEY: Joi.string().required().description("Supabase Anonymous Key"),
-    JWT_SECRET: Joi.string().required().description("JWT secret key"),
-    JWT_ACCESS_EXPIRATION_MINUTES: Joi.number()
-      .default(43200)
-      .description("minutes after which access tokens expire"),
-    JWT_REFRESH_EXPIRATION_DAYS: Joi.number()
-      .default(30)
-      .description("days after which refresh tokens expire"),
-    JWT_RESET_PASSWORD_EXPIRATION_MINUTES: Joi.number()
-      .default(10)
-      .description("minutes after which reset password token expires"),
-    JWT_VERIFY_EMAIL_EXPIRATION_MINUTES: Joi.number()
-      .default(10)
-      .description("minutes after which verify email token expires"),
-    SMTP_HOST: Joi.string().description("server that will send the emails"),
-    SMTP_PORT: Joi.number().description("port to connect to the email server"),
-    SMTP_USERNAME: Joi.string().description("username for email server"),
-    SMTP_PASSWORD: Joi.string().description("password for email server"),
-    EMAIL_FROM: Joi.string().description(
-      "the from field in the emails sent by the app"
-    ),
+    NODE_ENV: Joi.string().valid('production', 'development', 'test').required(),
+    PORT: Joi.number().default(5000),
+    FRONTEND_URL: Joi.string().required(),
+    
+    // JWT
+    JWT_SECRET: Joi.string().required(),
+    JWT_ACCESS_EXPIRATION_MINUTES: Joi.number().default(30),
+    JWT_REFRESH_EXPIRATION_DAYS: Joi.number().default(30),
+    JWT_RESET_PASSWORD_EXPIRATION_MINUTES: Joi.number().default(10),
+    JWT_VERIFY_EMAIL_EXPIRATION_MINUTES: Joi.number().default(10),
+    
+    // Google OAuth
+    GOOGLE_CLIENT_ID: Joi.string().required(),
+    GOOGLE_CLIENT_SECRET: Joi.string().required(),
+    GOOGLE_CALLBACK_URL: Joi.string().required(),
+    
+    // SMTP
+    SMTP_HOST: Joi.string().required(),
+    SMTP_PORT: Joi.number().required(),
+    SMTP_USERNAME: Joi.string().required(),
+    SMTP_PASSWORD: Joi.string().required(),
+    EMAIL_FROM: Joi.string().required(),
+    
+    // Supabase
+    NEXT_PUBLIC_SUPABASE_URL: Joi.string().required(),
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: Joi.string().required(),
+    SUPABASE_SERVICE_ROLE_KEY: Joi.string().required(),
   })
   .unknown();
 
@@ -38,21 +42,25 @@ if (error) {
   throw new Error(`Config validation error: ${error.message}`);
 }
 
-module.exports = {
+const config = {
   env: envVars.NODE_ENV,
   port: envVars.PORT,
-  supabase: {
-    url: envVars.NEXT_PUBLIC_SUPABASE_URL,
-    anonKey: envVars.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-  },
+  frontendUrl: envVars.FRONTEND_URL,
+  
   jwt: {
     secret: envVars.JWT_SECRET,
     accessExpirationMinutes: envVars.JWT_ACCESS_EXPIRATION_MINUTES,
     refreshExpirationDays: envVars.JWT_REFRESH_EXPIRATION_DAYS,
-    resetPasswordExpirationMinutes:
-      envVars.JWT_RESET_PASSWORD_EXPIRATION_MINUTES,
+    resetPasswordExpirationMinutes: envVars.JWT_RESET_PASSWORD_EXPIRATION_MINUTES,
     verifyEmailExpirationMinutes: envVars.JWT_VERIFY_EMAIL_EXPIRATION_MINUTES,
   },
+  
+  google: {
+    clientId: envVars.GOOGLE_CLIENT_ID,
+    clientSecret: envVars.GOOGLE_CLIENT_SECRET,
+    callbackUrl: envVars.GOOGLE_CALLBACK_URL,
+  },
+  
   email: {
     smtp: {
       host: envVars.SMTP_HOST,
@@ -64,4 +72,12 @@ module.exports = {
     },
     from: envVars.EMAIL_FROM,
   },
+  
+  supabase: {
+    url: envVars.NEXT_PUBLIC_SUPABASE_URL,
+    anonKey: envVars.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    serviceRoleKey: envVars.SUPABASE_SERVICE_ROLE_KEY,
+  },
 };
+
+module.exports = config;

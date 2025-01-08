@@ -1,37 +1,33 @@
 const express = require("express");
 const cors = require("cors");
+const routes = require("./src/routes/v1");
 const httpStatus = require("http-status");
-const morgan = require("./src/config/morgan");
-const { errorConverter, errorHandler } = require("./src/middlwares/errors");
-const bodyParser = require("body-parser");
-const ApiError = require("./src/utils/apiError");
-const { authLimiter } = require("./src/middlwares/rateLimiter");
-const routes = require('./src/routers/v1')
+const { errorConverter, errorHandler } = require("./src/middlewares/errors");
+const ApiError = require("./src/utils/ApiError");
 
 const app = express();
+
+// parse json request body
+app.use(express.json());
+
+// parse urlencoded request body
 app.use(express.urlencoded({ extended: true }));
-app.use(bodyParser.urlencoded({ extended: true }));
-app.use(bodyParser.json());
 
-app.use(morgan.successHandler);
-app.use(morgan.errorHandler);
-
+// enable cors
 app.use(cors());
-app.options("*", cors());
 
-app.get("/", (req, res) => {
-  res.status(200).send({ message: "WGS JOb PORTAL BACKEND WORKING........" });
-});
-
+// v1 api routes
 app.use("/v1", routes);
-app.use("/v1/auth", authLimiter);
 
-app.use(errorConverter);
-
-app.use(errorHandler);
-
+// send back a 404 error for any unknown api request
 app.use((req, res, next) => {
   next(new ApiError(httpStatus.NOT_FOUND, "Not found"));
 });
+
+// convert error to ApiError, if needed
+app.use(errorConverter);
+
+// handle error
+app.use(errorHandler);
 
 module.exports = app;
