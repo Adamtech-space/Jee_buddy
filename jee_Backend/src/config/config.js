@@ -16,6 +16,11 @@ const envVarsSchema = Joi.object()
     JWT_RESET_PASSWORD_EXPIRATION_MINUTES: Joi.number().default(10),
     JWT_VERIFY_EMAIL_EXPIRATION_MINUTES: Joi.number().default(10),
     
+    // Google OAuth
+    GOOGLE_CLIENT_ID: Joi.string().required(),
+    GOOGLE_CLIENT_SECRET: Joi.string().required(),
+    GOOGLE_CALLBACK_URL: Joi.string().required(),
+    
     // SMTP
     SMTP_HOST: Joi.string().required(),
     SMTP_PORT: Joi.number().required(),
@@ -52,6 +57,12 @@ const config = {
     refreshExpirationDays: envVars.JWT_REFRESH_EXPIRATION_DAYS,
     resetPasswordExpirationMinutes: envVars.JWT_RESET_PASSWORD_EXPIRATION_MINUTES,
     verifyEmailExpirationMinutes: envVars.JWT_VERIFY_EMAIL_EXPIRATION_MINUTES,
+  },
+  
+  google: {
+    clientId: envVars.GOOGLE_CLIENT_ID,
+    clientSecret: envVars.GOOGLE_CLIENT_SECRET,
+    callbackUrl: envVars.GOOGLE_CALLBACK_URL,
   },
   
   email: {
