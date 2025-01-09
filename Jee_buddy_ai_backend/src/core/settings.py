@@ -11,6 +11,12 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 
 from pathlib import Path
+import dj_database_url
+import os
+from dotenv import load_dotenv
+from urllib.parse import quote_plus
+
+load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -25,11 +31,6 @@ SECRET_KEY = 'django-insecure-dd16kn&trh7p3@j5r8917v9ac4z4!2&49f-544+4d6f1#d)4uv
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-
-import os
-from dotenv import load_dotenv
-
-load_dotenv()
 
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 
@@ -136,8 +137,15 @@ WSGI_APPLICATION = 'core.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'postgres',
+        'USER': 'postgres.kymdueuxnesfvjdrueww',
+        'PASSWORD': 'Jeebuddy@2025',
+        'HOST': 'aws-0-ap-southeast-1.pooler.supabase.com',
+        'PORT': '5432',
+        'OPTIONS': {
+            'sslmode': 'require',
+        }
     }
 }
 

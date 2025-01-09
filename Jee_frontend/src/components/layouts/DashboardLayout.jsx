@@ -86,6 +86,19 @@ const DashboardLayout = ({ children }) => {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
 
+  // Handle keyboard shortcuts
+  useEffect(() => {
+    const handleKeyPress = (e) => {
+      if (e.ctrlKey && e.shiftKey && (e.key === 'l' || e.key === 'L')) {
+        e.preventDefault();
+        setIsChatOpen(prev => !prev);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, []);
+
   const handleAskQuestion = (question) => {
     console.log('Asked:', question);
   };

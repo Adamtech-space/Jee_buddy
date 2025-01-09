@@ -34,3 +34,45 @@ class Solution(models.Model):
             return json.loads(self.context_data)
         except json.JSONDecodeError:
             return {}
+
+
+class ChatHistory(models.Model):
+    session_id = models.CharField(max_length=100)
+    question = models.TextField()
+    response = models.TextField()
+    context = models.JSONField(default=dict)
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    def to_dict(self):
+        """Convert the model instance to a dictionary"""
+        return {
+            'session_id': self.session_id,
+            'question': self.question,
+            'response': self.response,
+            'context': self.context,
+            'timestamp': self.timestamp.isoformat()
+        }
+
+    @classmethod
+    def add_interaction(cls, session_id, question, response, context):
+        # First, check if we need to cleanup old interactions
+        old_interactions = cls.objects.filter(session_id=session_id).order_by('-timestamp')[100:]
+        if old_interactions.exists():
+            old_interactions.delete()
+            
+        return cls.objects.create(
+            session_id=session_id,
+            question=question,
+            response=response,
+            context=context
+        )
+
+    @classmethod
+    def get_recent_history(cls, session_id, limit=100):
+        history = list(cls.objects.filter(
+            session_id=session_id
+        ).order_by('-timestamp')[:limit])
+        return [item.to_dict() for item in history]  # Convert to dictionary
+
+    class Meta:
+        ordering = ['-timestamp']
