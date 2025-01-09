@@ -43,7 +43,7 @@ const Hero = () => {
   ];
 
   return (
-    <section className="relative min-h-screen bg-black flex items-center overflow-hidden">
+    <section className="hero-section relative min-h-screen bg-black flex items-center overflow-hidden">
       {dimensions.width > 0 && floatingElements.map((element, index) => (
         <motion.div
           key={index}
