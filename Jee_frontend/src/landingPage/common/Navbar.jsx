@@ -65,6 +65,7 @@ const Navbar = () => {
                 className={`border-gray-700 hover:border-blue-500 text-gray-300 
                   hover:text-blue-400 transition-all duration-300
                   ${isScrolled ? 'bg-black/50' : 'bg-black/30'}`}
+                onClick={() => window.location.href = '/login'}
               >
                 Login
               </Button>
@@ -74,8 +75,9 @@ const Navbar = () => {
                   hover:from-blue-700 hover:to-purple-700 text-white
                   transition-all duration-300 transform hover:scale-105
                   ${isScrolled ? 'shadow-md' : 'shadow-lg shadow-blue-500/25'}`}
+                onClick={() => window.location.href = '/register'}
               >
-                Start Free Trial
+                Get Free Trial
               </Button>
             </div>
           </div>
@@ -123,7 +125,10 @@ const Navbar = () => {
                 variant="outline" 
                 className="w-full border-gray-700 hover:border-blue-500 
                           text-gray-300 hover:text-blue-400 bg-black/50"
-                onClick={closeMenu}
+                onClick={() => {
+                  closeMenu();
+                  window.location.href = '/login';
+                }}
               >
                 Login
               </Button>
@@ -131,9 +136,12 @@ const Navbar = () => {
                 variant="primary" 
                 className="w-full bg-gradient-to-r from-blue-600 to-purple-600 
                           hover:from-blue-700 hover:to-purple-700 text-white"
-                onClick={closeMenu}
+                onClick={() => {
+                  closeMenu();
+                  window.location.href = '/register';
+                }}
               >
-                Start Free Trial
+                Get Free Trial
               </Button>
             </div>
           </div>

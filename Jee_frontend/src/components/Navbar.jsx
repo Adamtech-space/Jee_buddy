@@ -77,12 +77,18 @@ const Navbar = ({ isMobileOpen, setIsMobileOpen }) => {
                   <Link to="/#features" className="text-gray-300 hover:text-white px-3 py-2">Features</Link>
                   <Link to="/#resources" className="text-gray-300 hover:text-white px-3 py-2">Resources</Link>
                   <Link to="/#demo" className="text-gray-300 hover:text-white px-3 py-2">Try Demo</Link>
-                  <button
-                    onClick={() => navigate('/login')}
+                  <Link
+                    to="/login"
+                    className="text-gray-300 hover:text-white px-3 py-2"
+                  >
+                    Login
+                  </Link>
+                  <Link
+                    to="/register"
                     className="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 transition-colors"
                   >
-                    Get Started
-                  </button>
+                    Get Free Trial
+                  </Link>
                 </>
               )}
             </div>
@@ -175,15 +181,20 @@ const Navbar = ({ isMobileOpen, setIsMobileOpen }) => {
               >
                 Try Demo
               </Link>
-              <button
-                onClick={() => {
-                  setIsMobileOpen(false);
-                  navigate('/login');
-                }}
-                className="bg-blue-500 text-white px-4 py-2 rounded-lg text-center hover:bg-blue-600 transition-colors mx-3"
+              <Link
+                to="/login"
+                className="text-gray-300 hover:text-white px-3 py-2"
+                onClick={() => setIsMobileOpen(false)}
               >
-                Get Started
-              </button>
+                Login
+              </Link>
+              <Link
+                to="/register"
+                className="bg-blue-500 text-white px-4 py-2 rounded-lg text-center hover:bg-blue-600 transition-colors mx-3"
+                onClick={() => setIsMobileOpen(false)}
+              >
+                Get Free Trial
+              </Link>
             </div>
           </div>
         )}
