@@ -5,14 +5,10 @@ import {
   ArrowsPointingInIcon,
   PaperClipIcon,
   PaperAirplaneIcon,
-  UserCircleIcon,
   XCircleIcon,
   QuestionMarkCircleIcon
 } from '@heroicons/react/24/outline';
 import PropTypes from 'prop-types';
-import ReactMarkdown from 'react-markdown';
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { aiService } from '../interceptors/ai.service';
 
 const PinIcon = ({ className }) => (
@@ -130,17 +126,20 @@ const ChatBot = ({ isOpen, setIsOpen, isFullScreen, setIsFullScreen, subject, to
     return () => document.removeEventListener('keydown', handleKeyPress);
   }, [setIsOpen]);
 
-  // Improved scroll handling
+  // Improved scroll handling with smooth behavior
   const scrollToBottom = () => {
     if (messagesEndRef.current) {
-      const scrollContainer = messagesEndRef.current.parentElement;
-      scrollContainer.scrollTop = scrollContainer.scrollHeight;
+      messagesEndRef.current.scrollIntoView({ 
+        behavior: 'smooth',
+        block: 'end'
+      });
     }
   };
 
+  // Update scroll effect to trigger on more events
   useEffect(() => {
     scrollToBottom();
-  }, [messages, displayedResponse]);
+  }, [messages, displayedResponse, isTyping]);
 
   // Enhanced typing effect with better performance
   useEffect(() => {
@@ -149,44 +148,12 @@ const ChatBot = ({ isOpen, setIsOpen, isFullScreen, setIsFullScreen, subject, to
         setDisplayedResponse(messages[messages.length - 1].content.slice(0, currentTypingIndex + 1));
         setCurrentTypingIndex(prev => prev + 1);
         scrollToBottom();
-      }, 10); // Faster typing speed
+      }, 10);
       return () => clearTimeout(timer);
     } else if (isTyping) {
       setIsTyping(false);
-      // Add quick options after typing is complete
-      handleQuickOptions(messages[messages.length - 1].content);
     }
   }, [isTyping, currentTypingIndex, messages]);
-
-  // Function to extract and handle quick options
-  const handleQuickOptions = (content) => {
-    // Extract topics or key points from the response
-    const topics = extractTopicsFromResponse(content);
-    if (topics.length > 0) {
-      setMessages(prev => [...prev, {
-        sender: 'assistant',
-        content: 'Quick options:',
-        type: 'quick-options',
-        options: topics
-      }]);
-    }
-  };
-
-  // Helper function to extract topics from response
-  const extractTopicsFromResponse = (content) => {
-    const topics = [];
-    // Extract bullet points and numbered items
-    const lines = content.split('\n');
-    lines.forEach(line => {
-      if (line.includes('• ') || /^\d+\.\s/.test(line)) {
-        const topic = line.replace(/^[•\d]+\.\s*/, '').trim();
-        if (topic && !topics.includes(topic)) {
-          topics.push(topic);
-        }
-      }
-    });
-    return topics.slice(0, 3); // Limit to 3 options
-  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -336,49 +303,55 @@ const ChatBot = ({ isOpen, setIsOpen, isFullScreen, setIsFullScreen, subject, to
   // Enhanced message rendering with quick options support
   const renderMessage = (msg, index) => {
     const isLastMessage = index === messages.length - 1;
-    const content = isLastMessage && msg.sender === 'assistant' && msg.type !== 'quick-options' 
-      ? displayedResponse 
-      : msg.content;
-
-    if (msg.type === 'quick-options') {
-      return (
-        <div key={index} className="flex justify-start mb-4">
-          <div className="flex flex-wrap gap-2">
-            {msg.options.map((option, i) => (
-              <button
-                key={i}
-                onClick={() => handleSubmit({ 
-                  preventDefault: () => {}, 
-                  target: { value: option }
-                })}
-                className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 transition-colors text-sm"
-              >
-                {option}
-              </button>
-            ))}
-          </div>
-        </div>
-      );
-    }
+    const content = isLastMessage && msg.sender === 'assistant' ? displayedResponse : msg.content;
 
     return (
-      <div key={index} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'} mb-4`}>
+      <div 
+        key={index} 
+        className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'} mb-4`}
+        onMouseUp={handleMessageTextSelection}
+      >
+        {msg.sender === 'assistant' && (
+          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-r from-purple-500 to-indigo-500 flex items-center justify-center mr-2">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-white" viewBox="0 0 20 20" fill="currentColor">
+              <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm0-2a6 6 0 100-12 6 6 0 000 12z" clipRule="evenodd" />
+            </svg>
+          </div>
+        )}
+        
         <div 
-          className={`max-w-[80%] rounded-lg p-3 ${
+          className={`max-w-[80%] rounded-lg p-4 ${
             msg.sender === 'user' 
-              ? 'bg-blue-500 text-white' 
-              : 'bg-gray-100 text-gray-800'
+              ? 'bg-blue-500 text-white ml-2' 
+              : 'bg-gradient-to-r from-gray-800 to-gray-900 text-white shadow-xl'
           }`}
         >
-          <pre className="whitespace-pre-wrap font-sans">
+          <pre className="whitespace-pre-wrap font-sans text-[15px] leading-relaxed">
             {content}
             {isLastMessage && msg.sender === 'assistant' && isTyping && (
-              <span className="inline-block w-2 h-4 bg-gray-500 animate-pulse ml-1">|</span>
+              <span className="inline-block w-2 h-5 bg-blue-400 animate-pulse ml-1">|</span>
             )}
           </pre>
         </div>
+
+        {msg.sender === 'user' && (
+          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center ml-2">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-white" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+            </svg>
+          </div>
+        )}
       </div>
     );
+  };
+
+  // Add text selection handler
+  const handleMessageTextSelection = () => {
+    const selectedText = window.getSelection().toString();
+    if (selectedText) {
+      setSelectedText(selectedText);
+    }
   };
 
   return (
@@ -476,8 +449,8 @@ const ChatBot = ({ isOpen, setIsOpen, isFullScreen, setIsFullScreen, subject, to
         </div>
       )}
 
-      {/* Updated messages container */}
-      <div className="flex-1 overflow-y-auto h-[calc(100%-8rem)] scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
+      {/* Updated messages container with hidden scrollbar */}
+      <div className="flex-1 overflow-y-auto h-[calc(100%-8rem)] scrollbar-none">
         <div className="space-y-4 p-4">
           {messages.map((msg, index) => renderMessage(msg, index))}
           <div ref={messagesEndRef} />

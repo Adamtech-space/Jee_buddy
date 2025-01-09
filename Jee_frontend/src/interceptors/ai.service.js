@@ -9,7 +9,7 @@ export const aiService = {
           selectedText: context.selectedText || '',
           pinnedText: context.pinnedText || '',
           // subject: context.subject || '',
-          topic: context.topic || ''
+          // topic: context.topic || ''
         }
       });
       return response.data;

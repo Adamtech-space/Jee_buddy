@@ -91,7 +91,7 @@ const DashboardLayout = ({ children }) => {
   };
 
   return (
-    <div className="min-h-screen bg-black">
+    <div className="min-h-screen bg-black overflow-x-hidden">
       {/* Fixed navbar at top */}
       <div className="fixed top-0 left-0 right-0 z-50">
         <Navbar 
@@ -102,7 +102,7 @@ const DashboardLayout = ({ children }) => {
         />
       </div>
 
-      <div className="flex min-h-screen pt-16">
+      <div className="flex min-h-screen pt-16 relative">
         {/* Sidebar - Fixed width on desktop */}
         <Sidebar 
           isMobileOpen={isMobileOpen}
@@ -110,8 +110,8 @@ const DashboardLayout = ({ children }) => {
         />
         
         {/* Main content - with left padding for sidebar on desktop */}
-        <main className="flex-1 w-full md:pl-64 pr-0 md:pr-[450px]">
-          <div className="h-full p-4 md:p-6">
+        <main className="flex-1 w-full md:pl-64 px-4 md:px-6">
+          <div className="h-full max-w-full">
             {children}
           </div>
         </main>
@@ -123,6 +123,17 @@ const DashboardLayout = ({ children }) => {
             isOpen={isChatOpen}
             setIsOpen={setIsChatOpen}
             isFullScreen={isFullScreen}
+            setIsFullScreen={setIsFullScreen}
+          />
+        </div>
+
+        {/* Mobile ChatBot */}
+        <div className="md:hidden fixed inset-0 z-50" style={{ display: isChatOpen ? 'block' : 'none' }}>
+          <ChatBot 
+            onAskQuestion={handleAskQuestion}
+            isOpen={isChatOpen}
+            setIsOpen={setIsChatOpen}
+            isFullScreen={true}
             setIsFullScreen={setIsFullScreen}
           />
         </div>

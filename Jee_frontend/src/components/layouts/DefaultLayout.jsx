@@ -98,7 +98,7 @@ const DefaultLayout = ({ children }) => {
   };
 
   return (
-    <div className="min-h-screen bg-black">
+    <div className="min-h-screen bg-black overflow-x-hidden">
       {/* Fixed navbar at top */}
       <div className="fixed top-0 left-0 right-0 z-50">
         <Navbar 
@@ -109,7 +109,7 @@ const DefaultLayout = ({ children }) => {
         />
       </div>
 
-      <div className="flex min-h-screen pt-16">
+      <div className="flex min-h-screen pt-16 relative">
         {/* Sidebar - Only shown in dashboard */}
         <Sidebar 
           isMobileOpen={isMobileOpen}
@@ -118,13 +118,13 @@ const DefaultLayout = ({ children }) => {
         
         {/* Main content */}
         <main 
-          className={`flex-1 w-full ${isDashboard ? 'md:pl-64' : ''}`}
+          className={`flex-1 w-full ${isDashboard ? 'md:pl-64' : ''} px-4 md:px-6`}
           style={{
             paddingRight: isDashboard && isChatOpen && !isFullScreen ? `${chatWidth}px` : '0',
             transition: isResizing ? 'none' : 'padding-right 0.2s ease-out'
           }}
         >
-          <div className="h-full p-4 md:p-6">
+          <div className="h-full max-w-full">
             {children}
           </div>
         </main>
@@ -142,33 +142,50 @@ const DefaultLayout = ({ children }) => {
 
         {/* ChatBot - Only shown in dashboard */}
         {isDashboard && (
-          <div 
-            className={`fixed transform
-              ${isFullScreen ? 'inset-0 z-50' : 'right-0 top-16 bottom-0'}
-              ${isChatOpen ? 'translate-x-0' : 'translate-x-full'}`}
-            style={{ 
-              width: isFullScreen ? '100%' : `${chatWidth}px`,
-              transition: isResizing ? 'none' : 'all 0.2s ease-out'
-            }}
-          >
-            <ChatBot 
-              isOpen={isChatOpen}
-              setIsOpen={setIsChatOpen}
-              isFullScreen={isFullScreen}
-              setIsFullScreen={setIsFullScreen}
-              subject={location.pathname.split('/')[2]}
-              topic={location.pathname.split('/')[4]}
-              onResize={(width) => {
-                setIsResizing(true);
-                handleChatResize(width);
-                // Debounce the resize end
-                clearTimeout(window.resizeTimer);
-                window.resizeTimer = setTimeout(() => {
-                  setIsResizing(false);
-                }, 100);
+          <>
+            {/* Desktop ChatBot */}
+            <div 
+              className={`fixed transform hidden md:block
+                ${isFullScreen ? 'inset-0 z-50' : 'right-0 top-16 bottom-0'}
+                ${isChatOpen ? 'translate-x-0' : 'translate-x-full'}`}
+              style={{ 
+                width: isFullScreen ? '100%' : `${chatWidth}px`,
+                transition: isResizing ? 'none' : 'all 0.2s ease-out'
               }}
-            />
-          </div>
+            >
+              <ChatBot 
+                isOpen={isChatOpen}
+                setIsOpen={setIsChatOpen}
+                isFullScreen={isFullScreen}
+                setIsFullScreen={setIsFullScreen}
+                subject={location.pathname.split('/')[2]}
+                topic={location.pathname.split('/')[4]}
+                onResize={(width) => {
+                  setIsResizing(true);
+                  handleChatResize(width);
+                  // Debounce the resize end
+                  clearTimeout(window.resizeTimer);
+                  window.resizeTimer = setTimeout(() => {
+                    setIsResizing(false);
+                  }, 100);
+                }}
+              />
+            </div>
+
+            {/* Mobile ChatBot */}
+            <div 
+              className={`fixed inset-0 z-50 md:hidden ${isChatOpen ? 'block' : 'hidden'}`}
+            >
+              <ChatBot 
+                isOpen={isChatOpen}
+                setIsOpen={setIsChatOpen}
+                isFullScreen={true}
+                setIsFullScreen={setIsFullScreen}
+                subject={location.pathname.split('/')[2]}
+                topic={location.pathname.split('/')[4]}
+              />
+            </div>
+          </>
         )}
       </div>
     </div>
