@@ -19,20 +19,24 @@ const supabase = createClient(
   }
 );
 
+const generateSessionId = () => {
+  return crypto.randomUUID();
+};
+
 /**
  * Update session ID for user
  * @param {string} userId
  * @returns {Promise<string>} new session ID
  */
 const updateSessionId = async (userId) => {
-  const sessionId = uuidv4();
+  const sessionId = generateSessionId();
+  
   const { error } = await supabase
     .from('profiles')
     .update({ current_session_id: sessionId })
     .eq('id', userId);
 
   if (error) {
-    console.error('Session Update Error:', error);
     throw new Error('Failed to update session ID');
   }
 

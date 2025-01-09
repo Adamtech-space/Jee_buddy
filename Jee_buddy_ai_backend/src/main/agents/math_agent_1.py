@@ -16,7 +16,7 @@ class MathAgent:
     def __init__(self):
         self.llm = ChatOpenAI(
             temperature=0.7,
-            model="gpt-4o",
+            model="gpt-4o-mini",
             max_tokens=1000,
             api_key="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"
         )
@@ -189,8 +189,8 @@ class MathAgent:
                 {context.get('pinnedText', '')}
                 {image_context}
 
-                Interaction type: {interaction_type}
-                {interaction_prompt}
+                # Interaction type: {interaction_type}
+                # {interaction_prompt}
                 """),
                 HumanMessage(content=question)
             ]
@@ -198,7 +198,7 @@ class MathAgent:
             # Actually call the LLM
             response = await self.llm.agenerate([messages])
             
-            # Extract the response
+            # Extract the responseP
             llm_response = response.generations[0][0].text
 
             # Format the response based on interaction type

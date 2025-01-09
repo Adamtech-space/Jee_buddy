@@ -158,25 +158,23 @@ const DefaultLayout = ({ children }) => {
           <>
             {/* Desktop ChatBot */}
             <div 
-              className={`fixed transform hidden md:block
-                ${isFullScreen ? 'inset-0 z-50' : 'right-0 top-16 bottom-0'}
+              className={`fixed transform hidden md:block transition-transform duration-300 ease-in-out top-16 bottom-0
                 ${isChatOpen ? 'translate-x-0' : 'translate-x-full'}`}
               style={{ 
-                width: isFullScreen ? '100%' : `${chatWidth}px`,
-                transition: isResizing ? 'none' : 'all 0.2s ease-out'
+                width: `${chatWidth}px`,
+                right: 0
               }}
             >
               <ChatBot 
                 isOpen={isChatOpen}
                 setIsOpen={setIsChatOpen}
-                isFullScreen={isFullScreen}
+                isFullScreen={false}
                 setIsFullScreen={setIsFullScreen}
                 subject={location.pathname.split('/')[2]}
                 topic={location.pathname.split('/')[4]}
                 onResize={(width) => {
                   setIsResizing(true);
                   handleChatResize(width);
-                  // Debounce the resize end
                   clearTimeout(window.resizeTimer);
                   window.resizeTimer = setTimeout(() => {
                     setIsResizing(false);
@@ -187,12 +185,17 @@ const DefaultLayout = ({ children }) => {
 
             {/* Mobile ChatBot */}
             <div 
-              className={`fixed inset-0 z-50 md:hidden ${isChatOpen ? 'block' : 'hidden'}`}
+              className={`fixed transform md:hidden transition-transform duration-300 ease-in-out z-50 top-16 bottom-0
+                ${isChatOpen ? 'translate-x-0' : 'translate-x-full'}`}
+              style={{ 
+                width: '100%',
+                right: 0
+              }}
             >
               <ChatBot 
                 isOpen={isChatOpen}
                 setIsOpen={setIsChatOpen}
-                isFullScreen={true}
+                isFullScreen={false}
                 setIsFullScreen={setIsFullScreen}
                 subject={location.pathname.split('/')[2]}
                 topic={location.pathname.split('/')[4]}

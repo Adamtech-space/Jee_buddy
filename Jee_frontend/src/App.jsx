@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import AppRoutes from './routes';
+import { AuthProvider } from './context/AuthContext';
 
 function App() {
   const [quote] = useState({
@@ -8,9 +9,11 @@ function App() {
   });
 
   return (
-    <div className="min-h-screen text-white">
-      <AppRoutes quote={quote} />
-    </div>
+    <AuthProvider>
+      <div className="min-h-screen text-white">
+        <AppRoutes quote={quote} />
+      </div>
+    </AuthProvider>
   );
 }
 
