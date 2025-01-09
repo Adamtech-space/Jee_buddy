@@ -22,6 +22,11 @@ def solve_math_problem(request):
         pinned_text = context.get('pinnedText', '')
         subject = context.get('subject', '')
         topic = context.get('topic', '')
+
+        print(f"Selected Text: {selected_text}")
+        print(f"Pinned Text: {pinned_text}")
+        print(f"Subject: {subject}")
+        print(f"Topic: {topic}")
         
         logger.info(f"Processing question: {question}")
         logger.info(f"Context: subject={subject}, topic={topic}")

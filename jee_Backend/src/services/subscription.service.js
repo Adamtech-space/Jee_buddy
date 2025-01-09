@@ -1,189 +1,129 @@
 const Razorpay = require('razorpay');
 const crypto = require('crypto');
 const config = require('../config/config');
-const { createClient } = require('@supabase/supabase-js');
-const ApiError = require('../utils/ApiError');
-const httpStatus = require('http-status');
+const { supabase } = require('../config/supabaseClient');
 
-// Initialize Supabase client with service role key
-const supabase = createClient(
-  config.supabase.url,
-  config.supabase.serviceRoleKey,
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false
-    }
-  }
-);
-
+// Initialize Razorpay
 const razorpay = new Razorpay({
   key_id: config.razorpay.keyId,
-  key_secret: config.razorpay.keySecret,
+  key_secret: config.razorpay.keySecret
 });
 
 /**
- * Create a subscription order
- * @param {Object} user
- * @returns {Promise<Object>}
+ * Create a Razorpay order
+ * @param {number} amount - Amount in paise
+ * @returns {Promise<Object>} Razorpay order
  */
-const createOrder = async (user) => {
-  try {
-    const options = {
-      amount: 49900, // amount in paise (499 INR)
-      currency: 'INR',
-      receipt: `order_${user.id}_${Date.now()}`,
-      notes: {
-        userId: user.id,
-      },
-    };
+const createOrder = async (amount) => {
+  const options = {
+    amount,
+    currency: 'INR',
+    receipt: `receipt_${Date.now()}`,
+  };
 
-    const order = await razorpay.orders.create(options);
-
-    // Record the order in the database
-    const { error } = await supabase
-      .from('subscription_payments')
-      .insert({
-        user_id: user.id,
-        razorpay_order_id: order.id,
-        amount: options.amount,
-        status: 'created'
-      });
-
-    if (error) throw error;
-    return order;
-  } catch (error) {
-    throw new ApiError(httpStatus.INTERNAL_SERVER_ERROR, 'Failed to create order');
-  }
+  return razorpay.orders.create(options);
 };
 
 /**
- * Verify Razorpay payment signature
- * @param {Object} params
- * @returns {boolean}
+ * Verify Razorpay payment
+ * @param {Object} params - Payment verification params
+ * @returns {boolean} - Whether payment is valid
  */
-const verifyPaymentSignature = (params) => {
+const verifyPayment = (params) => {
   const {
     razorpay_order_id,
     razorpay_payment_id,
-    razorpay_signature,
+    razorpay_signature
   } = params;
 
-  const sign = razorpay_order_id + '|' + razorpay_payment_id;
+  const sign = razorpay_order_id + "|" + razorpay_payment_id;
   const expectedSign = crypto
-    .createHmac('sha256', config.razorpay.keySecret)
-    .update(sign)
-    .digest('hex');
+    .createHmac("sha256", config.razorpay.keySecret)
+    .update(sign.toString())
+    .digest("hex");
 
   return expectedSign === razorpay_signature;
 };
 
 /**
- * Activate subscription for user
- * @param {string} userId
- * @returns {Promise<Object>}
+ * Get user's subscription status and chat count
+ * @param {string} userId - User ID
+ * @returns {Promise<Object>} Subscription status and chat count
  */
-const activateSubscription = async (userId) => {
-  const { data: existingSubscription, error: fetchError } = await supabase
-    .from('subscriptions')
-    .select('*')
-    .eq('user_id', userId)
-    .single();
-
-  if (fetchError && fetchError.code !== 'PGRST116') {
-    throw new ApiError(httpStatus.INTERNAL_SERVER_ERROR, 'Failed to check subscription');
-  }
-
-  const startDate = new Date();
-  const endDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days from now
-
-  if (existingSubscription) {
-    // Update existing subscription
-    const { error } = await supabase
-      .from('subscriptions')
-      .update({
-        is_active: true,
-        start_date: startDate.toISOString(),
-        end_date: endDate.toISOString(),
-        updated_at: new Date().toISOString()
-      })
-      .eq('user_id', userId);
-
-    if (error) throw new ApiError(httpStatus.INTERNAL_SERVER_ERROR, 'Failed to update subscription');
-  } else {
-    // Create new subscription
-    const { error } = await supabase
-      .from('subscriptions')
-      .insert({
-        user_id: userId,
-        is_active: true,
-        start_date: startDate.toISOString(),
-        end_date: endDate.toISOString()
-      });
-
-    if (error) throw new ApiError(httpStatus.INTERNAL_SERVER_ERROR, 'Failed to create subscription');
-  }
-
-  return { success: true };
-};
-
-/**
- * Check if user has active subscription
- * @param {string} userId
- * @returns {Promise<boolean>}
- */
-const checkSubscription = async (userId) => {
-  // Check if user exists
-  const { data: user, error: userError } = await supabase
-    .from('users')
-    .select('created_at')
+const getSubscriptionStatus = async (userId) => {
+  const { data: profile, error } = await supabase
+    .from('profiles')
+    .select('chat_count, is_subscribed')
     .eq('id', userId)
     .single();
 
-  if (userError) {
-    throw new ApiError(httpStatus.NOT_FOUND, 'User not found');
+  if (error) {
+    throw new Error('Failed to get subscription status');
   }
 
-  // Check if user is in trial period (1 day from registration)
-  const trialEndDate = new Date(new Date(user.created_at).getTime() + 24 * 60 * 60 * 1000);
-  if (new Date() < trialEndDate) {
-    return true;
-  }
+  return {
+    chatCount: profile.chat_count || 0,
+    isSubscribed: profile.is_subscribed || false
+  };
+};
 
-  // Check if user has active subscription
-  const { data: subscription, error: subError } = await supabase
-    .from('subscriptions')
-    .select('*')
-    .eq('user_id', userId)
-    .eq('is_active', true)
+/**
+ * Update user's subscription status
+ * @param {string} userId - User ID
+ * @param {boolean} isSubscribed - New subscription status
+ */
+const updateSubscriptionStatus = async (userId) => {
+  const { error } = await supabase
+    .from('profiles')
+    .update({ 
+      is_subscribed: true,
+      subscription_date: new Date().toISOString()
+    })
+    .eq('id', userId);
+
+  if (error) {
+    throw new Error('Failed to update subscription status');
+  }
+};
+
+/**
+ * Increment user's chat count
+ * @param {string} userId - User ID
+ * @returns {Promise<number>} New chat count
+ */
+const incrementChatCount = async (userId) => {
+  const { data: profile, error } = await supabase
+    .from('profiles')
+    .select('chat_count, is_subscribed')
+    .eq('id', userId)
     .single();
 
-  if (subError && subError.code !== 'PGRST116') {
-    throw new ApiError(httpStatus.INTERNAL_SERVER_ERROR, 'Failed to check subscription');
+  if (error) {
+    throw new Error('Failed to get chat count');
   }
 
-  if (subscription) {
-    const currentDate = new Date();
-    if (currentDate <= new Date(subscription.end_date)) {
-      return true;
-    }
-    // Deactivate expired subscription
-    const { error: updateError } = await supabase
-      .from('subscriptions')
-      .update({ is_active: false })
-      .eq('id', subscription.id);
-
-    if (updateError) {
-      console.error('Failed to deactivate expired subscription:', updateError);
-    }
+  // If subscribed, don't increment
+  if (profile.is_subscribed) {
+    return profile.chat_count;
   }
 
-  return false;
+  const newCount = (profile.chat_count || 0) + 1;
+  const { error: updateError } = await supabase
+    .from('profiles')
+    .update({ chat_count: newCount })
+    .eq('id', userId);
+
+  if (updateError) {
+    throw new Error('Failed to update chat count');
+  }
+
+  return newCount;
 };
 
 module.exports = {
   createOrder,
-  verifyPaymentSignature,
-  activateSubscription,
-  checkSubscription,
+  verifyPayment,
+  getSubscriptionStatus,
+  updateSubscriptionStatus,
+  incrementChatCount
 }; 
