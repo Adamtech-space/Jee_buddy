@@ -46,33 +46,19 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'main',
-    'rest_framework.authtoken'
-    'rest_framework',
-
-]
-INSTALLED_APPS = [
-    'django.contrib.admin',
-    'django.contrib.auth',
-    'django.contrib.contenttypes',
-    'django.contrib.sessions',
-    'django.contrib.messages',
-    'django.contrib.staticfiles',
     'rest_framework',
     'corsheaders',
     'main',
     'user',
-    'asgiref'
 ]
 
 
 ASGI_APPLICATION = 'config.asgi.application'
 
 MIDDLEWARE = [
-    'main.middleware.CORSMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
-    'corsheaders.middleware.CorsMiddleware',  # Add this
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -88,14 +74,25 @@ REST_FRAMEWORK = {
     ],
 }
 
+# CORS settings
+CORS_ALLOW_ALL_ORIGINS = True  # For development only
+CORS_ALLOW_CREDENTIALS = True
+
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",  # Vite's default development server
+    "http://localhost:5173",  # Vite's default port
+    "http://127.0.0.1:5173",
+    "http://localhost:3000",  # In case you switch to port 3000
+    "http://127.0.0.1:3000",
 ]
 
-# Add CORS settings
-CORS_ALLOW_ALL_ORIGINS = True  # Only for development
-
-ROOT_URLCONF = 'core.urls'
+CORS_ALLOW_METHODS = [
+    'DELETE',
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
+]
 
 CORS_ALLOW_HEADERS = [
     'accept',
@@ -109,14 +106,11 @@ CORS_ALLOW_HEADERS = [
     'x-requested-with',
 ]
 
-CORS_ALLOW_METHODS = [
-    'DELETE',
-    'GET',
-    'OPTIONS',
-    'PATCH',
-    'POST',
-    'PUT',
-]
+# Remove any duplicate INSTALLED_APPS
+if 'rest_framework.authtoken' in INSTALLED_APPS:
+    INSTALLED_APPS.remove('rest_framework.authtoken')
+
+ROOT_URLCONF = 'core.urls'
 
 TEMPLATES = [
     {

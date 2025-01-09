@@ -3,25 +3,53 @@ from rest_framework.response import Response
 from rest_framework import status
 from .agents.math_agent_1 import MathAgent
 import asyncio
-import base64
-from rest_framework.decorators import api_view, parser_classes
-from rest_framework.parsers import MultiPartParser, FormParser
-from rest_framework.response import Response
-from rest_framework import status
-import asyncio
+import logging
 
-    
+logger = logging.getLogger(__name__)
 
 @api_view(['POST'])
 def solve_math_problem(request):
-    question = request.data.get('question')
-    approach_type = request.data.get('approach_type')
-    print(question, approach_type)
     try:
-        agent = MathAgent()
-        result = asyncio.run(agent.solve(question, approach_type))
+        # Log incoming request data
+        logger.info(f"Received request data: {request.data}")
+        logger.info(f"Request headers: {request.headers}")
         
-        return Response({
+        question = request.data.get('question')
+        context = request.data.get('context', {})
+        
+        # Extract context fields
+        selected_text = context.get('selectedText', '')
+        pinned_text = context.get('pinnedText', '')
+        subject = context.get('subject', '')
+        topic = context.get('topic', '')
+        
+        logger.info(f"Processing question: {question}")
+        logger.info(f"Context: subject={subject}, topic={topic}")
+        
+        # Basic validation
+        if not question:
+            return Response({
+                'error': 'Question is required'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Combine context into the question if provided
+        if selected_text or pinned_text:
+            question = f"Context: {selected_text} {pinned_text}\nQuestion: {question}"
+        if subject:
+            question = f"Subject: {subject}\n{question}"
+        if topic:
+            question = f"Topic: {topic}\n{question}"
+            
+        agent = MathAgent()
+        # Pass only the supported parameters
+        result = asyncio.run(agent.solve(
+            question=question,
+            approach="step_by_step"  # or "auto" if you want automatic detection
+        ))
+        
+        logger.info("Successfully processed request")
+        
+        response_data = {
             'solution': result['solution'],
             'context': [
                 {
@@ -30,44 +58,13 @@ def solve_math_problem(request):
                 } for msg in result['context']
             ],
             'approach_used': result['approach_used']
-        })
+        }
+        
+        logger.info(f"Sending response: {response_data}")
+        return Response(response_data)
         
     except Exception as e:
+        logger.error(f"Error processing request: {str(e)}", exc_info=True)
         return Response({
             'error': str(e)
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    
-
-# @api_view(['POST'])
-# @parser_classes([MultiPartParser, FormParser])
-# def solve_math_problem(request):
-#     question = request.data.get('question')
-#     approach_type = request.data.get('approach_type', 'step_by_step')
-#     image_file = request.FILES.get('image')
-    
-#     try:
-#         # Convert image to base64 if provided
-#         image_data = None
-#         if image_file:
-#             image_data = base64.b64encode(image_file.read()).decode('utf-8')
-        
-#         agent = MathAgent()
-#         # Fix: Pass only three arguments
-#         result = asyncio.run(agent.solve(question, approach_type, image_data))
-        
-#         return Response({
-#             'solution': result['solution'],
-#             'context': [
-#                 {
-#                     'role': 'user' if isinstance(msg, HumanMessage) else 'assistant',
-#                     'content': msg.content
-#                 } for msg in result['context']
-#             ],
-#             'approach_used': result['approach_used'],
-#             'image_processed': result['image_processed']
-#         })
-        
-#     except Exception as e:
-#         return Response({
-#             'error': str(e)
-#         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

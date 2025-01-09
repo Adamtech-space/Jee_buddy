@@ -65,6 +65,9 @@ const ChatBot = ({ isOpen, setIsOpen, isFullScreen, setIsFullScreen, subject, to
   const fileInputRef = useRef(null);
   const inputRef = useRef(null);
   const resizeRef = useRef(null);
+  const [isTyping, setIsTyping] = useState(false);
+  const [currentTypingIndex, setCurrentTypingIndex] = useState(0);
+  const [displayedResponse, setDisplayedResponse] = useState('');
 
   const helpButtons = [
     { type: "explain", icon: "📝", text: "Step-by-Step" },
@@ -127,14 +130,63 @@ const ChatBot = ({ isOpen, setIsOpen, isFullScreen, setIsFullScreen, subject, to
     return () => document.removeEventListener('keydown', handleKeyPress);
   }, [setIsOpen]);
 
-  // Add scroll to bottom effect
+  // Improved scroll handling
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (messagesEndRef.current) {
+      const scrollContainer = messagesEndRef.current.parentElement;
+      scrollContainer.scrollTop = scrollContainer.scrollHeight;
+    }
   };
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+  }, [messages, displayedResponse]);
+
+  // Enhanced typing effect with better performance
+  useEffect(() => {
+    if (isTyping && currentTypingIndex < messages[messages.length - 1]?.content.length) {
+      const timer = setTimeout(() => {
+        setDisplayedResponse(messages[messages.length - 1].content.slice(0, currentTypingIndex + 1));
+        setCurrentTypingIndex(prev => prev + 1);
+        scrollToBottom();
+      }, 10); // Faster typing speed
+      return () => clearTimeout(timer);
+    } else if (isTyping) {
+      setIsTyping(false);
+      // Add quick options after typing is complete
+      handleQuickOptions(messages[messages.length - 1].content);
+    }
+  }, [isTyping, currentTypingIndex, messages]);
+
+  // Function to extract and handle quick options
+  const handleQuickOptions = (content) => {
+    // Extract topics or key points from the response
+    const topics = extractTopicsFromResponse(content);
+    if (topics.length > 0) {
+      setMessages(prev => [...prev, {
+        sender: 'assistant',
+        content: 'Quick options:',
+        type: 'quick-options',
+        options: topics
+      }]);
+    }
+  };
+
+  // Helper function to extract topics from response
+  const extractTopicsFromResponse = (content) => {
+    const topics = [];
+    // Extract bullet points and numbered items
+    const lines = content.split('\n');
+    lines.forEach(line => {
+      if (line.includes('• ') || /^\d+\.\s/.test(line)) {
+        const topic = line.replace(/^[•\d]+\.\s*/, '').trim();
+        if (topic && !topics.includes(topic)) {
+          topics.push(topic);
+        }
+      }
+    });
+    return topics.slice(0, 3); // Limit to 3 options
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -145,7 +197,8 @@ const ChatBot = ({ isOpen, setIsOpen, isFullScreen, setIsFullScreen, subject, to
     // Add user message to chat
     const newMessage = { 
       sender: 'user', 
-      content: userMessage
+      content: userMessage,
+      type: 'text'
     };
     setMessages(prev => [...prev, newMessage]);
     setMessage('');
@@ -160,15 +213,21 @@ const ChatBot = ({ isOpen, setIsOpen, isFullScreen, setIsFullScreen, subject, to
       });
 
       // Add AI response to messages
-      setMessages(prev => [...prev, {
+      const aiMessage = {
         sender: 'assistant',
-        content: response.message
-      }]);
+        content: response.solution,
+        type: 'text'
+      };
+      setMessages(prev => [...prev, aiMessage]);
+      setDisplayedResponse('');
+      setCurrentTypingIndex(0);
+      setIsTyping(true);
     } catch (error) {
       console.error('Chat request failed:', error);
       setMessages(prev => [...prev, {
         sender: 'assistant',
-        content: "I'm sorry, I couldn't process your message at the moment. Please try again."
+        content: "I'm sorry, I couldn't process your message at the moment. Please try again.",
+        type: 'text'
       }]);
     }
   };
@@ -274,6 +333,54 @@ const ChatBot = ({ isOpen, setIsOpen, isFullScreen, setIsFullScreen, subject, to
     };
   }, [isResizing, onResize]);
 
+  // Enhanced message rendering with quick options support
+  const renderMessage = (msg, index) => {
+    const isLastMessage = index === messages.length - 1;
+    const content = isLastMessage && msg.sender === 'assistant' && msg.type !== 'quick-options' 
+      ? displayedResponse 
+      : msg.content;
+
+    if (msg.type === 'quick-options') {
+      return (
+        <div key={index} className="flex justify-start mb-4">
+          <div className="flex flex-wrap gap-2">
+            {msg.options.map((option, i) => (
+              <button
+                key={i}
+                onClick={() => handleSubmit({ 
+                  preventDefault: () => {}, 
+                  target: { value: option }
+                })}
+                className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 transition-colors text-sm"
+              >
+                {option}
+              </button>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div key={index} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'} mb-4`}>
+        <div 
+          className={`max-w-[80%] rounded-lg p-3 ${
+            msg.sender === 'user' 
+              ? 'bg-blue-500 text-white' 
+              : 'bg-gray-100 text-gray-800'
+          }`}
+        >
+          <pre className="whitespace-pre-wrap font-sans">
+            {content}
+            {isLastMessage && msg.sender === 'assistant' && isTyping && (
+              <span className="inline-block w-2 h-4 bg-gray-500 animate-pulse ml-1">|</span>
+            )}
+          </pre>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div 
       className={`flex flex-col h-full bg-gray-900 border-l border-gray-800 ${!isOpen ? 'hidden' : ''}`}
@@ -369,79 +476,12 @@ const ChatBot = ({ isOpen, setIsOpen, isFullScreen, setIsFullScreen, subject, to
         </div>
       )}
 
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.map((message, index) => {
-          const messageContent = typeof message.content === 'object' 
-            ? message.content.text 
-            : message.content;
-
-          return (
-            <div 
-              key={index} 
-              className={`flex items-start space-x-3 ${
-                message.sender === 'user' ? 'justify-end' : 'justify-start'
-              }`}
-            >
-              {message.sender !== 'user' && (
-                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-[#2C3C33] flex items-center justify-center">
-                  <UserCircleIcon className="w-6 h-6 text-[#4ADE80]" />
-                </div>
-              )}
-              
-              <div className={`
-                max-w-[80%] rounded-lg p-3 
-                ${message.sender === 'user' 
-                  ? 'bg-blue-500 text-white' 
-                  : 'bg-gray-800 text-gray-100'
-                }
-              `}>
-                <ReactMarkdown
-                  className={`prose ${message.sender === 'user' ? 'prose-dark' : 'prose-light'} max-w-none`}
-                  components={{
-                    code({inline, className, children, ...props}) {
-                      const match = /language-(\w+)/.exec(className || '');
-                      return !inline && match ? (
-                        <SyntaxHighlighter
-                          style={oneDark}
-                          language={match[1]}
-                          PreTag="div"
-                          className="rounded-md text-sm"
-                          {...props}
-                        >
-                          {String(children).replace(/\n$/, '')}
-                        </SyntaxHighlighter>
-                      ) : (
-                        <code 
-                          className={`${message.sender === 'user' 
-                            ? 'bg-blue-600/50 text-white' 
-                            : 'bg-gray-900 text-gray-100'
-                          } rounded px-1 py-0.5`}
-                          {...props}
-                        >
-                          {children}
-                        </code>
-                      );
-                    },
-                    p: ({children}) => <p className="mb-2 last:mb-0">{children}</p>,
-                    ul: ({children}) => <ul className="list-disc pl-4 mb-2 last:mb-0">{children}</ul>,
-                    ol: ({children}) => <ol className="list-decimal pl-4 mb-2 last:mb-0">{children}</ol>,
-                    li: ({children}) => <li className="mb-1 last:mb-0">{children}</li>
-                  }}
-                >
-                  {messageContent}
-                </ReactMarkdown>
-              </div>
-
-              {message.sender === 'user' && (
-                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center">
-                  <UserCircleIcon className="w-6 h-6 text-white" />
-                </div>
-              )}
-            </div>
-          );
-        })}
-        <div ref={messagesEndRef} />
+      {/* Updated messages container */}
+      <div className="flex-1 overflow-y-auto h-[calc(100%-8rem)] scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
+        <div className="space-y-4 p-4">
+          {messages.map((msg, index) => renderMessage(msg, index))}
+          <div ref={messagesEndRef} />
+        </div>
       </div>
 
       {/* Input */}

@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const aiInstance = axios.create({
-  baseURL: 'http://localhost:5001/v1', // AI backend URL
+  baseURL: 'http://127.0.0.1:8000/', // AI backend URL
   headers: {
     'Content-Type': 'application/json',
   },

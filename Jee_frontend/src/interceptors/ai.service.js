@@ -1,61 +1,60 @@
 import aiInstance from './aiAxios';
 
-class AIService {
-  async askQuestion(message, context = {}) {
+export const aiService = {
+  async askQuestion(question, context) {
     try {
-      const response = await aiInstance.post('/ai/chat', {
-        message,
+      const response = await aiInstance.post('api/solve-math/', {
+        question,
         context: {
           selectedText: context.selectedText || '',
           pinnedText: context.pinnedText || '',
-          subject: context.subject || '',
-          topic: context.topic || '',
-          ...context
+          // subject: context.subject || '',
+          topic: context.topic || ''
         }
       });
       return response.data;
     } catch (error) {
-      console.error('AI Chat Error:', error);
-      throw error;
+      console.error('AI request failed:', error);
+      throw error.response?.data || { message: 'Failed to get AI response' };
     }
-  }
+  },
 
-  async getHelpResponse(type, context = {}) {
+  async getHelpResponse(type, context) {
     try {
-      const response = await aiInstance.post('/ai/help', {
+      const response = await aiInstance.post('help/', {
         type,
         context: {
-          subject: context.subject || '',
-          topic: context.topic || '',
           selectedText: context.selectedText || '',
           pinnedText: context.pinnedText || '',
-          ...context
+          subject: context.subject || '',
+          topic: context.topic || ''
         }
       });
       return response.data;
     } catch (error) {
-      console.error('AI Help Error:', error);
-      throw error;
+      console.error('Help request failed:', error);
+      throw error.response?.data || { message: 'Failed to get help response' };
     }
-  }
+  },
 
-  async analyzeFile(file, context = {}) {
+  async analyzeFile(file, context) {
     try {
       const formData = new FormData();
       formData.append('file', file);
-      formData.append('context', JSON.stringify(context));
+      formData.append('context', JSON.stringify({
+        subject: context.subject || '',
+        topic: context.topic || ''
+      }));
 
-      const response = await aiInstance.post('/ai/analyze-file', formData, {
+      const response = await aiInstance.post('analyze/', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
       });
       return response.data;
     } catch (error) {
-      console.error('File Analysis Error:', error);
-      throw error;
+      console.error('File analysis failed:', error);
+      throw error.response?.data || { message: 'Failed to analyze file' };
     }
   }
-}
-
-export const aiService = new AIService(); 
+}; 

@@ -117,12 +117,50 @@ class MathAgent:
         
         return "\n".join(formatted)
 
+    def _is_general_query(self, question: str) -> bool:
+        """Check if the question is a general query or greeting"""
+        general_patterns = [
+            'hi', 'hello', 'hey', 'good morning', 'good afternoon', 'good evening',
+            'how are you', 'what can you do', 'help', 'who are you'
+        ]
+        return any(pattern in question.lower() for pattern in general_patterns)
+
+    def _get_general_response(self, question: str) -> Dict[str, Any]:
+        """Generate a friendly response for general queries"""
+        greetings = {
+            'hi': "Hi! 👋 I'm your JEE study assistant. I can help you with Physics, Chemistry, and Mathematics problems. Would you like to:\n\n• Solve a specific JEE problem?\n• Understand a concept?\n• Practice with example questions?\n\nJust ask me anything related to JEE preparation!",
+            'hello': "Hello! 👋 I'm here to help with your JEE preparation. What subject would you like to focus on - Physics, Chemistry, or Mathematics?",
+            'help': "I'm your JEE study assistant! I can help you:\n\n• Solve JEE problems step by step\n• Explain complex concepts\n• Provide practice questions\n• Share exam tips and strategies\n\nWhat would you like help with?",
+            'default': "Hello! 👋 I'm your JEE study assistant. I specialize in Physics, Chemistry, and Mathematics. How can I help you with your JEE preparation today?"
+        }
+
+        # Get appropriate greeting or default response
+        for key in greetings:
+            if key in question.lower():
+                response = greetings[key]
+                break
+        else:
+            response = greetings['default']
+
+        return {
+            "solution": response,
+            "context": [
+                HumanMessage(content=question),
+                AIMessage(content=response[:500])
+            ],
+            "approach_used": "greeting"
+        }
+
     async def solve(self, question: str, approach: Optional[str] = None) -> Dict[str, Any]:
         """Solve math problem using specified or auto-detected approach"""
         try:
             if not question.strip():
                 raise ValueError("Question cannot be empty")
             
+            # Check if it's a general query
+            if self._is_general_query(question):
+                return self._get_general_response(question)
+
             # Auto-detect approach if not specified or if "auto"
             if not approach or approach == "auto":
                 detected_approach = self._detect_approach(question)
