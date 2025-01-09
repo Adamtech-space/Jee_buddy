@@ -7,11 +7,15 @@ const subscriptionController = require('../../controllers/subscription.controlle
 const router = express.Router();
 
 router
-  .route('/order')
-  .post(auth(), subscriptionController.createOrder);
+  .route('/create-order')
+  .post(
+    auth(),
+    validate(subscriptionValidation.createOrder),
+    subscriptionController.createOrder
+  );
 
 router
-  .route('/verify')
+  .route('/verify-payment')
   .post(
     auth(),
     validate(subscriptionValidation.verifyPayment),
@@ -20,6 +24,10 @@ router
 
 router
   .route('/status')
-  .get(auth(), subscriptionController.checkSubscriptionStatus);
+  .get(auth(), subscriptionController.getStatus);
+
+router
+  .route('/increment-chat')
+  .post(auth(), subscriptionController.incrementChatCount);
 
 module.exports = router; 

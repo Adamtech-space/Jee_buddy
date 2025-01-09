@@ -92,6 +92,19 @@ const DefaultLayout = ({ children }) => {
   const location = useLocation();
   const isDashboard = location.pathname.includes('/dashboard');
 
+  // Handle keyboard shortcuts
+  useEffect(() => {
+    const handleKeyPress = (e) => {
+      if (e.ctrlKey && e.shiftKey && (e.key === 'l' || e.key === 'L')) {
+        e.preventDefault();
+        setIsChatOpen(prev => !prev);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, []);
+
   // Handle chat width changes
   const handleChatResize = (newWidth) => {
     setChatWidth(newWidth);

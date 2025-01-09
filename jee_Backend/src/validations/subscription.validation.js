@@ -1,5 +1,11 @@
 const Joi = require('joi');
 
+const createOrder = {
+  body: Joi.object().keys({
+    amount: Joi.number().required().min(1)
+  }),
+};
+
 const verifyPayment = {
   body: Joi.object().keys({
     razorpay_payment_id: Joi.string().required(),
@@ -9,5 +15,6 @@ const verifyPayment = {
 };
 
 module.exports = {
+  createOrder,
   verifyPayment,
 }; 
