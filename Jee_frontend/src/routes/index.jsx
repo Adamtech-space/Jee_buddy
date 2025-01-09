@@ -3,6 +3,8 @@ import PropTypes from 'prop-types';
 
 // Layout
 import DefaultLayout from '../components/layouts/DefaultLayout';
+// Ram landing page
+import Jeebuddy from '../landingPage/JeeBuddy'
 
 // Auth Pages
 import Login from '../pages/Login';
@@ -18,11 +20,11 @@ import FlashCards from '../components/FlashCards';
 import SavedNotes from '../components/SavedNotes';
 import StudyMaterials from '../components/StudyMaterials';
 
-// Landing Page Components
-import Hero from '../components/Hero';
-import Features from '../components/Features';
-import Demo from '../components/Demo';
-import StudyResources from '../components/StudyResources';
+// // Landing Page Components
+// import Hero from '../components/Hero';
+// import Features from '../components/Features';
+// import Demo from '../components/Demo';
+// import StudyResources from '../components/StudyResources';
 
 // Protected Route Component
 const ProtectedRoute = () => {
@@ -45,12 +47,15 @@ const AppRoutes = ({ quote }) => {
         isAuthenticated ? (
           <Navigate to="/subject-selection" replace />
         ) : (
-          <DefaultLayout>
-            <Hero quote={quote} />
-            <Features />
-            <StudyResources />
-            <Demo />
-          </DefaultLayout>
+          // <DefaultLayout>
+          //   <Hero quote={quote} />
+          //   <Features />
+          //   <StudyResources />
+          //   <Demo />
+            // </DefaultLayout>
+            <>
+            <Jeebuddy/>
+            </>
         )
       } />
 
