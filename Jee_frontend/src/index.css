@@ -55,3 +55,17 @@ body {
 .book-card {
   @apply transition-all duration-300 transform hover:scale-105;
 }
+
+@keyframes progress {
+  0% {
+    width: 0%;
+  }
+  100% {
+    width: 100%;
+  }
+}
+
+.animate-progress {
+  animation: progress 2s ease-in-out infinite;
+  width: 75%;
+}

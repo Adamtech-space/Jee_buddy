@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import PropTypes from 'prop-types';
 import { motion } from 'framer-motion';
@@ -9,12 +9,26 @@ const Navbar = ({ isMobileOpen, setIsMobileOpen }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const isDashboard = location.pathname.includes('/dashboard') || location.pathname.includes('/subject-selection');
+  const profileRef = useRef(null);
 
   useEffect(() => {
     const userStr = localStorage.getItem('user');
     if (userStr) {
       setUser(JSON.parse(userStr));
     }
+  }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (profileRef.current && !profileRef.current.contains(event.target)) {
+        setIsProfileOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
   }, []);
 
   const handleLogout = () => {
@@ -55,23 +69,33 @@ const Navbar = ({ isMobileOpen, setIsMobileOpen }) => {
           </div>
 
           {/* Right side - Navigation links and profile */}
-          <div className="hidden md:flex items-center space-x-4">
-            {!user && !isDashboard && (
-              <>
-                <Link to="/#features" className="text-gray-300 hover:text-white px-3 py-2">Features</Link>
-                <Link to="/#resources" className="text-gray-300 hover:text-white px-3 py-2">Resources</Link>
-                <Link to="/#demo" className="text-gray-300 hover:text-white px-3 py-2">Try Demo</Link>
-                <button
-                  onClick={() => navigate('/login')}
-                  className="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 transition-colors"
-                >
-                  Get Started
-                </button>
-              </>
-            )}
+          <div className="flex items-center">
+            {/* Desktop navigation links */}
+            <div className="hidden md:flex items-center space-x-4">
+              {!user && !isDashboard && (
+                <>
+                  <Link to="/#features" className="text-gray-300 hover:text-white px-3 py-2">Features</Link>
+                  <Link to="/#resources" className="text-gray-300 hover:text-white px-3 py-2">Resources</Link>
+                  <Link to="/#demo" className="text-gray-300 hover:text-white px-3 py-2">Try Demo</Link>
+                  <Link
+                    to="/login"
+                    className="text-gray-300 hover:text-white px-3 py-2"
+                  >
+                    Login
+                  </Link>
+                  <Link
+                    to="/register"
+                    className="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 transition-colors"
+                  >
+                    Get Free Trial
+                  </Link>
+                </>
+              )}
+            </div>
 
+            {/* Profile section - both mobile and desktop */}
             {user && (
-              <div className="relative">
+              <div className="relative" ref={profileRef}>
                 <button
                   onClick={() => setIsProfileOpen(!isProfileOpen)}
                   className="flex items-center space-x-3 text-gray-300 hover:text-white focus:outline-none"
@@ -89,19 +113,26 @@ const Navbar = ({ isMobileOpen, setIsMobileOpen }) => {
                       </span>
                     </div>
                   )}
-                  <span className="text-sm font-medium">{user.name}</span>
+                  <span className="hidden md:inline text-sm font-medium">{user.name}</span>
                 </button>
 
                 {isProfileOpen && (
-                  <div className="absolute right-0 mt-2 w-48 bg-gray-800 rounded-lg shadow-lg py-1">
+                  <div className="absolute right-0 mt-2 w-48 bg-gray-800 rounded-lg shadow-lg py-1 z-50">
+                    <div className="md:hidden px-4 py-2 border-b border-gray-700">
+                      <span className="text-sm font-medium text-white">{user.name}</span>
+                    </div>
                     <Link
                       to="/settings"
                       className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-700"
+                      onClick={() => setIsProfileOpen(false)}
                     >
                       Settings
                     </Link>
                     <button
-                      onClick={handleLogout}
+                      onClick={() => {
+                        setIsProfileOpen(false);
+                        handleLogout();
+                      }}
                       className="block w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-700"
                     >
                       Logout
@@ -110,34 +141,60 @@ const Navbar = ({ isMobileOpen, setIsMobileOpen }) => {
                 )}
               </div>
             )}
-          </div>
 
-          {/* Mobile menu button for landing page */}
-          {!isDashboard && (
-            <button
-              onClick={() => setIsMobileOpen(!isMobileOpen)}
-              className="md:hidden p-2 text-gray-400 hover:text-white focus:outline-none"
-            >
-              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-            </button>
-          )}
+            {/* Mobile menu button - only for non-authenticated users */}
+            {!user && !isDashboard && (
+              <button
+                onClick={() => setIsMobileOpen(!isMobileOpen)}
+                className="md:hidden p-2 text-gray-400 hover:text-white focus:outline-none ml-2"
+              >
+                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              </button>
+            )}
+          </div>
         </div>
 
-        {/* Mobile menu for landing page */}
-        {isMobileOpen && !isDashboard && !user && (
+        {/* Mobile menu - only for non-authenticated users */}
+        {isMobileOpen && !user && !isDashboard && (
           <div className="md:hidden pb-4">
             <div className="flex flex-col space-y-2">
-              <Link to="/#features" className="text-gray-300 hover:text-white px-3 py-2">Features</Link>
-              <Link to="/#resources" className="text-gray-300 hover:text-white px-3 py-2">Resources</Link>
-              <Link to="/#demo" className="text-gray-300 hover:text-white px-3 py-2">Try Demo</Link>
-              <button
-                onClick={() => navigate('/login')}
-                className="bg-blue-500 text-white px-4 py-2 rounded-lg text-center hover:bg-blue-600 transition-colors"
+              <Link 
+                to="/#features" 
+                className="text-gray-300 hover:text-white px-3 py-2"
+                onClick={() => setIsMobileOpen(false)}
               >
-                Get Started
-              </button>
+                Features
+              </Link>
+              <Link 
+                to="/#resources" 
+                className="text-gray-300 hover:text-white px-3 py-2"
+                onClick={() => setIsMobileOpen(false)}
+              >
+                Resources
+              </Link>
+              <Link 
+                to="/#demo" 
+                className="text-gray-300 hover:text-white px-3 py-2"
+                onClick={() => setIsMobileOpen(false)}
+              >
+                Try Demo
+              </Link>
+              <Link
+                to="/login"
+                className="text-gray-300 hover:text-white px-3 py-2"
+                onClick={() => setIsMobileOpen(false)}
+              >
+                Login
+              </Link>
+              <Link
+                to="/register"
+                className="bg-blue-500 text-white px-4 py-2 rounded-lg text-center hover:bg-blue-600 transition-colors mx-3"
+                onClick={() => setIsMobileOpen(false)}
+              >
+                Get Free Trial
+              </Link>
             </div>
           </div>
         )}

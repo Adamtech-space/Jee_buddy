@@ -32,7 +32,20 @@ export const googleSignIn = async () => {
     const response = await apiInstance.get("/auth/google");
     return response.data;
   } catch (error) {
-    throw error.response?.data || { message: "Google sign-in failed" };
+    throw error.response?.data || { message: "Failed to initiate Google sign in" };
+  }
+};
+
+export const handleGoogleCallback = async (code) => {
+  try {
+    const response = await apiInstance.get(`/auth/google/callback?code=${code}`);
+    if (response.data.tokens) {
+      localStorage.setItem("tokens", JSON.stringify(response.data.tokens));
+      return response.data;
+    }
+    throw new Error("No tokens received");
+  } catch (error) {
+    throw error.response?.data || { message: "Failed to complete Google sign in" };
   }
 };
 
@@ -56,11 +69,12 @@ export const resetPassword = async (token, password) => {
 
 export const logout = async () => {
   try {
+    await apiInstance.post("/auth/logout");
     localStorage.removeItem("tokens");
-    localStorage.removeItem("user");
-    return { success: true };
+    window.location.href = "/login";
   } catch (error) {
-    throw { message: "Logout failed" };
+    localStorage.removeItem("tokens");
+    window.location.href = "/login";
   }
 };
 
