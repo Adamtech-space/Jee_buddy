@@ -35,6 +35,11 @@ export default {
       colors: {
         primary: 'var(--primary)',
         'primary-dark': 'var(--primary-dark)',
+        dark: {
+          DEFAULT: '#0E1420',
+          light: '#1A2333',
+          darker: '#080C14',
+        },
       },
       animation: {
         'gradient-shift': 'gradientShift 10s ease infinite',

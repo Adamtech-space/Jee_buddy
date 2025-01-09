@@ -136,42 +136,48 @@ const Features = () => {
     visible: {
       opacity: 1,
       transition: {
-        staggerChildren: 0.2,
+        staggerChildren: 0.15,
+        delayChildren: 0.3,
       },
     },
   };
 
   const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
+    hidden: { 
+      opacity: 0,
+      y: 30,
+      scale: 0.9,
+      rotateX: -15
+    },
     visible: {
       opacity: 1,
       y: 0,
+      scale: 1,
+      rotateX: 0,
       transition: {
         type: 'spring',
-        damping: 12,
+        damping: 15,
         stiffness: 100,
+        duration: 0.6
       },
     },
   };
 
   const [ref, inView] = useInView({
     threshold: 0.1,
-    triggerOnce: true,
+    triggerOnce: true
   });
 
   return (
-    <section id="features" className="relative py-24 bg-black overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-to-b from-black/50 to-black/90" />
-
+    <section id="features" className="relative  overflow-hidden bg-transparent">
       <div className="container mx-auto px-4 relative">
         <motion.div
-          ref={ref}
           initial={{ opacity: 0, y: 20 }}
-          animate={inView ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
           className="text-center mb-16"
         >
-          <h2 className="text-4xl md:text-5xl font-bold mb-6 bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-400">
+          <h2 className="text-4xl md:text-5xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-[#6366f1] to-[#8b5cf6]">
             Features
           </h2>
           <p className="text-lg text-gray-300">
@@ -180,46 +186,57 @@ const Features = () => {
         </motion.div>
 
         <motion.div
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-7xl mx-auto"
+          ref={ref}
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-7xl mx-auto perspective-1000"
           variants={containerVariants}
           initial="hidden"
           animate={inView ? "visible" : "hidden"}
-          ref={ref}
         >
           {features.map((feature, index) => (
             <motion.div
               key={index}
               variants={itemVariants}
-              whileHover={{
+              whileHover={{ 
                 scale: 1.02,
                 y: -5,
+                transition: { duration: 0.2 }
               }}
-              className="group relative p-8 rounded-2xl transition-all duration-300
-                         bg-gray-900/50 border border-gray-800 backdrop-blur-sm
-                         hover:bg-gray-800/50 hover:border-blue-500/50"
+              className="group relative p-4 rounded-2xl transition-all duration-300
+                      bg-white/10 border border-white/20
+                      hover:bg-white/15 hover:border-[#6366f1]/50"
             >
               <motion.div
                 className="relative flex items-center gap-4 mb-4"
-                whileHover={{ x: 5 }}
+                initial={{ x: -20, opacity: 0 }}
+                animate={inView ? { x: 0, opacity: 1 } : { x: -20, opacity: 0 }}
+                transition={{ delay: 0.2 }}
               >
                 <motion.div
                   className="w-12 h-12 flex items-center justify-center rounded-xl 
-                            bg-gradient-to-r from-blue-600 to-purple-600 text-white
-                            group-hover:scale-110 transition-all duration-300"
+                          bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] text-white
+                          group-hover:scale-110 transition-all duration-300"
                   whileHover={{ rotate: 360 }}
                   transition={{ duration: 0.6 }}
                 >
                   {feature.icon}
                 </motion.div>
-                <h3 className="text-xl font-semibold text-gray-100 
-                             group-hover:text-blue-400 transition-colors">
+                <motion.h3 
+                  className="text-xl font-semibold text-white 
+                         group-hover:text-[#8b5cf6] transition-colors"
+                  whileHover={{ x: 5 }}
+                >
                   {feature.title}
-                </h3>
+                </motion.h3>
               </motion.div>
 
-              <p className="text-gray-400 group-hover:text-gray-300 transition-colors">
+              <motion.p 
+                className="text-gray-200 group-hover:text-white transition-colors"
+                initial={{ opacity: 0 }}
+                animate={inView ? { opacity: 1 } : { opacity: 0 }}
+                transition={{ delay: 0.3 }}
+              >
                 {feature.description}
-              </p>
+              </motion.p>
             </motion.div>
           ))}
         </motion.div>

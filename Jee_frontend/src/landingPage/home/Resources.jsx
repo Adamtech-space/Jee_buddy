@@ -57,64 +57,53 @@ const Resources = () => {
     }
   ];
 
-  const [ref, inView] = useInView({
-    threshold: 0.1,
-    triggerOnce: true
-  });
-
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
       opacity: 1,
       transition: {
-        staggerChildren: 0.3
-      }
-    }
+        staggerChildren: 0.15,
+        delayChildren: 0.3,
+      },
+    },
   };
 
-  const cardVariants = {
+  const itemVariants = {
     hidden: { 
       opacity: 0,
-      scale: 0.95,
-      y: 20
+      y: 30,
+      scale: 0.9,
+      rotateX: -15
     },
     visible: {
       opacity: 1,
-      scale: 1,
       y: 0,
+      scale: 1,
+      rotateX: 0,
       transition: {
-        type: "spring",
+        type: 'spring',
         damping: 15,
-        stiffness: 100
-      }
-    }
+        stiffness: 100,
+        duration: 0.6
+      },
+    },
   };
 
-  const listItemVariants = {
-    hidden: { opacity: 0, x: -20 },
-    visible: { 
-      opacity: 1, 
-      x: 0,
-      transition: {
-        type: "spring",
-        damping: 12
-      }
-    }
-  };
+  const [ref, inView] = useInView({
+    threshold: 0.1,
+    triggerOnce: true
+  });
 
   return (
-    <section className="relative py-20 bg-black overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-to-b from-black/50 to-black/90" />
-
+    <section id="resources" className="relative py-20 overflow-hidden bg-transparent">
       <div className="container mx-auto px-4 relative">
         <motion.div
-          ref={ref}
           initial={{ opacity: 0, y: 20 }}
-          animate={inView ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
           className="text-center mb-16"
         >
-          <h2 className="text-4xl md:text-5xl font-bold mb-6 bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-400">
+          <h2 className="text-4xl md:text-5xl font-bold mb-6 bg-clip-text text-transparent bg-gradient-to-r from-[#6366f1] to-[#8b5cf6]">
             Comprehensive Study Resources
           </h2>
           <p className="text-lg text-gray-300">
@@ -123,6 +112,7 @@ const Resources = () => {
         </motion.div>
 
         <motion.div 
+          ref={ref}
           className="grid md:grid-cols-2 gap-8 max-w-6xl mx-auto"
           variants={containerVariants}
           initial="hidden"
@@ -131,19 +121,25 @@ const Resources = () => {
           {resources.map((resource, index) => (
             <motion.div 
               key={index}
-              variants={cardVariants}
+              variants={itemVariants}
               whileHover={{ 
                 scale: 1.02,
-                y: -5
+                y: -5,
+                transition: { duration: 0.2 }
               }}
               className="group relative p-8 rounded-2xl transition-all duration-300
-                        bg-gray-900/50 border border-gray-800 backdrop-blur-sm
-                        hover:bg-gray-800/50 hover:border-blue-500/50"
+                        bg-white/10 border border-white/20
+                        hover:bg-white/15 hover:border-[#6366f1]/50"
             >
-              <div className="flex items-start gap-6">
+              <motion.div 
+                className="flex items-start gap-6"
+                initial={{ x: -20, opacity: 0 }}
+                animate={inView ? { x: 0, opacity: 1 } : { x: -20, opacity: 0 }}
+                transition={{ delay: 0.2 }}
+              >
                 <motion.div 
-                  className="w-14 h-14 flex items-center justify-center rounded-xl 
-                            bg-gradient-to-r from-blue-600 to-purple-600 text-white
+                  className="w-12 h-12 flex items-center justify-center rounded-xl 
+                            bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] text-white
                             group-hover:scale-110 transition-all duration-300"
                   whileHover={{ rotate: 360 }}
                   transition={{ duration: 0.6 }}
@@ -153,8 +149,8 @@ const Resources = () => {
 
                 <div className="flex-1">
                   <motion.h3 
-                    className="text-xl font-semibold mb-4 text-gray-100
-                              group-hover:text-blue-400 transition-colors"
+                    className="text-xl font-semibold mb-4 text-white
+                              group-hover:text-[#8b5cf6] transition-colors"
                     whileHover={{ x: 5 }}
                   >
                     {resource.title}
@@ -164,12 +160,14 @@ const Resources = () => {
                     {resource.features.map((feature, idx) => (
                       <motion.li 
                         key={idx} 
-                        variants={listItemVariants}
                         className="flex items-start gap-3"
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={inView ? { opacity: 1, x: 0 } : { opacity: 0, x: -20 }}
+                        transition={{ delay: 0.3 + idx * 0.1 }}
                       >
                         <motion.div 
                           className="flex-shrink-0 w-5 h-5 mt-0.5 rounded-full 
-                                    bg-blue-900/50 text-blue-400
+                                    bg-[#6366f1]/20 text-[#6366f1]
                                     flex items-center justify-center"
                           whileHover={{ scale: 1.2 }}
                         >
@@ -177,14 +175,14 @@ const Resources = () => {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                           </svg>
                         </motion.div>
-                        <span className="text-gray-400 group-hover:text-gray-300 transition-colors">
+                        <span className="text-gray-200 group-hover:text-white transition-colors">
                           {feature}
                         </span>
                       </motion.li>
                     ))}
                   </motion.ul>
                 </div>
-              </div>
+              </motion.div>
             </motion.div>
           ))}
         </motion.div>
