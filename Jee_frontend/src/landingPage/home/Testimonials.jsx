@@ -1,28 +1,25 @@
 import { motion } from 'framer-motion';
 import { useInView } from 'react-intersection-observer';
+import pic1 from '../images/pic1.png';
+import pic2 from '../images/pic2.png';
+import pic3 from '../images/pic3.png';
 
 const Testimonials = () => {
   const testimonials = [
     {
       name: 'Rahul Kumar',
-      role: 'JEE Advanced 2023',
-      content:
-        'JEE Buddy helped me understand complex concepts through their interactive learning platform. The AI-powered assistance was available 24/7 to clear my doubts.',
-      image: 'https://i.pravatar.cc/100?img=1',
+      content: 'The AI tutor was like having a personal mentor! It helped me master tough Physics concepts, especially in Mechanics. ',
+      image: pic1,
     },
     {
-      name: 'Priya Sharma',
-      role: 'JEE Mains 2023',
-      content:
-        'The practice tests and personalized feedback helped me improve my weak areas. I could track my progress and focus on topics that needed more attention.',
-      image: 'https://i.pravatar.cc/100?img=2',
+      name: 'Rithesh',
+      content: `The personalized practice helped me tackle my weak topics. The AI explanations made complex topics feel simple. !`,
+      image: pic2,
     },
     {
       name: 'Amit Patel',
-      role: 'JEE Advanced 2023',
-      content:
-        "The structured study material and mock tests were exactly what I needed. The platform's analytics helped me understand my preparation level clearly.",
-      image: 'https://i.pravatar.cc/100?img=3',
+      content: 'Uploading pictures of tough problems and getting instant, detailed solutions was a game-changer. ',
+      image: pic3,
     },
   ];
 
@@ -32,7 +29,7 @@ const Testimonials = () => {
   });
 
   return (
-    <section id="testimonials" className="relative py-20 overflow-hidden">
+    <section id="testimonials" className="relative overflow-hidden">
       <div className="container mx-auto px-4 relative">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -43,9 +40,7 @@ const Testimonials = () => {
           <h2 className="text-4xl md:text-5xl font-bold mb-6 bg-clip-text text-transparent bg-gradient-to-r from-[#18183a] to-[#291a49]">
             Success Stories
           </h2>
-          <p className="text-lg text-white/80">
-            Hear from our top rankers
-          </p>
+          <p className="text-lg text-white/80">Hear from our top rankers</p>
         </motion.div>
 
         <motion.div
@@ -65,7 +60,7 @@ const Testimonials = () => {
             <motion.div
               key={index}
               variants={{
-                hidden: { 
+                hidden: {
                   opacity: 0,
                   y: 30,
                   scale: 0.9,
@@ -81,24 +76,22 @@ const Testimonials = () => {
                   },
                 },
               }}
-              whileHover={{ 
+              whileHover={{
                 scale: 1.02,
                 y: -5,
-                transition: { duration: 0.2 }
+                transition: { duration: 0.2 },
               }}
               className="group relative overflow-hidden"
             >
               {/* Main Card */}
-              <div className="relative p-8 rounded-2xl transition-all duration-300
+              <div
+                className="relative p-8 rounded-2xl transition-all duration-300
                             bg-[#1e1b4b]/30 backdrop-blur-sm
-                            border border-indigo-500/20 hover:border-indigo-500/40">
-                
+                            border border-indigo-500/20 hover:border-indigo-500/40"
+              >
                 {/* Profile section */}
                 <div className="flex items-center gap-4 mb-6">
-                  <motion.div 
-                    className="relative"
-                    whileHover={{ scale: 1.1 }}
-                  >
+                  <motion.div className="relative" whileHover={{ scale: 1.1 }}>
                     <div className="absolute inset-0 bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] rounded-full blur-lg opacity-40" />
                     <img
                       src={testimonial.image}
@@ -132,7 +125,7 @@ const Testimonials = () => {
                 </div>
 
                 {/* Testimonial content */}
-                <motion.p 
+                <motion.p
                   className="relative text-white/90 leading-relaxed font-light"
                   initial={{ opacity: 0 }}
                   animate={inView ? { opacity: 1 } : { opacity: 0 }}

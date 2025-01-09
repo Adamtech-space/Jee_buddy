@@ -4,9 +4,9 @@ import { useInView } from 'react-intersection-observer';
 const Features = () => {
   const features = [
     {
-      title: 'AI-Powered Learning Assistant',
+      title: 'AI-Powered Doubt Solver',
       description:
-        'Get instant, personalized help 24/7 with our advanced AI tutor that breaks down complex concepts',
+        'Upload or type your question for instant, personalized step-by-step solutions.',
       icon: (
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -25,51 +25,9 @@ const Features = () => {
       ),
     },
     {
-      title: 'Comprehensive Study Material',
+      title: 'Smart Mock Test Analysis',
       description:
-        'Access complete NCERT solutions and curated study resources designed by top educators',
-      icon: (
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          className="w-6 h-6"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={1.5}
-            d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
-          />
-        </svg>
-      ),
-    },
-    {
-      title: 'Smart Practice Engine',
-      description:
-        'Practice with adaptive questions and previous year papers tailored to your learning pace',
-      icon: (
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          className="w-6 h-6"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={1.5}
-            d="M13 10V3L4 14h7v7l9-11h-7z"
-          />
-        </svg>
-      ),
-    },
-    {
-      title: 'Real-time Analytics',
-      description:
-        'Track your performance with detailed insights and personalized improvement recommendations',
+        'Get detailed insights on your mistakes with personalized improvement strategies.',
       icon: (
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -88,9 +46,9 @@ const Features = () => {
       ),
     },
     {
-      title: 'Exam Simulator',
+      title: 'Intelligent Topic Recommendations',
       description:
-        'Experience real exam conditions with our advanced mock test platform and detailed analysis',
+        'Focus on what matters most with AI-driven study recommendations.',
       icon: (
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -103,15 +61,57 @@ const Features = () => {
             strokeLinecap="round"
             strokeLinejoin="round"
             strokeWidth={1.5}
-            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
+            d="M13 10V3L4 14h7v7l9-11h-7z"
           />
         </svg>
       ),
     },
     {
-      title: 'Collaborative Learning',
+      title: 'AI-Driven Error Analysis',
       description:
-        'Join a community of motivated students and learn together with peer-to-peer interactions',
+        'Convert mistakes into learning opportunities with detailed error breakdowns.',
+      icon: (
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          className="w-6 h-6"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={1.5}
+            d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+          />
+        </svg>
+      ),
+    },
+    {
+      title: 'AI Makes Concepts Easy',
+      description:
+        'Master complex topics through personalized, simplified explanations.',
+      icon: (
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          className="w-6 h-6"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={1.5}
+            d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
+          />
+        </svg>
+      ),
+    },
+    {
+      title: 'Join Thousands of Successful Students',
+      description:
+        'Be part of a thriving community of JEE achievers using AI-powered guidance.',
       icon: (
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -181,7 +181,7 @@ const Features = () => {
             Features
           </h2>
           <p className="text-lg text-gray-300">
-            Everything you need to master JEE preparation
+            The Smartest Way to Crack JEE—Trusted by Thousands, Powered by AI!
           </p>
         </motion.div>
 
@@ -190,16 +190,16 @@ const Features = () => {
           className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-7xl mx-auto perspective-1000"
           variants={containerVariants}
           initial="hidden"
-          animate={inView ? "visible" : "hidden"}
+          animate={inView ? 'visible' : 'hidden'}
         >
           {features.map((feature, index) => (
             <motion.div
               key={index}
               variants={itemVariants}
-              whileHover={{ 
+              whileHover={{
                 scale: 1.02,
                 y: -5,
-                transition: { duration: 0.2 }
+                transition: { duration: 0.2 },
               }}
               className="group relative p-4 rounded-2xl transition-all duration-300
                       bg-white/10 border border-white/20
@@ -220,7 +220,7 @@ const Features = () => {
                 >
                   {feature.icon}
                 </motion.div>
-                <motion.h3 
+                <motion.h3
                   className="text-xl font-semibold text-white 
                          group-hover:text-[#8b5cf6] transition-colors"
                   whileHover={{ x: 5 }}
@@ -229,7 +229,7 @@ const Features = () => {
                 </motion.h3>
               </motion.div>
 
-              <motion.p 
+              <motion.p
                 className="text-gray-200 group-hover:text-white transition-colors"
                 initial={{ opacity: 0 }}
                 animate={inView ? { opacity: 1 } : { opacity: 0 }}

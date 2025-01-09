@@ -27,7 +27,10 @@ const Hero = () => {
   };
 
   return (
-    <section id="home" className="relative min-h-[55vh] flex items-center overflow-hidden">
+    <section
+      id="home"
+      className="relative min-h-[55vh] flex items-center overflow-hidden"
+    >
       <div className="container mx-auto px-4 relative pt-12">
         <div className="max-w-4xl mx-auto text-center">
           <motion.h1
@@ -82,13 +85,12 @@ const Hero = () => {
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <motion.button
               onClick={scrollToDemo}
-              className="px-8 py-3 border-2 border-[#6366f1] text-[#6366f1] rounded-lg font-medium 
-                       hover:bg-[#6366f1] hover:text-white transition-colors
-                       backdrop-blur-sm bg-white/5"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
+              className="px-8 py-3.5 bg-sky-800 hover:bg-blue-700 text-white 
+                       rounded-lg font-semibold transition-all duration-300"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
               transition={{ delay: 0.9 }}
             >
               Try Now
