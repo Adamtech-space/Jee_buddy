@@ -12,24 +12,24 @@ const Hero = () => {
   useEffect(() => {
     setDimensions({
       width: window.innerWidth,
-      height: window.innerHeight
+      height: window.innerHeight,
     });
   }, []);
 
   const fadeInUp = {
     hidden: { opacity: 0, y: 20 },
-    visible: { opacity: 1, y: 0 }
+    visible: { opacity: 1, y: 0 },
   };
 
-  const words = "Master JEE with AI".split(" ");
+  const words = 'Master JEE with AI'.split(' ');
 
   const scrollToDemo = (e) => {
     e.preventDefault();
     const demoSection = document.getElementById('demo');
     if (demoSection) {
-      demoSection.scrollIntoView({ 
+      demoSection.scrollIntoView({
         behavior: 'smooth',
-        block: 'start'
+        block: 'start',
       });
     }
   };
@@ -39,41 +39,41 @@ const Hero = () => {
     { type: 'formula', content: '∫(x²)dx', size: 'text-3xl' },
     { type: 'formula', content: 'F = ma', size: 'text-2xl' },
     { type: 'formula', content: 'PV = nRT', size: 'text-2xl' },
-   
   ];
 
   return (
     <section className="hero-section relative min-h-screen bg-black flex items-center overflow-hidden">
-      {dimensions.width > 0 && floatingElements.map((element, index) => (
-        <motion.div
-          key={index}
-          className={`absolute text-gray-600/20 ${element.size || ''}`}
-          initial={{
-            x: Math.random() * dimensions.width,
-            y: Math.random() * dimensions.height,
-          }}
-          animate={{
-            x: [
-              Math.random() * dimensions.width,
-              Math.random() * dimensions.width,
-              Math.random() * dimensions.width
-            ],
-            y: [
-              Math.random() * dimensions.height,
-              Math.random() * dimensions.height,
-              Math.random() * dimensions.height
-            ],
-          }}
-          transition={{
-            duration: 20 + Math.random() * 10,
-            repeat: Infinity,
-            repeatType: "reverse",
-            ease: "linear"
-          }}
-        >
-          {element.type === 'formula' ? element.content : element.icon}
-        </motion.div>
-      ))}
+      {dimensions.width > 0 &&
+        floatingElements.map((element, index) => (
+          <motion.div
+            key={index}
+            className={`absolute text-gray-600/20 ${element.size || ''}`}
+            initial={{
+              x: Math.random() * dimensions.width,
+              y: Math.random() * dimensions.height,
+            }}
+            animate={{
+              x: [
+                Math.random() * dimensions.width,
+                Math.random() * dimensions.width,
+                Math.random() * dimensions.width,
+              ],
+              y: [
+                Math.random() * dimensions.height,
+                Math.random() * dimensions.height,
+                Math.random() * dimensions.height,
+              ],
+            }}
+            transition={{
+              duration: 20 + Math.random() * 10,
+              repeat: Infinity,
+              repeatType: 'reverse',
+              ease: 'linear',
+            }}
+          >
+            {element.type === 'formula' ? element.content : element.icon}
+          </motion.div>
+        ))}
 
       {/* Gradient Overlay */}
       <div className="absolute inset-0 bg-gradient-to-b from-gray-900/50 to-gray-900/90" />
@@ -81,16 +81,16 @@ const Hero = () => {
       <div className="container mx-auto px-4 relative py-20">
         <div className="max-w-4xl mx-auto text-center">
           {/* Animated Title */}
-          <motion.h1 
+          <motion.h1
             className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6"
             initial="hidden"
             animate="visible"
             variants={{
               visible: {
                 transition: {
-                  staggerChildren: 0.1
-                }
-              }
+                  staggerChildren: 0.1,
+                },
+              },
             }}
           >
             {words.map((word, i) => (
@@ -98,20 +98,20 @@ const Hero = () => {
                 key={i}
                 className="inline-block mr-2"
                 variants={{
-                  hidden: { 
-                    opacity: 0, 
+                  hidden: {
+                    opacity: 0,
                     y: 20,
-                    rotate: -5 
+                    rotate: -5,
                   },
-                  visible: { 
-                    opacity: 1, 
+                  visible: {
+                    opacity: 1,
                     y: 0,
                     rotate: 0,
                     transition: {
-                      type: "spring",
-                      damping: 10
-                    }
-                  }
+                      type: 'spring',
+                      damping: 10,
+                    },
+                  },
                 }}
               >
                 {word}
@@ -124,27 +124,15 @@ const Hero = () => {
             className="text-xl text-gray-300 mb-8"
             variants={fadeInUp}
             initial="hidden"
-            animate={isVisible ? "visible" : "hidden"}
+            animate={isVisible ? 'visible' : 'hidden'}
             transition={{ delay: 0.5, duration: 0.5 }}
           >
-            Your personalized AI tutor for JEE preparation. Get instant help, practice questions, and detailed explanations.
+            Your personalized AI tutor for JEE preparation. Get instant help,
+            practice questions, and detailed explanations.
           </motion.p>
 
           {/* Interactive CTA Buttons */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <motion.button
-              className="px-8 py-3 bg-blue-600 text-white rounded-lg font-medium 
-                         hover:bg-blue-700 transition-colors transform hover:scale-105
-                         shadow-lg hover:shadow-blue-500/25"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.8 }}
-            >
-              Start Learning
-            </motion.button>
-            
             <motion.button
               onClick={scrollToDemo}
               className="px-8 py-3 border-2 border-blue-500 text-blue-400 rounded-lg font-medium 
@@ -155,16 +143,16 @@ const Hero = () => {
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.9 }}
             >
-              Watch Demo
+              Try Now
             </motion.button>
           </div>
 
           {/* Floating Stats */}
-          <div className="mt-16 grid grid-cols-2 md:grid-cols-3 gap-8">
+          {/* <div className="mt-16 grid grid-cols-2 md:grid-cols-3 gap-8">
             {[
-              { number: "10K+", label: "Students" },
-              { number: "95%", label: "Success Rate" },
-              { number: "24/7", label: "Support" }
+              { number: '10K+', label: 'Students' },
+              { number: '95%', label: 'Success Rate' },
+              { number: '24/7', label: 'Support' },
             ].map((stat, index) => (
               <motion.div
                 key={index}
@@ -172,12 +160,12 @@ const Hero = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 1 + index * 0.2 }}
-                whileHover={{ 
+                whileHover={{
                   y: -5,
-                  boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.05)"
+                  boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.05)',
                 }}
               >
-                <motion.h3 
+                <motion.h3
                   className="text-2xl font-bold text-blue-400"
                   whileHover={{ scale: 1.1 }}
                 >
@@ -186,7 +174,7 @@ const Hero = () => {
                 <p className="text-gray-300">{stat.label}</p>
               </motion.div>
             ))}
-          </div>
+          </div> */}
         </div>
       </div>
     </section>

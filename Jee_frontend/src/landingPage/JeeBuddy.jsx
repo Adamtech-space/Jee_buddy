@@ -15,8 +15,8 @@ const JeeBuddy = () => {
         <Hero />
         <Features />
         <Resources />
-        <Testimonials />
         <Demo2 />
+        <Testimonials />
         <Pricing />
       </main>
       <Footer />
