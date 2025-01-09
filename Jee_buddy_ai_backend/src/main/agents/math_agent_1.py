@@ -1,8 +1,12 @@
+import logging
+logger = logging.getLogger(__name__)
+
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 from typing import List, Dict, Any, Optional
 from pydantic import BaseModel, Field
+from langchain.schema import SystemMessage, HumanMessage
 
 class MathProblemInput(BaseModel):
     question: str = Field(description="The math problem to solve")
@@ -12,13 +16,18 @@ class MathAgent:
     def __init__(self):
         self.llm = ChatOpenAI(
             temperature=0.7,
-            model="gpt-3.5-turbo",
+            model="gpt-4o",
             max_tokens=1000,
             api_key="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"
         )
         self.chat_history = []
-        self.max_history = 4
+        self.max_history = 100
         self.tools = self._create_tools()
+        self.interaction_prompts = {
+            'explain': "Explain the concept in detail with examples.",
+            'solve': "Solve this problem step by step.",
+            'general': "Respond naturally to the query.",
+        }
 
     def _create_tools(self) -> Dict[str, str]:
         return {
@@ -110,7 +119,7 @@ class MathAgent:
             return "No previous context."
             
         formatted = []
-        for msg in self.chat_history[-4:]:  # Last 2 exchanges
+        for msg in self.chat_history[-100:]:  # Last 100 exchanges
             role = "Student" if isinstance(msg, HumanMessage) else "Tutor"
             content = msg.content[:300]  # Limit content length
             formatted.append(f"{role}: {content}")
@@ -151,90 +160,64 @@ class MathAgent:
             "approach_used": "greeting"
         }
 
-    async def solve(self, question: str, approach: Optional[str] = None) -> Dict[str, Any]:
-        """Solve math problem using specified or auto-detected approach"""
+    async def solve(self, question: str, context: Dict[Any, Any]) -> dict:
         try:
-            if not question.strip():
-                raise ValueError("Question cannot be empty")
-            
-            # Check if it's a general query
-            if self._is_general_query(question):
-                return self._get_general_response(question)
+            # Process image if present
+            image_context = ""
+            if context.get('image'):
+                image_context = "[Image provided for reference]"
 
-            # Auto-detect approach if not specified or if "auto"
-            if not approach or approach == "auto":
-                detected_approach = self._detect_approach(question)
-                print(detected_approach)
-                approach = detected_approach
-                approach_source = "auto"
-            elif approach not in self.tools:
-                raise ValueError(f"Invalid approach. Must be one of: {list(self.tools.keys())} or 'auto'")
-            else:
-                approach_source = "specified"
+            # Build conversation history context
+            history_context = ""
+            if context.get('chat_history'):
+                history_context = "\n".join([
+                    f"User: {msg['question']}\nAssistant: {msg['response']}"
+                    for msg in context['chat_history']
+                ])
 
-            # Get history context
-            history_context = self._format_history()
-            if history_context != "No previous context.":
-                question = f"Based on our previous discussion: {history_context}\n\nNew question: {question}"
+            # Determine interaction type
+            interaction_type = context.get('interaction_type', 'general')
+            interaction_prompt = self.interaction_prompts[interaction_type]
 
-            # Create messages
             messages = [
                 SystemMessage(content=f"""You are an expert JEE tutor specialized in Physics, Chemistry, and Mathematics.
                 
-                Using {approach} approach for this question.
-                
-                Your response MUST follow this EXACT format:
-
-                **Concept Understanding**
-                • Key concepts
-                • Important principles
-
-                **Step-by-Step Solution**
-                1. First step
-                2. Second step
-
-                **Key Points to Remember**
-                • Important point 1
-                • Important point 2
-
-                **Similar Problem Types**
-                • Related problem 1
-                • Related problem 2
-
-                Previous context:
+                Previous conversation context:
                 {history_context}
+
+                Additional context:
+                {context.get('pinnedText', '')}
+                {image_context}
+
+                Interaction type: {interaction_type}
+                {interaction_prompt}
                 """),
-                HumanMessage(content=f"""Question: {question}
-                Approach Guidelines: {self.tools[approach]}""")
+                HumanMessage(content=question)
             ]
 
-            # Get response
-            response = await self.llm.ainvoke(messages)
+            # Actually call the LLM
+            response = await self.llm.agenerate([messages])
             
-            # Validate and retry if needed
-            if not self._validate_response(response.content):
-                messages.append(SystemMessage(content="Please ensure your response follows the exact format specified."))
-                response = await self.llm.ainvoke(messages)
-            
-            # Update chat history
-            self.chat_history.extend([
-                HumanMessage(content=question),
-                AIMessage(content=response.content[:500])  # Limit stored response size
-            ])
-            
-            # Keep only last N pairs of messages
-            if len(self.chat_history) > self.max_history * 2:
-                self.chat_history = self.chat_history[-(self.max_history * 2):]
+            # Extract the response
+            llm_response = response.generations[0][0].text
+
+            # Format the response based on interaction type
+            if interaction_type == 'solve':
+                if 'step by step' not in llm_response.lower():
+                    llm_response = f"Let me solve this step by step:\n\n{llm_response}"
+            elif interaction_type == 'explain':
+                if 'concept' not in llm_response.lower():
+                    llm_response = f"Let me explain this concept:\n\n{llm_response}"
 
             return {
-                "solution": response.content,
-                "context": self.chat_history[-4:],
-                "approach_used": approach,
-                "approach_detection": approach_source
+                'solution': llm_response,
+                'context': messages,
+                'approach_used': interaction_type
             }
 
         except Exception as e:
-            raise Exception(f"Error in agent execution: {str(e)}")
+            logger.error(f"Error in MathAgent solve method: {str(e)}", exc_info=True)
+            raise Exception(f"Failed to process question: {str(e)}")
 
     def get_memory_usage(self) -> int:
         """Get current memory usage of the agent"""

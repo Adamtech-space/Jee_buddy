@@ -1,12 +1,7 @@
-from django.urls import path, include
-from rest_framework.routers import DefaultRouter
+from django.urls import path
 from . import views
 
-router = DefaultRouter()
-# router.register(r'conversations', views.ConversationViewSet, basename='conversation')
-
 urlpatterns = [
-    path('', include(router.urls)),
-    # path('chat/', views.chat, name='chat'),
-    path('solve-math/', views.solve_math_problem, name='solve-math'),
+    path('solve-math/', views.solve_math_problem, name='solve_math_problem'),
+    path('test-db/', views.test_db_connection, name='test_db_connection'),
 ]
