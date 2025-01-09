@@ -38,7 +38,7 @@ const Navbar = () => {
           {/* Desktop Menu */}
           <div className="hidden lg:flex items-center space-x-8">
             <div className="flex space-x-6">
-              {['Home', 'Features', 'Resources', 'Demo'].map((item) => (
+              {['Home', 'Features', 'Resources', 'Demo', 'Testimonials'].map((item) => (
                 <a 
                   key={item}
                   href={`#${item.toLowerCase()}`} 
@@ -100,10 +100,10 @@ const Navbar = () => {
 
         {/* Mobile Menu */}
         <div className={`lg:hidden transition-all duration-300 ease-in-out overflow-hidden
-          ${isOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}
+          ${isOpen ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'}
           ${isScrolled ? 'bg-black/95' : 'bg-black/90'}`}>
           <div className="py-6 space-y-4">
-            {['Home', 'Features', 'Resources', 'Demo'].map((item) => (
+            {['home', 'features', 'resources', 'demo', 'testimonials'].map((item) => (
               <a 
                 key={item}
                 href={`#${item.toLowerCase()}`} 
@@ -117,7 +117,7 @@ const Navbar = () => {
                     ? 'text-gray-300 hover:text-blue-400' 
                     : 'text-gray-200 hover:text-blue-400'}`}
               >
-                {item}
+                {item.charAt(0).toUpperCase() + item.slice(1)}
               </a>
             ))}
             <div className="px-4 pt-4 space-y-3">

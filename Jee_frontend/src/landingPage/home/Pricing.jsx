@@ -34,9 +34,8 @@ const Pricing = () => {
   };
 
   return (
-    <section id="pricing" className="relative py-32 bg-black overflow-hidden">
-      {/* Gradient Overlay */}
-      <div className="absolute inset-0 bg-gradient-to-b from-black/50 to-black/90" />
+    <section id="pricing" className="relative py-20 overflow-hidden">
+      <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/30" />
 
       <div className="container mx-auto px-4 relative">
         <motion.div
@@ -44,9 +43,9 @@ const Pricing = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={inView ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
           transition={{ duration: 0.6 }}
-          className="text-center mb-24"
+          className="text-center mb-12"
         >
-          <h2 className="text-4xl md:text-5xl font-bold mb-6 bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-400">
+          <h2 className="text-4xl md:text-5xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-400">
             Simple, Transparent Pricing
           </h2>
           <p className="text-lg text-gray-300">
@@ -58,7 +57,7 @@ const Pricing = () => {
           variants={containerVariants}
           initial="hidden"
           animate={inView ? "visible" : "hidden"}
-          className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto -mt-6"
+          className="grid md:grid-cols-3 gap-6 max-w-6xl mx-auto"
         >
           {[
             {
@@ -110,27 +109,26 @@ const Pricing = () => {
                 transition: { duration: 0.2 }
               }}
               className={`relative p-8 rounded-2xl transition-all duration-300
-                         backdrop-blur-md bg-gray-900/50 border border-gray-800
-                         hover:bg-gray-800/50 hover:border-blue-500/50 shadow-xl
-                         ${plan.popular ? 'md:-mt-8 z-10' : ''}
+                         backdrop-blur-lg bg-[#4a1942]/40 border border-[#6e2960]/50
+                         hover:bg-[#4a1942]/60 hover:border-[#9d3c87]/50 shadow-xl
+                         ${plan.popular ? 'md:-mt-8 z-10 bg-[#562052]/50' : ''}
                          ${index === 1 ? 'md:scale-105' : ''}`}
             >
               {plan.popular && (
                 <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1 
-                               bg-gradient-to-r from-blue-600 to-purple-600
+                               bg-gradient-to-r from-[#6366f1] to-[#8b5cf6]
                                text-white text-sm rounded-full shadow-lg">
                   Most Popular
                 </div>
               )}
 
               <div className="text-center mb-8">
-                <h3 className="text-2xl font-bold text-gray-100 mb-4">{plan.name}</h3>
+                <h3 className="text-2xl font-bold text-white mb-4">{plan.name}</h3>
                 <div className="flex items-baseline justify-center gap-1">
-                  <span className="text-4xl font-bold text-transparent bg-clip-text 
-                                 bg-gradient-to-r from-blue-400 to-purple-400">
+                  <span className="text-4xl font-bold text-[#6366f1]">
                     {plan.price}
                   </span>
-                  <span className="text-gray-400">{plan.duration}</span>
+                  <span className="text-gray-200">{plan.duration}</span>
                 </div>
               </div>
 
@@ -148,8 +146,8 @@ const Pricing = () => {
               <button 
                 className={`w-full py-3 rounded-lg transition-all duration-300 transform
                            ${plan.popular 
-                             ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700' 
-                             : 'bg-gray-800 text-gray-300 hover:bg-gray-700 border border-gray-700 hover:border-blue-500'}`}
+                             ? 'bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] text-white hover:from-[#5558e6] hover:to-[#7c4feb]' 
+                             : 'bg-[#3d1635] text-gray-200 hover:bg-[#4a1942] border border-[#6e2960] hover:border-[#9d3c87]'}`}
               >
                 Get Started
               </button>

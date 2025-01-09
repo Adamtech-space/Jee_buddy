@@ -53,24 +53,21 @@ const Demo2 = () => {
   };
 
   return (
-    <section id="demo2" className="relative py-20 bg-black overflow-hidden">
-      {/* Gradient Overlay */}
-      <div className="absolute inset-0 bg-gradient-to-b from-black/50 to-black/90" />
-
+    <section id="demo" className="relative py-20 overflow-hidden">
       <div className="container mx-auto px-4 relative">
-        <h2 className="text-4xl font-bold text-center mb-12 bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-400">
+        <h2 className="text-4xl font-bold text-center mb-12 bg-clip-text text-transparent bg-gradient-to-r from-[#6366f1] to-[#8b5cf6]">
           Test your AI teacher now
         </h2>
         <div className="max-w-4xl mx-auto">
-          <div className="backdrop-blur-md bg-gray-900/90 rounded-2xl border border-gray-800 shadow-xl">
-            <div className="p-8">
+          <div className="backdrop-blur-lg bg-[#2d1635]/40 rounded-2xl border border-[#4a1942]/50 shadow-xl">
+            <div className="p-4 sm:p-8">
               <div className="mb-8">
-                <div className="backdrop-blur-sm bg-gray-800/50 rounded-xl border border-gray-700 mb-6">
-                  <div className="p-6">
-                    <h6 className="text-lg font-semibold mb-3 text-blue-400">
+                <div className="backdrop-blur-lg bg-[#1f1029]/40 rounded-xl border border-[#4a1942]/50 mb-6">
+                  <div className="p-4 sm:p-6">
+                    <h6 className="text-lg font-semibold mb-3 text-[#6366f1]">
                       Sample JEE Math Problem:
                     </h6>
-                    <p className="text-gray-300" id="math-problem">
+                    <p className="text-gray-200" id="math-problem">
                       {mathProblem}
                     </p>
                   </div>
@@ -79,10 +76,10 @@ const Demo2 = () => {
                   {helpButtons.map((button) => (
                     <button
                       key={button.type}
-                      className="help-btn px-4 py-2 rounded-lg bg-gray-800/80 border border-gray-700 
-                               text-gray-300 hover:bg-gray-700 hover:border-blue-500 hover:text-blue-400
+                      className="help-btn px-3 sm:px-4 py-2 rounded-lg bg-[#1f1029]/40 border border-[#4a1942]/50 
+                               text-gray-200 hover:bg-[#2d1635]/60 hover:border-[#6366f1]/50 hover:text-[#8b5cf6]
                                transition-all duration-300 ease-in-out transform hover:scale-105
-                               shadow-sm hover:shadow-md"
+                               shadow-sm hover:shadow-md text-sm sm:text-base"
                       data-type={button.type}
                     >
                       {button.icon} {button.text}
@@ -91,18 +88,16 @@ const Demo2 = () => {
                 </div>
               </div>
               <div className="chat-container">
-                <div
-                  className="chat-messages bg-gray-800/50 border border-gray-700 rounded-xl p-6 h-[40vh] 
-                            overflow-y-auto mb-6 scrollbar-thin scrollbar-thumb-blue-500 scrollbar-track-gray-800"
-                >
+                <div className="chat-messages bg-[#1f1029]/40 border border-[#4a1942]/50 rounded-xl p-4 sm:p-6 h-[40vh] 
+                          overflow-y-auto mb-4 sm:mb-6 scrollbar-thin scrollbar-thumb-[#6366f1] scrollbar-track-[#2d1635]">
                   {messages.map((message, index) => (
                     <div
                       key={index}
-                      className={`chat-message ${message.type} mb-4 p-4 rounded-xl backdrop-blur-sm
+                      className={`chat-message ${message.type} mb-4 p-3 sm:p-4 rounded-xl backdrop-blur-lg
                         ${
                           message.type === 'user'
-                            ? 'bg-blue-600/90 text-white border border-blue-500 ml-auto max-w-[80%]'
-                            : 'bg-gray-800/90 border border-gray-700 max-w-[80%] text-gray-300'
+                            ? 'bg-gradient-to-r from-[#6366f1]/80 to-[#8b5cf6]/80 text-white border border-[#6366f1]/50 ml-auto max-w-[80%]'
+                            : 'bg-[#2d1635]/60 border border-[#4a1942]/50 max-w-[80%] text-gray-200'
                         }`}
                     >
                       {message.content}
@@ -110,24 +105,25 @@ const Demo2 = () => {
                   ))}
                   <div ref={messagesEndRef} />
                 </div>
-                <form onSubmit={handleSubmit} className="flex gap-3">
+                <form onSubmit={handleSubmit} className="flex gap-2 sm:gap-3">
                   <input
                     type="text"
                     value={inputValue}
                     onChange={(e) => setInputValue(e.target.value)}
-                    className="flex-1 bg-gray-800/80 border border-gray-700 rounded-xl px-6 py-3
-                             text-gray-300 placeholder-gray-500
-                             focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 
+                    className="flex-1 bg-[#1f1029]/40 border border-[#4a1942]/50 rounded-xl px-4 sm:px-6 py-2 sm:py-3
+                             text-gray-200 placeholder-gray-400 text-sm sm:text-base
+                             focus:outline-none focus:border-[#6366f1]/50 focus:ring-2 focus:ring-[#6366f1]/20 
                              transition-colors"
                     placeholder="Type what you need"
                     required
                   />
                   <button
                     type="submit"
-                    className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-3 
-                             rounded-xl hover:from-blue-700 hover:to-purple-700
+                    className="whitespace-nowrap bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] text-white 
+                             px-4 sm:px-8 py-2 sm:py-3 text-sm sm:text-base
+                             rounded-xl hover:from-[#5558e6] hover:to-[#7c4feb]
                              transition-all duration-300 ease-in-out transform hover:scale-105
-                             shadow-md hover:shadow-lg"
+                             shadow-md hover:shadow-lg min-w-[80px] sm:min-w-[100px]"
                   >
                     Send
                   </button>
