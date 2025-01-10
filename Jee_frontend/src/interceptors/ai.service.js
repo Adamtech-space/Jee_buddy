@@ -3,22 +3,29 @@ import aiInstance from './aiAxios';
 export const aiService = {
   async askQuestion(message, context) {
     try {
-      // Combine pinnedText and selectedText
-      const combinedPinnedText = [context.pinnedText, context.selectedText]
-        .filter(text => text)
-        .join('\n\n');
+      // Get current user ID from localStorage or context
+      const currentUserId = localStorage.getItem('userId') || context.userId || 'default';
+      const currentSessionId = localStorage.getItem('sessionId') || context.sessionId || `session_${Date.now()}`;
 
-      const response = await aiInstance.post('api/solve-math/', {
+      const requestData = {
         question: message,
         context: {
-          session_id: context.sessionId || localStorage.getItem('sessionId') || 'default',
-          interaction_type: context.type || 'solve',
+          user_id: currentUserId,
+          session_id: currentSessionId,
           subject: context.subject || '',
           topic: context.topic || '',
-          pinnedText: combinedPinnedText,
-          image: context.image || null
+          interaction_type: context.type || 'solve',
+          pinnedText: context.pinnedText || '',
+          selectedText: context.selectedText || '',
+          image: context.image || null,
+          history_limit: 100,
+          chat_history: context.chatHistory || []
         }
-      });
+      };
+
+      console.log("Request data:", requestData);
+
+      const response = await aiInstance.post('api/solve-math/', requestData);
       return response.data;
     } catch (error) {
       console.error('AI request failed:', error);
@@ -37,7 +44,6 @@ export const aiService = {
         question: `Help me with: ${type}`,
         context: {
           session_id: context.sessionId || localStorage.getItem('sessionId') || 'default',
-          interaction_type: type,
           subject: context.subject || '',
           topic: context.topic || '',
           pinnedText: combinedPinnedText,

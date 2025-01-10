@@ -107,48 +107,48 @@ def solve_math_problem(request):
             'details': 'An unexpected error occurred while processing your request.'
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-@api_view(['GET'])
-def test_db_connection(request):
-    try:
-        # Test pooled connection
-        pooled_conn = connections['default']
-        with pooled_conn.cursor() as cursor:
-            cursor.execute('SELECT version();')
-            db_version = cursor.fetchone()
+# @api_view(['GET'])
+# def test_db_connection(request):
+#     try:
+#         # Test pooled connection
+#         pooled_conn = connections['default']
+#         with pooled_conn.cursor() as cursor:
+#             cursor.execute('SELECT version();')
+#             db_version = cursor.fetchone()
             
-            # Test a simple query
-            cursor.execute('''
-                SELECT COUNT(*) 
-                FROM information_schema.tables 
-                WHERE table_schema = 'public';
-            ''')
-            table_count = cursor.fetchone()[0]
+#             # Test a simple query
+#             cursor.execute('''
+#                 SELECT COUNT(*) 
+#                 FROM information_schema.tables 
+#                 WHERE table_schema = 'public';
+#             ''')
+#             table_count = cursor.fetchone()[0]
         
-        return Response({
-            "status": "Database connection successful",
-            "database_version": db_version[0],
-            "table_count": table_count,
-            "connection_info": {
-                "host": pooled_conn.get_connection_params()['host'],
-                "database": pooled_conn.get_connection_params()['database'],
-                "port": pooled_conn.get_connection_params()['port']
-            }
-        })
-    except OperationalError as e:
-        logger.error(f"Database connection error: {str(e)}", exc_info=True)
-        return Response(
-            {
-                "error": "Unable to connect to the database.",
-                "details": str(e)
-            }, 
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
-    except Exception as e:
-        logger.error(f"Unexpected error: {str(e)}", exc_info=True)
-        return Response(
-            {
-                "error": "An unexpected error occurred",
-                "details": str(e)
-            }, 
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
+#         return Response({
+#             "status": "Database connection successful",
+#             "database_version": db_version[0],
+#             "table_count": table_count,
+#             "connection_info": {
+#                 "host": pooled_conn.get_connection_params()['host'],
+#                 "database": pooled_conn.get_connection_params()['database'],
+#                 "port": pooled_conn.get_connection_params()['port']
+#             }
+#         })
+#     except OperationalError as e:
+#         logger.error(f"Database connection error: {str(e)}", exc_info=True)
+#         return Response(
+#             {
+#                 "error": "Unable to connect to the database.",
+#                 "details": str(e)
+#             }, 
+#             status=status.HTTP_500_INTERNAL_SERVER_ERROR
+#         )
+#     except Exception as e:
+#         logger.error(f"Unexpected error: {str(e)}", exc_info=True)
+#         return Response(
+#             {
+#                 "error": "An unexpected error occurred",
+#                 "details": str(e)
+#             }, 
+#             status=status.HTTP_500_INTERNAL_SERVER_ERROR
+#         )

@@ -255,7 +255,7 @@ class MathAgent:
            
 
             messages = [
-                SystemMessage(content=f"""You are an expert friendly JEE tutor specialized in Physics, Chemistry, and Mathematics.
+                SystemMessage(content=fr"""You are an expert friendly JEE tutor specialized in Physics, Chemistry, and Mathematics.
                 
                 Previous conversation context:
                 {history_context}
@@ -263,9 +263,36 @@ class MathAgent:
                 Additional context:
                 {context.get('pinnedText', '')}
                 {image_context}
-                If the user asks about previous conversations or history, please summarize the above context.
-                Format your response with clear sections using markdown.
-                Include specific details {history_context} from previous questions and their solutions.
+
+            Format your response following these rules:
+            1. Use plain text without LaTeX markers or special characters
+            2. For mathematical expressions:
+                - Use simple text: x^2 for powers
+                - Use / for fractions: a/b
+                - Use * for multiplication
+                - Write units in parentheses: (m/s), (kg), etc.
+            
+            3. Structure your response with:
+                - Clear numbered sections
+                - Bullet points using simple dashes (-)
+                - Line breaks between sections
+                - Simple indentation for sub-points
+            
+            4. For equations:
+                - Write them on separate lines
+                - Use = sign with spaces around it
+                - Example: F = m * a
+                - For complex equations, break into multiple lines
+            
+            5. For explanations:
+                - Use step-by-step numbering
+                - Include clear examples
+                - Explain concepts without technical markup
+            
+            If the user asks about previous conversations or history, summarize the above context using this same formatting.
+            
+            Remember to keep all mathematical and scientific content accurate while using this simplified format.
+            Include specific details from previous questions and their solutions.
                 """),
                 HumanMessage(content=question)
             ]
@@ -275,7 +302,7 @@ class MathAgent:
             
             # Extract the responseP
             llm_response = response.generations[0][0].text
-
+            print("This is the response",llm_response)
              # Store interaction in database
             if user_id and session_id:
                 ChatHistory.add_interaction(
