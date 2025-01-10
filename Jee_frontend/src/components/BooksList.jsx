@@ -1,110 +1,75 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate, useParams } from 'react-router-dom';
+import { message } from 'antd';
+import { getBooksList } from '../interceptors/services';
 
 const BooksList = () => {
   const navigate = useNavigate();
   const { subject } = useParams();
   const [selectedBook, setSelectedBook] = useState(null);
+  const [books, setBooks] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const bookCategories = {
-    physics: [
-      {
-        category: 'NCERT',
-        books: [
-          { 
-            title: 'NCERT Physics Class 11', 
-            author: 'NCERT', 
-            type: 'Textbook',
-            topics: [
-              { id: 'kinematics', name: 'Kinematics', color: 'from-blue-500 to-blue-700' },
-              { id: 'laws_of_motion', name: 'Laws of Motion', color: 'from-indigo-500 to-indigo-700' },
-              { id: 'work_energy', name: 'Work, Energy and Power', color: 'from-purple-500 to-purple-700' },
-              { id: 'rotational_motion', name: 'Rotational Motion', color: 'from-pink-500 to-pink-700' }
-            ]
-          },
-          { 
-            title: 'NCERT Physics Class 12', 
-            author: 'NCERT', 
-            type: 'Textbook',
-            topics: [
-              { id: 'electrostatics', name: 'Electrostatics', color: 'from-red-500 to-red-700' },
-              { id: 'current', name: 'Current Electricity', color: 'from-orange-500 to-orange-700' },
-              { id: 'magnetic_effects', name: 'Magnetic Effects', color: 'from-yellow-500 to-yellow-700' },
-              { id: 'emi', name: 'EMI and AC', color: 'from-green-500 to-green-700' }
-            ]
-          }
-        ]
+  useEffect(() => {
+    const fetchBooks = async () => {
+      try {
+        setLoading(true);
+        const booksData = await getBooksList(subject);
+        
+        // Process books data to match UI structure
+        const processedBooks = booksData.map(book => ({
+          title: book.file_name,
+          author: 'NCERT', // You can add author field in Supabase if needed
+          type: 'Textbook',
+          storage_url: book.storage_url,
+          topics: [
+            {
+              id: book.topic,
+              name: book.topic,
+              color: getRandomColor()
+            }
+          ]
+        }));
+        
+        setBooks(processedBooks);
+      } catch (error) {
+        message.error(error.message || 'Failed to fetch books');
+      } finally {
+        setLoading(false);
       }
-    ],
-    chemistry: [
-      {
-        category: 'NCERT',
-        books: [
-          { 
-            title: 'NCERT Chemistry Class 11', 
-            author: 'NCERT', 
-            type: 'Textbook',
-            topics: [
-              { id: 'chemical_bonding', name: 'Chemical Bonding', color: 'from-blue-500 to-blue-700' },
-              { id: 'states_of_matter', name: 'States of Matter', color: 'from-indigo-500 to-indigo-700' },
-              { id: 'thermodynamics_chem', name: 'Thermodynamics', color: 'from-purple-500 to-purple-700' },
-              { id: 'equilibrium', name: 'Equilibrium', color: 'from-pink-500 to-pink-700' }
-            ]
-          },
-          { 
-            title: 'NCERT Chemistry Class 12', 
-            author: 'NCERT', 
-            type: 'Textbook',
-            topics: [
-              { id: 'solid_state', name: 'Solid State', color: 'from-red-500 to-red-700' },
-              { id: 'solutions', name: 'Solutions', color: 'from-orange-500 to-orange-700' },
-              { id: 'electrochemistry', name: 'Electrochemistry', color: 'from-yellow-500 to-yellow-700' },
-              { id: 'organic_chemistry', name: 'Organic Chemistry', color: 'from-green-500 to-green-700' }
-            ]
-          }
-        ]
-      }
-    ],
-    mathematics: [
-      {
-        category: 'NCERT',
-        books: [
-          { 
-            title: 'NCERT Mathematics Class 11', 
-            author: 'NCERT', 
-            type: 'Textbook',
-            topics: [
-              { id: 'sets_functions', name: 'Sets and Functions', color: 'from-blue-500 to-blue-700' },
-              { id: 'trigonometry', name: 'Trigonometry', color: 'from-indigo-500 to-indigo-700' },
-              { id: 'straight_lines', name: 'Straight Lines', color: 'from-purple-500 to-purple-700' },
-              { id: 'conic_sections', name: 'Conic Sections', color: 'from-pink-500 to-pink-700' }
-            ]
-          },
-          { 
-            title: 'NCERT Mathematics Class 12', 
-            author: 'NCERT', 
-            type: 'Textbook',
-            topics: [
-              { id: 'matrices', name: 'Matrices', color: 'from-red-500 to-red-700' },
-              { id: 'determinants', name: 'Determinants', color: 'from-orange-500 to-orange-700' },
-              { id: 'calculus', name: 'Calculus', color: 'from-yellow-500 to-yellow-700' },
-              { id: 'vector_algebra', name: 'Vector Algebra', color: 'from-green-500 to-green-700' }
-            ]
-          }
-        ]
-      }
-    ]
+    };
+
+    if (subject) {
+      fetchBooks();
+    }
+  }, [subject]);
+
+  const getRandomColor = () => {
+    const colors = [
+      'from-blue-500 to-blue-700',
+      'from-indigo-500 to-indigo-700',
+      'from-purple-500 to-purple-700',
+      'from-pink-500 to-pink-700',
+      'from-red-500 to-red-700',
+      'from-orange-500 to-orange-700',
+      'from-yellow-500 to-yellow-700',
+      'from-green-500 to-green-700'
+    ];
+    return colors[Math.floor(Math.random() * colors.length)];
   };
-
-  const books = bookCategories[subject]?.[0]?.books || [];
 
   const handleBookClick = (book) => {
     setSelectedBook(selectedBook?.title === book.title ? null : book);
   };
 
-  const handleTopicClick = (topicId) => {
-    navigate(`/dashboard/${subject}/books/${topicId}`);
+  const handleTopicClick = (book, topicId) => {
+    // Open PDF in a new tab or viewer component
+    if (book.storage_url) {
+      window.open(book.storage_url, '_blank');
+    } else {
+      message.warning('PDF URL not available');
+    }
   };
 
   const containerVariants = {
@@ -128,6 +93,14 @@ const BooksList = () => {
       }
     }
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-4 md:p-6 lg:p-8">
@@ -170,7 +143,7 @@ const BooksList = () => {
                 {book.topics.map((topic) => (
                   <motion.button
                     key={topic.id}
-                    onClick={() => handleTopicClick(topic.id)}
+                    onClick={() => handleTopicClick(book, topic.id)}
                     className={`w-full p-6 rounded-xl shadow-lg hover:shadow-2xl 
                               transition-all duration-300 bg-gradient-to-r ${topic.color}
                               flex items-center justify-between group`}
@@ -186,7 +159,7 @@ const BooksList = () => {
                           {topic.name}
                         </span>
                         <span className="text-sm text-gray-200 opacity-80">
-                          Start learning {topic.name.toLowerCase()}
+                          Click to view PDF
                         </span>
                       </div>
                     </div>

@@ -96,3 +96,26 @@ export const isAuthenticated = () => {
   }
 };
 
+// Books services
+export const getBooksList = async (subject, topic) => {
+  try {
+    const params = new URLSearchParams();
+    if (subject) params.append('subject', subject);
+    if (topic) params.append('topic', topic);
+    
+    const response = await apiInstance.get(`/books?${params.toString()}`);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || { message: "Failed to fetch books" };
+  }
+};
+
+export const getBookById = async (bookId) => {
+  try {
+    const response = await apiInstance.get(`/books/${bookId}`);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || { message: "Failed to fetch book details" };
+  }
+};
+

@@ -27,7 +27,17 @@ KeyboardShortcut.propTypes = {
   shortcut: PropTypes.string.isRequired
 };
 
-const ChatBot = ({ isOpen, setIsOpen, isFullScreen, setIsFullScreen, subject, topic, onResize }) => {
+const ChatBot = ({ 
+  isOpen, 
+  setIsOpen, 
+  isFullScreen, 
+  setIsFullScreen, 
+  subject, 
+  topic, 
+  selectedText,
+  setSelectedText,
+  onResize 
+}) => {
   const { user } = useAuthContext();
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState([]);
@@ -35,6 +45,9 @@ const ChatBot = ({ isOpen, setIsOpen, isFullScreen, setIsFullScreen, subject, to
   const [width, setWidth] = useState(450);
   const [isResizing, setIsResizing] = useState(false);
   const [pinnedImage, setPinnedImage] = useState(null);
+  const [pinnedText, setPinnedText] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [userProfile, setUserProfile] = useState(null);
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
   const inputRef = useRef(null);
@@ -42,6 +55,25 @@ const ChatBot = ({ isOpen, setIsOpen, isFullScreen, setIsFullScreen, subject, to
   const [isTyping, setIsTyping] = useState(false);
   const [currentTypingIndex, setCurrentTypingIndex] = useState(0);
   const [displayedResponse, setDisplayedResponse] = useState('');
+
+  // Effect to handle selected text
+  useEffect(() => {
+    if (selectedText && isOpen) {
+      setPinnedText(selectedText);
+      setSelectedText(''); // Clear the selection after using it
+      if (inputRef.current) {
+        inputRef.current.focus();
+      }
+    }
+  }, [selectedText, isOpen, setSelectedText]);
+
+  // Get user profile from localStorage
+  useEffect(() => {
+    const userData = localStorage.getItem('user');
+    if (userData) {
+      setUserProfile(JSON.parse(userData));
+    }
+  }, []);
 
   const helpButtons = [
     { type: "explain", icon: "📝", text: "Step-by-Step" },
@@ -150,14 +182,18 @@ const ChatBot = ({ isOpen, setIsOpen, isFullScreen, setIsFullScreen, subject, to
           content: "I'm sorry, I couldn't upload the image at the moment. Please try again."
         }]);
       }
+      // Reset file input to allow selecting the same file again
+      e.target.value = '';
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!message.trim() && !pinnedImage) return;
+    if (!message.trim() && !pinnedImage && !pinnedText) return;
 
+    let currentImage = null;
     if (pinnedImage) {
+      currentImage = pinnedImage.content;
       setMessages(prev => [...prev, {
         sender: 'user',
         type: 'image',
@@ -165,6 +201,15 @@ const ChatBot = ({ isOpen, setIsOpen, isFullScreen, setIsFullScreen, subject, to
         fileName: pinnedImage.fileName
       }]);
       setPinnedImage(null);
+    }
+
+    if (pinnedText) {
+      setMessages(prev => [...prev, {
+        sender: 'user',
+        type: 'text',
+        content: `Selected text: "${pinnedText}"`
+      }]);
+      setPinnedText(null);
     }
 
     if (message.trim()) {
@@ -176,15 +221,15 @@ const ChatBot = ({ isOpen, setIsOpen, isFullScreen, setIsFullScreen, subject, to
       setMessages(prev => [...prev, newMessage]);
     }
     setMessage('');
+    setIsLoading(true);
 
     try {
-      const lastImageMessage = [...messages].reverse().find(msg => msg.type === 'image');
-      
       const response = await aiService.askQuestion(message, {
         subject,
         topic,
         type: 'solve',
-        image: (pinnedImage?.content || lastImageMessage?.content)?.split(',')[1],
+        image: currentImage?.split(',')[1],
+        pinnedText: pinnedText,
         sessionId: user?.sessionId
       });
 
@@ -204,6 +249,8 @@ const ChatBot = ({ isOpen, setIsOpen, isFullScreen, setIsFullScreen, subject, to
         type: 'text',
         content: "I'm sorry, I couldn't process your message at the moment. Please try again."
       }]);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -215,6 +262,7 @@ const ChatBot = ({ isOpen, setIsOpen, isFullScreen, setIsFullScreen, subject, to
         content: `Help me with: ${type}`
       };
       setMessages(prev => [...prev, helpMessage]);
+      setIsLoading(true);
 
       const lastImageMessage = [...messages].reverse().find(msg => msg.type === 'image');
       
@@ -237,6 +285,8 @@ const ChatBot = ({ isOpen, setIsOpen, isFullScreen, setIsFullScreen, subject, to
         type: 'text',
         content: "I'm sorry, I couldn't process your request at the moment. Please try again."
       }]);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -270,7 +320,8 @@ const ChatBot = ({ isOpen, setIsOpen, isFullScreen, setIsFullScreen, subject, to
               <img 
                 src={msg.content} 
                 alt="Uploaded content" 
-                className="max-w-full rounded-lg"
+                className="max-w-full h-auto rounded-lg object-contain"
+                style={{ maxHeight: '300px' }}
               />
               <div className="mt-2 text-sm text-gray-300">
                 {msg.fileName}
@@ -286,11 +337,13 @@ const ChatBot = ({ isOpen, setIsOpen, isFullScreen, setIsFullScreen, subject, to
           )}
         </div>
 
-        {msg.sender === 'user' && (
-          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center ml-2">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-white" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
-            </svg>
+        {msg.sender === 'user' && userProfile?.picture && (
+          <div className="flex-shrink-0 w-8 h-8 rounded-full overflow-hidden ml-2">
+            <img 
+              src={userProfile.picture} 
+              alt={userProfile.name}
+              className="w-full h-full object-cover"
+            />
           </div>
         )}
       </div>
@@ -300,12 +353,19 @@ const ChatBot = ({ isOpen, setIsOpen, isFullScreen, setIsFullScreen, subject, to
   return (
     <div
       ref={resizeRef}
-      className={`fixed top-0 bottom-0 right-0 flex flex-col bg-gray-900 text-white rounded-tl-xl shadow-2xl transform transition-transform duration-300 ease-in-out ${
+      className={`fixed flex flex-col bg-gray-900 text-white shadow-2xl transform transition-all duration-300 ease-in-out ${
+        isFullScreen 
+          ? 'inset-0 rounded-none' 
+          : 'top-0 bottom-0 right-0 rounded-tl-xl'
+      } ${
         isOpen ? 'translate-x-0' : 'translate-x-full'
       }`}
-      style={{ width: `${width}px` }}
+      style={{ 
+        width: isFullScreen ? '100%' : `${width}px`,
+        zIndex: isFullScreen ? 60 : 50
+      }}
     >
-      {/* Resize Handle */}
+      {/* Resize Handle - Only show when not in fullscreen */}
       {!isFullScreen && (
         <>
           {isResizing && (
@@ -331,7 +391,7 @@ const ChatBot = ({ isOpen, setIsOpen, isFullScreen, setIsFullScreen, subject, to
       )}
 
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-gray-800">
+      <div className={`flex items-center justify-between p-4 border-b border-gray-800 ${isFullScreen ? 'px-6' : ''}`}>
         <div className="flex items-center space-x-3">
           <div className="flex flex-col">
             <h3 className="text-xl font-bold text-white">AI Study Assistant</h3>
@@ -358,7 +418,12 @@ const ChatBot = ({ isOpen, setIsOpen, isFullScreen, setIsFullScreen, subject, to
             )}
           </button>
           <button
-            onClick={() => setIsOpen(false)}
+            onClick={() => {
+              setIsOpen(false);
+              if (isFullScreen) {
+                setIsFullScreen(false);
+              }
+            }}
             className="p-1 text-gray-400 hover:text-white transition-colors"
             aria-label="Close chat"
           >
@@ -369,7 +434,7 @@ const ChatBot = ({ isOpen, setIsOpen, isFullScreen, setIsFullScreen, subject, to
 
       {/* Help Buttons */}
       {showHelpButtons && (
-        <div className="p-2 border-b border-gray-800 flex flex-wrap gap-2">
+        <div className={`p-2 border-b border-gray-800 flex flex-wrap gap-2 ${isFullScreen ? 'px-6' : ''}`}>
           {helpButtons.map((button) => (
             <button
               key={button.type}
@@ -387,14 +452,46 @@ const ChatBot = ({ isOpen, setIsOpen, isFullScreen, setIsFullScreen, subject, to
       )}
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 no-scrollbar [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+      <div className={`flex-1 overflow-y-auto p-4 no-scrollbar [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] ${isFullScreen ? 'px-6' : ''}`}>
         {messages.map(renderMessage)}
+        {isLoading && (
+          <div className="flex justify-start mb-4">
+            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-r from-purple-500 to-indigo-500 flex items-center justify-center mr-2">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-white" viewBox="0 0 20 20" fill="currentColor">
+                <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm0-2a6 6 0 100-12 6 6 0 000 12z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="bg-gradient-to-r from-gray-800 to-gray-900 rounded-lg p-4 shadow-xl">
+              <div className="flex space-x-2">
+                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+              </div>
+            </div>
+          </div>
+        )}
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input */}
-      <div className="p-4 border-t border-gray-700">
-        {/* Pinned Image Preview */}
+      {/* Input with Pinned Content */}
+      <div className={`p-4 border-t border-gray-700 ${isFullScreen ? 'px-6' : ''}`}>
+        {/* Pinned Text */}
+        {pinnedText && (
+          <div className="mb-3 flex items-center bg-gray-800 rounded-lg p-2">
+            <div className="flex-1 text-sm text-gray-300 line-clamp-2">
+              <span className="text-blue-400 font-medium">Selected text:</span> {pinnedText}
+            </div>
+            <button
+              onClick={() => setPinnedText(null)}
+              className="ml-2 p-1 hover:bg-gray-700 rounded-full transition-colors flex-shrink-0"
+            >
+              <XMarkIcon className="h-5 w-5 text-gray-400 hover:text-white" />
+            </button>
+          </div>
+        )}
+
+        {/* Pinned Image */}
         {pinnedImage && (
           <div className="mb-3 flex items-center bg-gray-800 rounded-lg p-2">
             <div className="relative w-12 h-12 flex-shrink-0">
@@ -435,7 +532,7 @@ const ChatBot = ({ isOpen, setIsOpen, isFullScreen, setIsFullScreen, subject, to
             </button>
             <button
               type="submit"
-              disabled={!message.trim() && !pinnedImage}
+              disabled={!message.trim() && !pinnedImage && !pinnedText}
               className="p-2 hover:bg-gray-700 rounded-full transition-colors disabled:opacity-50"
             >
               <PaperAirplaneIcon className="h-5 w-5 text-gray-400 hover:text-white" />
@@ -461,6 +558,8 @@ ChatBot.propTypes = {
   setIsFullScreen: PropTypes.func.isRequired,
   subject: PropTypes.string,
   topic: PropTypes.string,
+  selectedText: PropTypes.string,
+  setSelectedText: PropTypes.func,
   onResize: PropTypes.func
 };
 

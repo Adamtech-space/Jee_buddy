@@ -19,6 +19,52 @@ const supabase = createClient(
   }
 );
 
+const generateToken = (userId, email, name, sessionId, expires, type) => {
+  const payload = {
+    sub: userId,
+    email: email,
+    name: name,
+    sessionId: sessionId,
+    type: type,
+    iat: Math.floor(Date.now() / 1000),
+    exp: Math.floor(Date.now() / 1000) + expires,
+  };
+  return jwt.sign(payload, config.jwt.secret);
+};
+
+const generateAuthTokens = async (user) => {
+  const sessionId = await updateSessionId(user.id);
+  
+  const accessToken = generateToken(
+    user.id,
+    user.email,
+    user.user_metadata?.name || user.email,
+    sessionId,
+    config.jwt.accessExpirationMinutes * 60,
+    'access'
+  );
+
+  const refreshToken = generateToken(
+    user.id,
+    user.email,
+    user.user_metadata?.name || user.email,
+    sessionId,
+    config.jwt.refreshExpirationDays * 24 * 60 * 60,
+    'refresh'
+  );
+
+  return {
+    access: {
+      token: accessToken,
+      expires: new Date(Date.now() + config.jwt.accessExpirationMinutes * 60000),
+    },
+    refresh: {
+      token: refreshToken,
+      expires: new Date(Date.now() + config.jwt.refreshExpirationDays * 24 * 60 * 60000),
+    },
+  };
+};
+
 const generateSessionId = () => {
   return crypto.randomUUID();
 };
@@ -388,11 +434,53 @@ const logout = async (userId) => {
   await clearSessionId(userId);
 };
 
+const loginWithEmailAndPassword = async (email, password) => {
+  const { data: { user }, error } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
+
+  if (error) {
+    throw new ApiError(httpStatus.UNAUTHORIZED, 'Incorrect email or password');
+  }
+
+  return user;
+};
+
+const login = async (email, password) => {
+  const user = await loginWithEmailAndPassword(email, password);
+  const tokens = await generateAuthTokens(user);
+  return { user, tokens };
+};
+
+const refreshAuth = async (refreshToken) => {
+  try {
+    const payload = jwt.verify(refreshToken, config.jwt.secret);
+    
+    if (payload.type !== 'refresh') {
+      throw new ApiError(httpStatus.UNAUTHORIZED, 'Invalid token type');
+    }
+
+    const { data: { user }, error } = await supabase.auth.getUser(payload.sub);
+    
+    if (error || !user) {
+      throw new ApiError(httpStatus.UNAUTHORIZED, 'User not found');
+    }
+
+    return generateAuthTokens(user);
+  } catch (error) {
+    throw new ApiError(httpStatus.UNAUTHORIZED, 'Invalid refresh token');
+  }
+};
+
 module.exports = {
   createUser,
   getGoogleOAuthUrl,
   handleGoogleCallback,
   logout,
   updateSessionId,
-  clearSessionId
+  clearSessionId,
+  loginWithEmailAndPassword,
+  login,
+  refreshAuth
 }; 
