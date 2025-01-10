@@ -17,7 +17,7 @@ class MathAgent:
     def __init__(self):
         self.llm = ChatOpenAI(
             temperature=0.7,
-            model="gpt-4o-mini",
+            model="gpt-4o",
             max_tokens=1000,
             api_key=os.getenv('OPENAI_API_KEY')
         )
