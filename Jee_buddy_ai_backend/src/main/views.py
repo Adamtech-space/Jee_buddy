@@ -8,7 +8,6 @@ import logging
 import json
 from .models import ChatHistory
 import base64
-import time
 
 logger = logging.getLogger(__name__)
 
@@ -33,11 +32,7 @@ def solve_math_problem(request):
             except json.JSONDecodeError:
                 context_data = {}
         
-        # Ensure session_id is never null
-        session_id = context_data.get('session_id')
-        if not session_id:
-            session_id = f"session_{int(time.time())}"
-            context_data['session_id'] = session_id
+        session_id = context_data.get('session_id', 'default')
         
         # Handle image if present
         image = request.FILES.get('image')
@@ -112,83 +107,3 @@ def solve_math_problem(request):
             'details': 'An unexpected error occurred while processing your request.'
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-# @api_view(['GET'])
-# def test_db_connection(request):
-#     try:
-#         # Test pooled connection
-#         pooled_conn = connections['default']
-#         with pooled_conn.cursor() as cursor:
-#             cursor.execute('SELECT version();')
-#             db_version = cursor.fetchone()
-            
-#             # Test a simple query
-#             cursor.execute('''
-#                 SELECT COUNT(*) 
-#                 FROM information_schema.tables 
-#                 WHERE table_schema = 'public';
-#             ''')
-#             table_count = cursor.fetchone()[0]
-        
-#         return Response({
-#             "status": "Database connection successful",
-#             "database_version": db_version[0],
-#             "table_count": table_count,
-#             "connection_info": {
-#                 "host": pooled_conn.get_connection_params()['host'],
-#                 "database": pooled_conn.get_connection_params()['database'],
-#                 "port": pooled_conn.get_connection_params()['port']
-#             }
-#         })
-#     except OperationalError as e:
-#         logger.error(f"Database connection error: {str(e)}", exc_info=True)
-#         return Response(
-#             {
-#                 "error": "Unable to connect to the database.",
-#                 "details": str(e)
-#             }, 
-#             status=status.HTTP_500_INTERNAL_SERVER_ERROR
-#         )
-#     except Exception as e:
-#         logger.error(f"Unexpected error: {str(e)}", exc_info=True)
-#         return Response(
-#             {
-#                 "error": "An unexpected error occurred",
-#                 "details": str(e)
-#             }, 
-#             status=status.HTTP_500_INTERNAL_SERVER_ERROR
-#         )
-
-
-from rest_framework.decorators import api_view
-from rest_framework.response import Response
-from django.db import connections
-import time
-
-@api_view(['GET'])
-def get_current_profile(request):
-    """Get current user profile from Supabase profiles table"""
-    try:
-        # For now, return a default session ID if user is not authenticated
-        default_session = f"session_{int(time.time())}"
-        return Response({
-            'id': 'default_user',
-            'current_session_id': default_session
-        })
-        
-        # TODO: Implement proper authentication later
-        # with connections['default'].cursor() as cursor:
-        #     cursor.execute("""
-        #         SELECT id, current_session_id 
-        #         FROM profiles 
-        #         WHERE id = %s
-        #     """, [request.user.id])
-        #     row = cursor.fetchone()
-            
-        #     if row:
-        #         return Response({
-        #             'id': row[0],
-        #             'current_session_id': row[1]
-        #         })
-        #     return Response({'error': 'Profile not found'}, status=404)
-    except Exception as e:
-        return Response({'error': str(e)}, status=500)
