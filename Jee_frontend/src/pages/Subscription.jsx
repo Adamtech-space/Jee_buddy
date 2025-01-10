@@ -1,76 +1,165 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
 
 const Subscription = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-  const [chatCount, setChatCount] = useState(0);
   const [isSubscribed, setIsSubscribed] = useState(false);
+  const [subscriptionData, setSubscriptionData] = useState(null);
+
+  const loadScript = (src) => {
+    return new Promise((resolve) => {
+      const script = document.createElement("script");
+      script.src = src;
+      script.onload = () => {
+        resolve(true);
+      };
+      script.onerror = () => {
+        resolve(false);
+      };
+      document.body.appendChild(script);
+    });
+  };
 
   useEffect(() => {
-    // Check subscription status and chat count
-    const checkStatus = async () => {
-      try {
-        const response = await axios.get('/v1/subscription/status');
-        setIsSubscribed(response.data.isSubscribed);
-        setChatCount(response.data.chatCount);
-      } catch (error) {
-        console.error('Failed to check subscription status:', error);
-      }
-    };
-
-    checkStatus();
+    loadScript("https://checkout.razorpay.com/v1/checkout.js");
+    const userId = localStorage.getItem('uuid');
+    console.log('Current user ID:', userId);
+    if (!userId) {
+      console.warn('No user ID found in localStorage');
+      // You might want to redirect to login here
+      // navigate('/login');
+    }
+    checkSubscriptionStatus();
   }, []);
 
-  const handlePayment = async () => {
+  const checkSubscriptionStatus = async () => {
+    try {
+      const userId = localStorage.getItem('uuid');
+      const response = await fetch(`http://127.0.0.1:8000/api/subscription/status/?user_id=${userId}`);
+      const data = await response.json();
+      
+      if (data.status === 'success') {
+        setIsSubscribed(data.is_subscribed);
+        setSubscriptionData(data);
+      }
+    } catch (error) {
+      console.error('Failed to check subscription status:', error);
+    }
+  };
+
+  const handlePayment = async (price, product_name, plan_id) => {
     try {
       setLoading(true);
+      console.log('Starting payment process...');
       
-      // Create order
-      const orderResponse = await axios.post('/v1/subscription/create-order', {
-        amount: 499 * 100, // Amount in paise
+      const userId = localStorage.getItem('uuid');
+      if (!userId) {
+        alert('Please login first');
+        return;
+      }
+
+      const requestData = {
+        price,
+        product_name,
+        plan_id,
+        user_id: userId
+      };
+
+      console.log('Sending request with data:', requestData);
+
+      const response = await fetch('http://127.0.0.1:8000/api/subscription/create/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(requestData)
       });
 
-      const options = {
-        key: process.env.REACT_APP_RAZORPAY_KEY_ID,
-        amount: orderResponse.data.amount,
-        currency: "INR",
-        name: "JEE AI Assistant",
-        description: "Premium Subscription",
-        order_id: orderResponse.data.id,
-        handler: async (response) => {
-          try {
-            // Verify payment
-            await axios.post('/v1/subscription/verify-payment', {
-              razorpay_payment_id: response.razorpay_payment_id,
-              razorpay_order_id: response.razorpay_order_id,
-              razorpay_signature: response.razorpay_signature,
-            });
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Server error:', errorText);
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
 
-            setIsSubscribed(true);
-            navigate('/dashboard');
-          } catch (error) {
-            console.error('Payment verification failed:', error);
-            alert('Payment verification failed. Please contact support.');
-          }
-        },
+      console.log('Response status:', response.status);
+      const data = await response.json();
+      console.log('Response data:', data);
+
+      if (!data.razorpay_key || !data.order) {
+        throw new Error('Invalid response from server');
+      }
+      
+      const options = {
+        key: data.razorpay_key,
+        amount: data.order.amount,
+        currency: "INR",
+        name: data.product_name,
+        subscription_id: data.order.id,
+        callback_url: data.callback_url,
         prefill: {
-          name: "User",
-          email: localStorage.getItem('userEmail'),
+          email: localStorage.getItem('userEmail') || '',
+          contact: ''
+        },
+        notes: {
+          user_id: userId
+        },
+        handler: function(response) {
+          console.log('Payment success:', response);
+          verifyPayment(response);
+        },
+        modal: {
+          ondismiss: function() {
+            console.log('Payment modal closed');
+            setLoading(false);
+          }
         },
         theme: {
           color: "#3B82F6"
         }
       };
 
+      console.log('Razorpay options:', options);
       const razorpay = new window.Razorpay(options);
       razorpay.open();
     } catch (error) {
-      console.error('Failed to initiate payment:', error);
+      console.error('Payment error:', error);
       alert('Failed to initiate payment. Please try again.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const verifyPayment = async (paymentResponse) => {
+    try {
+      const response = await fetch('http://127.0.0.1:8000/api/subscription/callback/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({
+          razorpay_payment_id: paymentResponse.razorpay_payment_id,
+          razorpay_subscription_id: paymentResponse.razorpay_subscription_id,
+          razorpay_signature: paymentResponse.razorpay_signature,
+          user_id: localStorage.getItem('uuid')
+        })
+      });
+
+      const data = await response.json();
+      console.log('Verification response:', data);
+
+      if (data.status === 'success') {
+        setIsSubscribed(true);
+        alert('Payment successful! You are now subscribed.');
+        navigate('/dashboard');
+      } else {
+        alert('Payment verification failed. Please contact support.');
+      }
+    } catch (error) {
+      console.error('Verification error:', error);
+      alert('Payment verification failed. Please contact support.');
     }
   };
 
@@ -79,14 +168,13 @@ const Subscription = () => {
       <div className="max-w-md w-full bg-gray-900 rounded-2xl shadow-xl p-8">
         <div className="text-center mb-8">
           <h2 className="text-3xl font-bold text-white mb-4">Premium Access</h2>
-          <p className="text-gray-400">
-            {isSubscribed 
-              ? "You have premium access!"
-              : chatCount >= 5 
-                ? "Upgrade to continue chatting"
-                : `${5 - chatCount} free chats remaining`
-            }
-          </p>
+          {isSubscribed && (
+            <p className="text-green-400 mb-4">
+              You are currently subscribed!
+              <br />
+              Subscription ID: {subscriptionData?.subscription_id}
+            </p>
+          )}
         </div>
 
         <div className="bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl p-6 mb-8">
@@ -107,14 +195,10 @@ const Subscription = () => {
               <span className="mr-2">✓</span>
               Personalized Study Plans
             </li>
-            <li className="flex items-center text-white">
-              <span className="mr-2">✓</span>
-              Priority Support
-            </li>
           </ul>
           {!isSubscribed && (
             <button
-              onClick={handlePayment}
+              onClick={() => handlePayment(499, "JEE AI Premium", "plan_MtHhFwXXEAQhXa")}
               disabled={loading}
               className={`w-full py-3 px-4 rounded-lg bg-white text-blue-600 font-bold hover:bg-gray-100 
                         transition-colors ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
@@ -122,18 +206,16 @@ const Subscription = () => {
               {loading ? 'Processing...' : 'Subscribe Now'}
             </button>
           )}
-        </div>
-
-        {isSubscribed && (
-          <div className="text-center">
+          {isSubscribed && (
             <button
               onClick={() => navigate('/dashboard')}
-              className="text-blue-400 hover:text-blue-300 transition-colors"
+              className="w-full py-3 px-4 rounded-lg bg-green-500 text-white font-bold hover:bg-green-600 
+                        transition-colors"
             >
-              Return to Dashboard
+              Go to Dashboard
             </button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );

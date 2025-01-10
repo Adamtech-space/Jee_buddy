@@ -35,7 +35,7 @@ DEBUG = True
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']  # For development only
 
 
 # Application definition
@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'main',
     'user',
+    'subscription',
 ]
 
 
@@ -78,33 +79,8 @@ REST_FRAMEWORK = {
 # CORS settings
 CORS_ALLOW_ALL_ORIGINS = True  # For development only
 CORS_ALLOW_CREDENTIALS = True
-
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",  # Vite's default port
-    "http://127.0.0.1:5173",
-    "http://localhost:3000",  # In case you switch to port 3000
-    "http://127.0.0.1:3000",
-]
-
-CORS_ALLOW_METHODS = [
-    'DELETE',
-    'GET',
-    'OPTIONS',
-    'PATCH',
-    'POST',
-    'PUT',
-]
-
 CORS_ALLOW_HEADERS = [
-    'accept',
-    'accept-encoding',
-    'authorization',
-    'content-type',
-    'dnt',
-    'origin',
-    'user-agent',
-    'x-csrftoken',
-    'x-requested-with',
+    '*'
 ]
 
 # Remove any duplicate INSTALLED_APPS

@@ -1,41 +1,46 @@
 import aiInstance from './aiAxios';
 
 export const aiService = {
+  async getCurrentProfile() {
+    try {
+      const userId = localStorage.getItem('uuid');
+      if (!userId) {
+        throw new Error('No user ID found');
+      }
+
+      const response = await aiInstance.get('api/profile/', {
+        headers: {
+          'X-User-Id': userId
+        }
+      });
+      
+      const profile = response.data;
+      localStorage.setItem('uuid', profile.uuid);
+      localStorage.setItem('current_session_id', profile.current_session_id);
+      
+      return profile;
+    } catch (error) {
+      console.error('Failed to fetch profile:', error);
+      throw error;
+    }
+  },
+
   async askQuestion(message, context) {
     try {
-      // Get current user ID and session ID from profile
-      const currentUserId = localStorage.getItem('uuid') || context.uuid;
-      const currentSessionId = localStorage.getItem('current_session_id');
+      // Ensure we have current profile info
+      let currentUserId = localStorage.getItem('uuid');
+      let currentSessionId = localStorage.getItem('current_session_id');
 
       if (!currentUserId || !currentSessionId) {
-        // Fetch from profile if not in localStorage
-        try {
-          const profileResponse = await aiInstance.get('api/profile/');
-          const profile = profileResponse.data;
-          
-          // Generate a default session ID if none exists
-          const sessionId = profile.current_session_id;
-          const userId = profile.id;
-          
-          localStorage.setItem('uuid', userId);
-          localStorage.setItem('current_session_id', sessionId);
-          
-          // Update the current values
-          currentUserId = userId;
-          currentSessionId = sessionId;
-        } catch (error) {
-          console.error('Failed to fetch profile:', error);
-          // Set default session ID if profile fetch fails
-          const defaultSessionId = `session_${Date.now()}`;
-          localStorage.setItem('current_session_id', defaultSessionId);
-          currentSessionId = defaultSessionId;
-        }
+        const profile = await this.getCurrentProfile();
+        currentUserId = profile.uuid;
+        currentSessionId = profile.current_session_id;
       }
 
       const requestData = {
         question: message,
         context: {
-          user_id: currentUserId || 'default_user',
+          user_id: currentUserId,
           session_id: currentSessionId,
           subject: context.subject || '',
           topic: context.topic || '',
@@ -44,7 +49,7 @@ export const aiService = {
           selectedText: context.selectedText || '',
           image: context.image || null,
           history_limit: 100,
-          chat_history: [] // The backend will fetch history based on user_id
+          chat_history: context.chatHistory || []
         }
       };
 
@@ -60,8 +65,20 @@ export const aiService = {
 
   async getHelpResponse(type, context) {
     try {
-      const currentUserId = localStorage.getItem('uuid');
-      const currentSessionId = localStorage.getItem('current_session_id');
+      // Ensure we have current profile info
+      let currentUserId = localStorage.getItem('uuid');
+      let currentSessionId = localStorage.getItem('current_session_id');
+
+      if (!currentUserId || !currentSessionId) {
+        const profile = await this.getCurrentProfile();
+        currentUserId = profile.uuid;
+        currentSessionId = profile.current_session_id;
+      }
+
+      // Combine pinnedText and selectedText
+      const combinedPinnedText = [context.pinnedText, context.selectedText]
+        .filter(text => text)
+        .join('\n\n');
 
       const response = await aiInstance.post('api/solve-math/', {
         question: `Help me with: ${type}`,
@@ -70,7 +87,7 @@ export const aiService = {
           session_id: currentSessionId,
           subject: context.subject || '',
           topic: context.topic || '',
-          pinnedText: context.pinnedText || '',
+          pinnedText: combinedPinnedText,
           image: context.image || null,
           history_limit: 100
         }
@@ -84,13 +101,24 @@ export const aiService = {
 
   async analyzeFile(file, context) {
     try {
+      // Ensure we have current profile info
+      let currentUserId = localStorage.getItem('uuid');
+      let currentSessionId = localStorage.getItem('current_session_id');
+
+      if (!currentUserId || !currentSessionId) {
+        const profile = await this.getCurrentProfile();
+        currentUserId = profile.uuid;
+        currentSessionId = profile.current_session_id;
+      }
+
       // Convert file to base64
       const base64File = await this._fileToBase64(file);
 
       const response = await aiInstance.post('api/solve-math/', {
         question: `Analyze this image: ${file.name}`,
         context: {
-          session_id: context.sessionId || localStorage.getItem('sessionId') || 'default',
+          user_id: currentUserId,
+          session_id: currentSessionId,
           interaction_type: 'analyze',
           subject: context.subject || '',
           topic: context.topic || '',
