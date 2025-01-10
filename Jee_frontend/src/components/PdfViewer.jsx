@@ -1,43 +1,15 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams, useLocation, useOutletContext } from 'react-router-dom';
 import { message, Popover } from 'antd';
-import { ArrowLeftOutlined, SaveOutlined, RobotOutlined } from '@ant-design/icons';
+import { ArrowLeftOutlined, SaveOutlined } from '@ant-design/icons';
 import { Viewer, Worker } from '@react-pdf-viewer/core';
 import { defaultLayoutPlugin } from '@react-pdf-viewer/default-layout';
 import { saveFlashCard } from '../interceptors/services';
-import PropTypes from 'prop-types';
+import SelectionPopup from './SelectionPopup';
 
 // Import styles
 import '@react-pdf-viewer/core/lib/styles/index.css';
 import '@react-pdf-viewer/default-layout/lib/styles/index.css';
-
-const SelectionPopup = ({ selectedText, onSaveToFlashCard, onAskAI }) => (
-  <div className="flex flex-col space-y-2 p-2">
-    <div className="text-sm text-gray-500 mb-2 max-w-xs overflow-hidden text-ellipsis">
-      {selectedText.length > 100 ? `${selectedText.substring(0, 100)}...` : selectedText}
-    </div>
-    <button
-      onClick={onSaveToFlashCard}
-      className="flex items-center px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
-    >
-      <SaveOutlined className="mr-2" />
-      Save to Flash Cards
-    </button>
-    <button
-      onClick={onAskAI}
-      className="flex items-center px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition-colors"
-    >
-      <RobotOutlined className="mr-2" />
-      Ask AI
-    </button>
-  </div>
-);
-
-SelectionPopup.propTypes = {
-  selectedText: PropTypes.string.isRequired,
-  onSaveToFlashCard: PropTypes.func.isRequired,
-  onAskAI: PropTypes.func.isRequired
-};
 
 const PdfViewer = () => {
   const { subject, pdfUrl: encodedUrl } = useParams();
@@ -64,7 +36,6 @@ const PdfViewer = () => {
       navigate(`/dashboard/${subject}/books`);
     } else {
       setLoading(true);
-      console.log('Attempting to load PDF from:', pdfUrl);
 
       // Check if the PDF URL is accessible
       fetch(pdfUrl, { 
@@ -75,7 +46,6 @@ const PdfViewer = () => {
       })
       .then(response => {
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-        console.log('PDF URL is accessible');
         setLoading(false);
       })
       .catch(err => {
@@ -110,6 +80,7 @@ const PdfViewer = () => {
   }, []);
 
   const handleSaveToFlashCard = async () => {
+    const hide = message.loading('Saving to flash cards...', 0);
     try {
       await saveFlashCard({
         subject,
@@ -117,10 +88,20 @@ const PdfViewer = () => {
         content: selectedText,
         source: pdfTitle
       });
-      message.success('Saved to flash cards');
+      hide();
+      message.success({
+        content: 'Successfully saved to flash cards!',
+        icon: <SaveOutlined style={{ color: '#52c41a' }} />,
+        duration: 3
+      });
       setPopoverVisible(false);
     } catch (error) {
-      message.error('Failed to save to flash cards');
+      hide();
+      console.error('Error saving flashcard:', error);
+      message.error({
+        content: 'Failed to save to flash cards',
+        duration: 3
+      });
     }
   };
 
@@ -182,7 +163,6 @@ const PdfViewer = () => {
         }
         trigger="click"
         destroyTooltipOnHide
-        visible={popoverVisible}
         overlayStyle={{
           position: 'fixed',
           left: `${mousePosition.x}px`,

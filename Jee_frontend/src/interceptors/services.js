@@ -121,8 +121,13 @@ export const getBookById = async (bookId) => {
 
 // Flash Cards Services
 export const saveFlashCard = async (data) => {
-  const response = await apiInstance.post('/flashcards/saveFlashCard', data);
-  return response.data;
+  try {
+    const response = await apiInstance.post('/flashcards/saveFlashCard', data);
+    return response.data;
+  } catch (error) {
+    console.error('Save flashcard error:', error);
+    throw error.response?.data || { message: 'Failed to save flash card' };
+  }
 };
 
 export const getFlashCards = async (subject) => {
@@ -138,5 +143,73 @@ export const updateFlashCard = async (cardId, data) => {
 export const deleteFlashCard = async (cardId) => {
   const response = await apiInstance.delete(`/flashcards/deleteFlashCard/${cardId}`);
   return response.data;
+};
+
+// Study Materials services
+export const createFolder = async (data) => {
+  try {
+    const response = await apiInstance.post('/study-materials/folders', data);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || { message: 'Failed to create folder' };
+  }
+};
+
+export const uploadFiles = async (files, parentId = null) => {
+  try {
+    const formData = new FormData();
+    formData.append('file', files[0]); // Currently handling single file
+    if (parentId) {
+      formData.append('parentId', parentId);
+    }
+
+    const response = await apiInstance.post('/study-materials/files', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || { message: 'Failed to upload file' };
+  }
+};
+
+export const getStudyMaterials = async (parentId = null) => {
+  try {
+    const params = new URLSearchParams();
+    if (parentId) params.append('parentId', parentId);
+    
+    const response = await apiInstance.get(`/study-materials?${params.toString()}`);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || { message: 'Failed to fetch study materials' };
+  }
+};
+
+export const deleteStudyMaterial = async (itemId) => {
+  try {
+    const response = await apiInstance.delete(`/study-materials/${itemId}`);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || { message: 'Failed to delete item' };
+  }
+};
+
+export const renameStudyMaterial = async (itemId, name) => {
+  try {
+    const response = await apiInstance.put(`/study-materials/${itemId}`, { name });
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || { message: 'Failed to rename item' };
+  }
+};
+
+export const getFileDownloadUrl = async (itemId) => {
+  try {
+    const response = await apiInstance.get(`/study-materials/files/${itemId}/download`);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || { message: 'Failed to get download URL' };
+  }
 };
 

@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
+import { message } from 'antd';
 import { 
   CloudArrowUpIcon, 
   DocumentIcon, 
@@ -10,26 +11,19 @@ import {
   ChevronRightIcon,
   HomeIcon
 } from '@heroicons/react/24/outline';
+import {
+  createFolder,
+  uploadFiles,
+  getStudyMaterials,
+  deleteStudyMaterial,
+  renameStudyMaterial,
+  getFileDownloadUrl
+} from '../interceptors/services';
 
 const StudyMaterials = () => {
   const { subject } = useParams();
-  const [items, setItems] = useState([
-    { 
-      id: '1', 
-      type: 'folder',
-      name: 'Important Notes',
-      parentId: null
-    },
-    { 
-      id: '2', 
-      type: 'file',
-      name: 'Chapter 1 Notes.pdf', 
-      size: '1.1 MB', 
-      date: new Date(),
-      parentId: null
-    }
-  ]);
-
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(false);
   const [currentFolder, setCurrentFolder] = useState({
     id: null,
     path: []
@@ -38,9 +32,26 @@ const StudyMaterials = () => {
   const [newFolderName, setNewFolderName] = useState('');
   const [editingItem, setEditingItem] = useState(null);
 
+  // Fetch items when folder changes
+  useEffect(() => {
+    fetchItems();
+  }, [currentFolder.id]);
+
+  const fetchItems = async () => {
+    try {
+      setLoading(true);
+      const response = await getStudyMaterials(currentFolder.id);
+      setItems(response.data);
+    } catch (error) {
+      message.error(error.message || 'Failed to fetch items');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Get current folder's items
   const getCurrentFolderItems = () => {
-    return items.filter(item => item.parentId === currentFolder.id);
+    return items;
   };
 
   // Navigate to folder
@@ -54,11 +65,11 @@ const StudyMaterials = () => {
       const item = items.find(i => i.id === itemId);
       if (!item) return [];
       
-      if (!item.parentId) {
+      if (!item.parent_id) {
         return [{ id: item.id, name: item.name }];
       }
 
-      return [...buildPath(item.parentId), { id: item.id, name: item.name }];
+      return [...buildPath(item.parent_id), { id: item.id, name: item.name }];
     };
 
     const path = buildPath(folderId);
@@ -66,33 +77,36 @@ const StudyMaterials = () => {
   };
 
   // Create new folder
-  const handleCreateFolder = () => {
+  const handleCreateFolder = async () => {
     if (!newFolderName.trim()) return;
 
-    const newFolder = {
-      id: Date.now().toString(),
-      type: 'folder',
-      name: newFolderName,
-      parentId: currentFolder.id
-    };
+    try {
+      const response = await createFolder({
+        name: newFolderName,
+        parentId: currentFolder.id
+      });
 
-    setItems(prev => [...prev, newFolder]);
-    setNewFolderName('');
-    setIsCreatingFolder(false);
+      message.success('Folder created successfully');
+      await fetchItems();
+      setNewFolderName('');
+      setIsCreatingFolder(false);
+    } catch (error) {
+      message.error(error.message || 'Failed to create folder');
+    }
   };
 
   // Handle file upload
-  const handleFileUpload = (event) => {
-    const files = Array.from(event.target.files).map(file => ({
-      id: Date.now().toString(),
-      type: 'file',
-      name: file.name,
-      size: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
-      date: new Date(),
-      parentId: currentFolder.id
-    }));
+  const handleFileUpload = async (event) => {
+    const files = Array.from(event.target.files);
+    if (!files.length) return;
 
-    setItems(prev => [...prev, ...files]);
+    try {
+      const response = await uploadFiles(files, currentFolder.id);
+      message.success('File uploaded successfully');
+      await fetchItems();
+    } catch (error) {
+      message.error(error.message || 'Failed to upload file');
+    }
 
     if (event.target) {
       event.target.value = '';
@@ -100,30 +114,40 @@ const StudyMaterials = () => {
   };
 
   // Delete item and its children
-  const handleDelete = (itemId) => {
-    const deleteItemAndChildren = (id) => {
-      const childrenIds = items
-        .filter(item => item.parentId === id)
-        .map(item => item.id);
-      
-      childrenIds.forEach(childId => {
-        deleteItemAndChildren(childId);
-      });
-
-      setItems(prev => prev.filter(item => item.id !== id));
-    };
-
-    deleteItemAndChildren(itemId);
+  const handleDelete = async (itemId) => {
+    try {
+      await deleteStudyMaterial(itemId);
+      message.success('Item deleted successfully');
+      await fetchItems();
+    } catch (error) {
+      message.error(error.message || 'Failed to delete item');
+    }
   };
 
   // Rename item
-  const handleRename = (itemId, newName) => {
+  const handleRename = async (itemId, newName) => {
     if (!newName.trim()) return;
     
-    setItems(prev => prev.map(item => 
-      item.id === itemId ? { ...item, name: newName } : item
-    ));
-    setEditingItem(null);
+    try {
+      await renameStudyMaterial(itemId, newName);
+      message.success('Item renamed successfully');
+      await fetchItems();
+      setEditingItem(null);
+    } catch (error) {
+      message.error(error.message || 'Failed to rename item');
+    }
+  };
+
+  // Handle file download
+  const handleFileDownload = async (item) => {
+    if (item.type !== 'file') return;
+
+    try {
+      const response = await getFileDownloadUrl(item.id);
+      window.open(response.data.signedUrl, '_blank');
+    } catch (error) {
+      message.error(error.message || 'Failed to download file');
+    }
   };
 
   // Render breadcrumb navigation
@@ -157,6 +181,14 @@ const StudyMaterials = () => {
   const renderItems = () => {
     const currentItems = getCurrentFolderItems();
 
+    if (loading) {
+      return <div className="text-white text-center py-4">Loading...</div>;
+    }
+
+    if (!currentItems.length) {
+      return <div className="text-gray-400 text-center py-4">No items found</div>;
+    }
+
     return (
       <div className="space-y-1">
         {currentItems.map(item => (
@@ -165,9 +197,8 @@ const StudyMaterials = () => {
             className="flex items-center justify-between p-3 hover:bg-gray-800 rounded-lg group"
           >
             <div 
-              className="flex items-center space-x-3 flex-1 text-white"
-              onClick={() => item.type === 'folder' && navigateToFolder(item.id)}
-              style={{ cursor: item.type === 'folder' ? 'pointer' : 'default' }}
+              className="flex items-center space-x-3 flex-1 text-white cursor-pointer"
+              onClick={() => item.type === 'folder' ? navigateToFolder(item.id) : handleFileDownload(item)}
             >
               {item.type === 'folder' ? (
                 <FolderIcon className="w-5 h-5 text-blue-400" />
@@ -190,7 +221,7 @@ const StudyMaterials = () => {
                   <p className="font-medium">{item.name}</p>
                   {item.type === 'file' && (
                     <p className="text-sm text-gray-400">
-                      {item.size} • {item.date.toLocaleDateString()}
+                      {(item.file_size / (1024 * 1024)).toFixed(1)} MB • {new Date(item.created_at).toLocaleDateString()}
                     </p>
                   )}
                 </div>
@@ -211,7 +242,7 @@ const StudyMaterials = () => {
                 title="Delete"
               >
                 <TrashIcon className="w-4 h-4" />
-            </button>
+              </button>
             </div>
           </div>
         ))}
@@ -238,7 +269,7 @@ const StudyMaterials = () => {
               className="hidden"
               onChange={handleFileUpload}
               multiple
-              accept=".pdf,.doc,.docx,.txt"
+              accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png"
             />
             <label 
               htmlFor="file-upload"
@@ -278,8 +309,8 @@ const StudyMaterials = () => {
             >
               Cancel
             </button>
-        </div>
-      )}
+          </div>
+        )}
       </div>
       
       <div className="flex-1 overflow-y-auto p-4">
