@@ -13,6 +13,10 @@
     ],
     "routes": [
         {
+            "src": "/static/(.*)",
+            "dest": "/src/static/$1"
+        },
+        {
             "src": "/(.*)",
             "dest": "src/wsgi.py"
         }
@@ -21,8 +25,9 @@
         "RAZORPAY_KEY_ID": "rzp_test_ALQVkV4FTktqvh",
         "RAZORPAY_KEY_SECRET": "UqRhiHj1x9qoSmSEYi6khUKk",
         "DJANGO_SETTINGS_MODULE": "src.settings",
-        "ALLOWED_HOSTS": ".vercel.app",
+        "ALLOWED_HOSTS": ".vercel.app,localhost,127.0.0.1",
         "PYTHON_VERSION": "3.9",
-        "DEBUG": "True"
+        "DEBUG": "True",
+        "PYTHONPATH": "/var/task/src"
     }
 }
