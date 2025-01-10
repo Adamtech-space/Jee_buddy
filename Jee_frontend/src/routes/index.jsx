@@ -1,5 +1,4 @@
 import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
-import PropTypes from 'prop-types';
 
 // Layout
 import DefaultLayout from '../components/layouts/DefaultLayout';
@@ -17,7 +16,6 @@ import AuthCallback from '../pages/auth/callback';
 import BooksList from '../components/BooksList';
 import TopicContent from '../components/TopicContent';
 import FlashCards from '../components/FlashCards';
-import SavedNotes from '../components/SavedNotes';
 import StudyMaterials from '../components/StudyMaterials';
 
 // settings with subscription components
@@ -41,7 +39,7 @@ const ProtectedRoute = () => {
   return <Outlet />;
 };
 
-const AppRoutes = ({ quote }) => {
+const AppRoutes = () => {
   const isAuthenticated = localStorage.getItem('tokens') && localStorage.getItem('user');
 
   return (
@@ -51,15 +49,9 @@ const AppRoutes = ({ quote }) => {
         isAuthenticated ? (
           <Navigate to="/subject-selection" replace />
         ) : (
-          // <DefaultLayout>
-          //   <Hero quote={quote} />
-          //   <Features />
-          //   <StudyResources />
-          //   <Demo />
-            // </DefaultLayout>
-            <>
+          <>
             <Jeebuddy/>
-            </>
+          </>
         )
       } />
 
@@ -91,7 +83,6 @@ const AppRoutes = ({ quote }) => {
           <Route path="books" element={<BooksList />} />
           <Route path="books/:topicId" element={<TopicContent />} />
           <Route path="flashcards" element={<FlashCards />} />
-          <Route path="notes" element={<SavedNotes />} />
           <Route path="materials" element={<StudyMaterials />} />
           <Route path="pdf/:pdfUrl" element={<PdfViewer />} />
           <Route path="topic/:topicId" element={<TopicContent />} />
@@ -104,13 +95,6 @@ const AppRoutes = ({ quote }) => {
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
-};
-
-AppRoutes.propTypes = {
-  quote: PropTypes.shape({
-    text: PropTypes.string.isRequired,
-    author: PropTypes.string.isRequired
-  }).isRequired
 };
 
 export default AppRoutes;

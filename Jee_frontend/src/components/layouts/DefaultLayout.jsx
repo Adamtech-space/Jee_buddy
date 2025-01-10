@@ -30,7 +30,7 @@ const Sidebar = ({ isMobileOpen, setIsMobileOpen }) => {
   const menuItems = [
     { icon: "📚", label: "Books", path: "books" },
     { icon: "🗂️", label: "Flash Cards", path: "flashcards" },
-    // { icon: "📝", label: "Saved Notes", path: "notes" },
+    { icon: "📝", label: "Saved Notes", path: "notes" },
     { icon: "📑", label: "Study Materials", path: "materials" }
   ];
 
@@ -107,7 +107,7 @@ Sidebar.propTypes = {
   setIsMobileOpen: PropTypes.func.isRequired
 };
 
-const DefaultLayout = () => {
+const DefaultLayout = ({ children }) => {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
@@ -181,7 +181,11 @@ const DefaultLayout = () => {
           }}
         >
           <div className="h-full max-w-full">
-            <Outlet context={{ setSelectedText, setIsChatOpen, isChatOpen }} />
+            {location.pathname.includes('/dashboard') ? (
+              <Outlet context={{ setSelectedText, setIsChatOpen, isChatOpen }} />
+            ) : (
+              children
+            )}
           </div>
         </main>
 
@@ -249,7 +253,7 @@ const DefaultLayout = () => {
 };
 
 DefaultLayout.propTypes = {
-  children: PropTypes.node.isRequired
+  children: PropTypes.node
 };
 
 export default DefaultLayout; 
