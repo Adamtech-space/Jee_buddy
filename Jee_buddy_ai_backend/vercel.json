@@ -1,20 +1,27 @@
 {
+    "version": 2,
     "builds": [
         {
-            "src": "src/core/wsgi.py",
-            "use": "@vercel/python"
+            "src": "src/wsgi.py",
+            "use": "@vercel/python",
+            "config": {
+                "maxLambdaSize": "15mb",
+                "runtime": "python3.9",
+                "buildCommand": "pip install -r requirements.txt"
+            }
         }
     ],
     "routes": [
         {
             "src": "/(.*)",
-            "dest": "src/core/wsgi.py"
+            "dest": "src/wsgi.py"
         }
     ],
     "env": {
         "RAZORPAY_KEY_ID": "rzp_test_ALQVkV4FTktqvh",
         "RAZORPAY_KEY_SECRET": "UqRhiHj1x9qoSmSEYi6khUKk",
         "DJANGO_SETTINGS_MODULE": "src.settings",
-        "ALLOWED_HOSTS": ".vercel.app"
+        "ALLOWED_HOSTS": ".vercel.app",
+        "PYTHON_VERSION": "3.9"
     }
 }
