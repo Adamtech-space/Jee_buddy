@@ -1,9 +1,8 @@
 const jwt = require('jsonwebtoken');
 const httpStatus = require('http-status');
 const config = require('../config/config');
-const { User } = require('../models/users.model');
 const ApiError = require('../utils/ApiError');
-const { Token } = require('../models/auth.model');
+const supabase = require('../config/supabaseClient');
 
 const auth = () => {
   return async (req, res, next) => {
@@ -20,26 +19,40 @@ const auth = () => {
         throw new ApiError(httpStatus.UNAUTHORIZED, 'Invalid token type');
       }
 
-      const user = await User.findById(payload.sub);
-      if (!user) {
+      console.log('Token payload:', payload); // Debug log
+
+      // Get user from Supabase using UUID
+      const { data: user, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', payload.sub)
+        .single();
+
+      console.log('Supabase query result:', { user, error }); // Debug log
+
+      if (error) {
+        console.error('Supabase error:', error);
         throw new ApiError(httpStatus.UNAUTHORIZED, 'User not found');
       }
 
-      // Check if token is blacklisted
-      const tokenDoc = await Token.findOne({
-        token,
-        type: 'access',
-        user: user._id,
-        blacklisted: true,
-      });
-
-      if (tokenDoc) {
-        throw new ApiError(httpStatus.UNAUTHORIZED, 'Token has been blacklisted');
+      if (!user) {
+        console.error('No user found for ID:', payload.sub);
+        throw new ApiError(httpStatus.UNAUTHORIZED, 'User not found');
       }
 
-      req.user = user;
+      req.user = {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        phone_number: user.phone_number,
+        is_subscribed: user.is_subscribed,
+        subscription_date: user.subscription_date
+      };
+
+      console.log('User data set in request:', req.user); // Debug log
       next();
     } catch (error) {
+      console.error('Auth middleware error:', error);
       if (error instanceof jwt.JsonWebTokenError) {
         next(new ApiError(httpStatus.UNAUTHORIZED, 'Invalid token'));
       } else {

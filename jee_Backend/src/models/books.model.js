@@ -1,17 +1,4 @@
-const { createClient } = require('@supabase/supabase-js');
-const config = require('../config/config');
-
-// Initialize Supabase client
-const supabase = createClient(
-  config.supabase.url,
-  config.supabase.serviceRoleKey,
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false
-    }
-  }
-);
+const supabase = require('../config/supabaseClient');
 
 const getBooksMetadata = async (filters = {}) => {
   try {
@@ -82,6 +69,5 @@ const getBookById = async (id) => {
 
 module.exports = {
   getBooksMetadata,
-  getBookById,
-  supabase
+  getBookById
 }; 
