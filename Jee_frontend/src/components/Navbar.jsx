@@ -10,6 +10,8 @@ const Navbar = ({ isMobileOpen, setIsMobileOpen }) => {
   const navigate = useNavigate();
   const isDashboard = location.pathname.includes('/dashboard') || location.pathname.includes('/subject-selection');
   const profileRef = useRef(null);
+  const [subscriptionStatus, setSubscriptionStatus] = useState('free');
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const userStr = localStorage.getItem('user');
@@ -30,6 +32,12 @@ const Navbar = ({ isMobileOpen, setIsMobileOpen }) => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
+  // subscription status
+  // useEffect(() => {
+  //   if (user && user.subscription) {
+  //     setSubscriptionStatus(user.subscription.status);
+  //   }
+  // }, [user]);
 
   const handleLogout = () => {
     localStorage.removeItem('user');
@@ -48,8 +56,18 @@ const Navbar = ({ isMobileOpen, setIsMobileOpen }) => {
                 onClick={() => setIsMobileOpen(!isMobileOpen)}
                 className="mr-4 md:hidden p-2 text-gray-400 hover:text-white focus:outline-none"
               >
-                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                <svg
+                  className="h-6 w-6"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 6h16M4 12h16M4 18h16"
+                  />
                 </svg>
               </button>
             )}
@@ -62,21 +80,75 @@ const Navbar = ({ isMobileOpen, setIsMobileOpen }) => {
                 viewBox="0 0 24 24"
                 stroke="currentColor"
               >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M13 10V3L4 14h7v7l9-11h-7z"
+                />
               </motion.svg>
-              <span className="ml-2 text-xl font-bold text-white">JEE Buddy</span>
+              <span className="ml-2 text-xl font-bold text-white">
+                JEE Buddy
+              </span>
             </Link>
+             {/* Subscription status badge */}
+          {user && subscriptionStatus && (
+            <div className="mx-4">
+              {subscriptionStatus === 'premium' && (
+                <span className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-3 py-1 rounded-full text-sm font-medium shadow-lg ">
+                  PREMIUM
+                </span>
+              )}
+              {subscriptionStatus === 'pro' && (
+                <span className="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-3 py-1 rounded-full text-sm font-medium">
+                  PRO
+                </span>
+              )}
+              {subscriptionStatus === 'free' && (
+                <span className="bg-gradient-to-r from-green-500 to-green-600 text-white px-3 py-1 rounded-full text-sm font-medium">
+                  TRIAL
+                </span>
+              )}
+              {subscriptionStatus === 'basic' && (
+                <span className="bg-gradient-to-r from-gray-500 to-gray-600 text-white px-3 py-1 rounded-full text-sm font-medium">
+                  BASIC
+                </span>
+              )}
+              {subscriptionStatus === 'expired' && (
+                <span className="bg-gradient-to-r from-red-500 to-red-600 text-white px-3 py-1 rounded-full text-sm font-medium">
+                  EXPIRED
+                </span>
+              )}
+            </div>
+          )}
+
           </div>
 
+         
           {/* Right side - Navigation links and profile */}
           <div className="flex items-center">
             {/* Desktop navigation links */}
             <div className="hidden md:flex items-center space-x-4">
               {!user && !isDashboard && (
                 <>
-                  <Link to="/#features" className="text-gray-300 hover:text-white px-3 py-2">Features</Link>
-                  <Link to="/#resources" className="text-gray-300 hover:text-white px-3 py-2">Resources</Link>
-                  <Link to="/#demo" className="text-gray-300 hover:text-white px-3 py-2">Try Demo</Link>
+                  <Link
+                    to="/#features"
+                    className="text-gray-300 hover:text-white px-3 py-2"
+                  >
+                    Features
+                  </Link>
+                  <Link
+                    to="/#resources"
+                    className="text-gray-300 hover:text-white px-3 py-2"
+                  >
+                    Resources
+                  </Link>
+                  <Link
+                    to="/#demo"
+                    className="text-gray-300 hover:text-white px-3 py-2"
+                  >
+                    Try Demo
+                  </Link>
                   <Link
                     to="/login"
                     className="text-gray-300 hover:text-white px-3 py-2"
@@ -101,9 +173,9 @@ const Navbar = ({ isMobileOpen, setIsMobileOpen }) => {
                   className="flex items-center space-x-3 text-gray-300 hover:text-white focus:outline-none"
                 >
                   {user.picture ? (
-                    <img 
-                      src={user.picture} 
-                      alt={user.name} 
+                    <img
+                      src={user.picture}
+                      alt={user.name}
                       className="w-8 h-8 rounded-full object-cover"
                     />
                   ) : (
@@ -113,13 +185,17 @@ const Navbar = ({ isMobileOpen, setIsMobileOpen }) => {
                       </span>
                     </div>
                   )}
-                  <span className="hidden md:inline text-sm font-medium">{user.name}</span>
+                  <span className="hidden md:inline text-sm font-medium">
+                    {user.name}
+                  </span>
                 </button>
 
                 {isProfileOpen && (
                   <div className="absolute right-0 mt-2 w-48 bg-gray-800 rounded-lg shadow-lg py-1 z-50">
                     <div className="md:hidden px-4 py-2 border-b border-gray-700">
-                      <span className="text-sm font-medium text-white">{user.name}</span>
+                      <span className="text-sm font-medium text-white">
+                        {user.name}
+                      </span>
                     </div>
                     <Link
                       to="/settings"
@@ -148,8 +224,18 @@ const Navbar = ({ isMobileOpen, setIsMobileOpen }) => {
                 onClick={() => setIsMobileOpen(!isMobileOpen)}
                 className="md:hidden p-2 text-gray-400 hover:text-white focus:outline-none ml-2"
               >
-                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                <svg
+                  className="h-6 w-6"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 6h16M4 12h16M4 18h16"
+                  />
                 </svg>
               </button>
             )}
@@ -160,22 +246,22 @@ const Navbar = ({ isMobileOpen, setIsMobileOpen }) => {
         {isMobileOpen && !user && !isDashboard && (
           <div className="md:hidden pb-4">
             <div className="flex flex-col space-y-2">
-              <Link 
-                to="/#features" 
+              <Link
+                to="/#features"
                 className="text-gray-300 hover:text-white px-3 py-2"
                 onClick={() => setIsMobileOpen(false)}
               >
                 Features
               </Link>
-              <Link 
-                to="/#resources" 
+              <Link
+                to="/#resources"
                 className="text-gray-300 hover:text-white px-3 py-2"
                 onClick={() => setIsMobileOpen(false)}
               >
                 Resources
               </Link>
-              <Link 
-                to="/#demo" 
+              <Link
+                to="/#demo"
                 className="text-gray-300 hover:text-white px-3 py-2"
                 onClick={() => setIsMobileOpen(false)}
               >
@@ -205,7 +291,7 @@ const Navbar = ({ isMobileOpen, setIsMobileOpen }) => {
 
 Navbar.propTypes = {
   isMobileOpen: PropTypes.bool.isRequired,
-  setIsMobileOpen: PropTypes.func.isRequired
+  setIsMobileOpen: PropTypes.func.isRequired,
 };
 
 export default Navbar;
