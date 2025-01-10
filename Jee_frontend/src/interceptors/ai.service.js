@@ -3,43 +3,16 @@ import aiInstance from './aiAxios';
 export const aiService = {
   async askQuestion(message, context) {
     try {
-      // Get current user ID and session ID from profile
-      const currentUserId = localStorage.getItem('uuid') || context.uuid;
-      const currentSessionId = localStorage.getItem('current_session_id');
-
-      if (!currentUserId || !currentSessionId) {
-        // Fetch from profile if not in localStorage
-        try {
-          const profileResponse = await aiInstance.get('api/profile/');
-          const profile = profileResponse.data;
-          
-          // Generate a default session ID if none exists
-          const sessionId = profile.current_session_id;
-          const userId = profile.id;
-          
-          localStorage.setItem('uuid', userId);
-          localStorage.setItem('current_session_id', sessionId);
-          
-          // Update the current values
-          currentUserId = userId;
-          currentSessionId = sessionId;
-        } catch (error) {
-          console.error('Failed to fetch profile:', error);
-          // Set default session ID if profile fetch fails
-          const defaultSessionId = `session_${Date.now()}`;
-          localStorage.setItem('current_session_id', defaultSessionId);
-          currentSessionId = defaultSessionId;
-        }
-      }
-
+      console.log('Sending request with data:', { message, context });
+      
       const requestData = {
         question: message,
         context: {
-          user_id: currentUserId || 'default_user',
-          session_id: currentSessionId,
+          user_id: context.user_id,
+          session_id: context.session_id,
           subject: context.subject || '',
           topic: context.topic || '',
-          interaction_type: context.type || 'solve',
+          interaction_type: context.type,
           pinnedText: context.pinnedText || '',
           selectedText: context.selectedText || '',
           image: context.image || null,
@@ -48,59 +21,91 @@ export const aiService = {
         }
       };
 
-      console.log("Request data:", requestData);
+      console.log('Final request payload:', requestData);
 
       const response = await aiInstance.post('api/solve-math/', requestData);
+      console.log('AI response:', response.data);
       return response.data;
     } catch (error) {
       console.error('AI request failed:', error);
+      console.error('Error details:', {
+        status: error.response?.status,
+        data: error.response?.data,
+        message: error.message
+      });
       throw error.response?.data || { message: 'Failed to get AI response' };
     }
   },
 
   async getHelpResponse(type, context) {
     try {
-      const currentUserId = localStorage.getItem('uuid');
-      const currentSessionId = localStorage.getItem('current_session_id');
-
-      const response = await aiInstance.post('api/solve-math/', {
+      console.log('Sending help request with data:', { type, context });
+      
+      const requestData = {
         question: `Help me with: ${type}`,
         context: {
-          user_id: currentUserId,
-          session_id: currentSessionId,
+          user_id: context.user_id,
+          session_id: context.session_id,
           subject: context.subject || '',
           topic: context.topic || '',
+          interaction_type: type,
           pinnedText: context.pinnedText || '',
+          selectedText: context.selectedText || '',
           image: context.image || null,
-          history_limit: 100
+          history_limit: 100,
+          chat_history: []
         }
-      });
+      };
+
+      console.log('Final help request payload:', requestData);
+
+      const response = await aiInstance.post('api/solve-math/', requestData);
+      console.log('Help response:', response.data);
       return response.data;
     } catch (error) {
       console.error('Help request failed:', error);
+      console.error('Error details:', {
+        status: error.response?.status,
+        data: error.response?.data,
+        message: error.message
+      });
       throw error.response?.data || { message: 'Failed to get help response' };
     }
   },
 
   async analyzeFile(file, context) {
     try {
-      // Convert file to base64
+      console.log('Analyzing file:', { fileName: file.name, context });
+      
       const base64File = await this._fileToBase64(file);
-
-      const response = await aiInstance.post('api/solve-math/', {
+      const requestData = {
         question: `Analyze this image: ${file.name}`,
         context: {
-          session_id: context.sessionId || localStorage.getItem('sessionId') || 'default',
-          interaction_type: 'analyze',
+          user_id: context.user_id,
+          session_id: context.session_id,
           subject: context.subject || '',
           topic: context.topic || '',
+          interaction_type: 'analyze',
           pinnedText: '',
-          image: base64File
+          selectedText: '',
+          image: base64File,
+          history_limit: 100,
+          chat_history: []
         }
-      });
+      };
+
+      console.log('Final analyze request payload:', requestData);
+
+      const response = await aiInstance.post('api/solve-math/', requestData);
+      console.log('Analysis response:', response.data);
       return response.data;
     } catch (error) {
       console.error('File analysis failed:', error);
+      console.error('Error details:', {
+        status: error.response?.status,
+        data: error.response?.data,
+        message: error.message
+      });
       throw error.response?.data || { message: 'Failed to analyze file' };
     }
   },
@@ -110,7 +115,6 @@ export const aiService = {
       const reader = new FileReader();
       reader.readAsDataURL(file);
       reader.onload = () => {
-        // Remove the data:image/jpeg;base64, prefix
         const base64 = reader.result.split(',')[1];
         resolve(base64);
       };

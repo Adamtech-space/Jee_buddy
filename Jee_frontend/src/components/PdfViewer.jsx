@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useParams, useLocation } from 'react-router-dom';
+import { useNavigate, useParams, useLocation, useOutletContext } from 'react-router-dom';
 import { message, Popover } from 'antd';
 import { ArrowLeftOutlined, SaveOutlined, RobotOutlined } from '@ant-design/icons';
 import { Viewer, Worker } from '@react-pdf-viewer/core';
@@ -48,6 +48,7 @@ const PdfViewer = () => {
   const [selectedText, setSelectedText] = useState('');
   const [popoverVisible, setPopoverVisible] = useState(false);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  const { setSelectedText: setChatSelectedText, setIsChatOpen } = useOutletContext();
 
   // Get the actual URL from either state or params
   const pdfUrl = location.state?.pdfUrl || decodeURIComponent(encodedUrl);
@@ -124,7 +125,8 @@ const PdfViewer = () => {
   };
 
   const handleAskAI = () => {
-    // This will be handled by the chat component
+    setChatSelectedText(selectedText);
+    setIsChatOpen(true);
     setPopoverVisible(false);
   };
 

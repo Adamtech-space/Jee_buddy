@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams, Outlet } from 'react-router-dom';
 import PropTypes from 'prop-types';
 import { ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline';
 import Navbar from '../Navbar';
@@ -30,7 +30,7 @@ const Sidebar = ({ isMobileOpen, setIsMobileOpen }) => {
   const menuItems = [
     { icon: "📚", label: "Books", path: "books" },
     { icon: "🗂️", label: "Flash Cards", path: "flashcards" },
-    { icon: "📝", label: "Saved Notes", path: "notes" },
+    // { icon: "📝", label: "Saved Notes", path: "notes" },
     { icon: "📑", label: "Study Materials", path: "materials" }
   ];
 
@@ -107,7 +107,7 @@ Sidebar.propTypes = {
   setIsMobileOpen: PropTypes.func.isRequired
 };
 
-const DefaultLayout = ({ children }) => {
+const DefaultLayout = () => {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
@@ -137,29 +137,6 @@ const DefaultLayout = ({ children }) => {
     return () => window.removeEventListener('keydown', handleKeyPress);
   }, []);
 
-  // Handle text selection
-  useEffect(() => {
-    const handleSelection = () => {
-      const selection = window.getSelection();
-      const selectedText = selection.toString().trim();
-      
-      if (selectedText && isDashboard) {
-        setSelectedText(selectedText);
-        if (!isChatOpen) {
-          setIsChatOpen(true);
-        }
-      }
-    };
-
-    document.addEventListener('mouseup', handleSelection);
-    document.addEventListener('keyup', handleSelection);
-
-    return () => {
-      document.removeEventListener('mouseup', handleSelection);
-      document.removeEventListener('keyup', handleSelection);
-    };
-  }, [isDashboard, isChatOpen]);
-
   // Handle chat width changes
   const handleChatResize = (newWidth) => {
     setChatWidth(newWidth);
@@ -180,7 +157,7 @@ const DefaultLayout = ({ children }) => {
       </div>
 
       <div className="flex min-h-screen pt-16 relative">
-        {/* Sidebar - Only shown in dashboard and when chat is not fullscreen */}
+        {/* Sidebar */}
         {isDashboard && !isFullScreen && (
           <div className={`fixed inset-y-0 left-0 transform transition-transform duration-300 ease-in-out ${
             !isSidebarOpen ? '-translate-x-64' : 'translate-x-0'
@@ -196,20 +173,20 @@ const DefaultLayout = ({ children }) => {
         <main 
           className={`flex-1 w-full transition-all duration-300 ease-in-out ${
             isDashboard && !isFullScreen && isSidebarOpen ? 'md:pl-64' : ''
-          } px-4 md:px-6`}
+          } px-2 sm:px-4 md:px-6`}
           style={{
-            paddingRight: isDashboard && isChatOpen && !isFullScreen ? `${chatWidth}px` : '0',
+            paddingRight: isDashboard && isChatOpen && !isFullScreen && window.innerWidth >= 768 ? `${chatWidth}px` : '0',
             transition: isResizing ? 'none' : 'all 0.3s ease-out',
             display: isFullScreen ? 'none' : 'block'
           }}
         >
           <div className="h-full max-w-full">
-            {children}
+            <Outlet context={{ setSelectedText, setIsChatOpen, isChatOpen }} />
           </div>
         </main>
 
-        {/* Chat toggle button - Only shown in dashboard and when not fullscreen */}
-        {isDashboard && !isChatOpen && !isFullScreen && (
+        {/* Chat toggle button - Only show on tablet and larger screens when chat is closed */}
+        {isDashboard && !isChatOpen && !isFullScreen && window.innerWidth >= 768 && (
           <button
             onClick={() => setIsChatOpen(true)}
             className="fixed bottom-6 right-6 w-14 h-14 bg-blue-500 rounded-full flex items-center justify-center shadow-lg z-50 hover:bg-blue-600 transition-colors"
@@ -219,14 +196,28 @@ const DefaultLayout = ({ children }) => {
           </button>
         )}
 
-        {/* ChatBot - Only shown in dashboard */}
+        {/* Mobile chat toggle button - Only show on mobile when chat is closed */}
+        {isDashboard && !isChatOpen && !isFullScreen && window.innerWidth < 768 && (
+          <button
+            onClick={() => {
+              setIsChatOpen(true);
+              setIsFullScreen(true);
+            }}
+            className="fixed bottom-4 right-4 w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center shadow-lg z-50 hover:bg-blue-600 transition-colors"
+            aria-label="Open AI Chat"
+          >
+            <ChatBubbleLeftRightIcon className="w-5 h-5 text-white" />
+          </button>
+        )}
+
+        {/* ChatBot */}
         {isDashboard && (
           <div 
             className={`fixed transform transition-transform duration-300 ease-in-out ${
               isFullScreen ? 'inset-0' : 'top-16 bottom-0 right-0'
             } ${isChatOpen ? 'translate-x-0' : 'translate-x-full'}`}
             style={{ 
-              width: isFullScreen ? '100%' : `${chatWidth}px`,
+              width: isFullScreen || window.innerWidth < 768 ? '100%' : `${chatWidth}px`,
               zIndex: isFullScreen ? 60 : 50
             }}
           >
@@ -240,12 +231,14 @@ const DefaultLayout = ({ children }) => {
               selectedText={selectedText}
               setSelectedText={setSelectedText}
               onResize={(width) => {
-                setIsResizing(true);
-                handleChatResize(width);
-                clearTimeout(window.resizeTimer);
-                window.resizeTimer = setTimeout(() => {
-                  setIsResizing(false);
-                }, 100);
+                if (window.innerWidth >= 768) {
+                  setIsResizing(true);
+                  handleChatResize(width);
+                  clearTimeout(window.resizeTimer);
+                  window.resizeTimer = setTimeout(() => {
+                    setIsResizing(false);
+                  }, 100);
+                }
               }}
             />
           </div>

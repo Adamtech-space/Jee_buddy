@@ -41,7 +41,6 @@ const ChatBot = ({
   const { user } = useAuthContext();
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState([]);
-  const [showHelpButtons, setShowHelpButtons] = useState(false);
   const [width, setWidth] = useState(450);
   const [isResizing, setIsResizing] = useState(false);
   const [pinnedImage, setPinnedImage] = useState(null);
@@ -224,13 +223,16 @@ const ChatBot = ({
     setIsLoading(true);
 
     try {
+      // Get user data from localStorage
+      const userData = JSON.parse(localStorage.getItem('user'));
       const response = await aiService.askQuestion(message, {
         subject,
         topic,
-        type: 'solve',
+        type: 'solve', // interaction_type
         image: currentImage?.split(',')[1],
         pinnedText: pinnedText,
-        sessionId: user?.sessionId
+        user_id: userData?.id,
+        session_id: userData?.current_session_id
       });
 
       const aiMessage = {
@@ -266,11 +268,15 @@ const ChatBot = ({
 
       const lastImageMessage = [...messages].reverse().find(msg => msg.type === 'image');
       
+      // Get user data from localStorage
+      const userData = JSON.parse(localStorage.getItem('user'));
       const response = await aiService.getHelpResponse(type, {
         subject,
         topic,
+        type, // interaction_type from help button
         image: lastImageMessage?.content?.split(',')[1],
-        sessionId: user?.sessionId
+        user_id: userData?.id,
+        session_id: userData?.current_session_id
       });
 
       setMessages(prev => [...prev, {
@@ -350,6 +356,24 @@ const ChatBot = ({
     );
   };
 
+  // Update initial width based on screen size
+  useEffect(() => {
+    const updateWidth = () => {
+      const screenWidth = window.innerWidth;
+      if (screenWidth < 640) { // mobile
+        setWidth(screenWidth);
+      } else if (screenWidth < 1024) { // tablet
+        setWidth(400);
+      } else { // desktop
+        setWidth(450);
+      }
+    };
+
+    updateWidth();
+    window.addEventListener('resize', updateWidth);
+    return () => window.removeEventListener('resize', updateWidth);
+  }, []);
+
   return (
     <div
       ref={resizeRef}
@@ -361,12 +385,12 @@ const ChatBot = ({
         isOpen ? 'translate-x-0' : 'translate-x-full'
       }`}
       style={{ 
-        width: isFullScreen ? '100%' : `${width}px`,
+        width: isFullScreen || window.innerWidth < 640 ? '100%' : `${width}px`,
         zIndex: isFullScreen ? 60 : 50
       }}
     >
-      {/* Resize Handle - Only show when not in fullscreen */}
-      {!isFullScreen && (
+      {/* Resize Handle - Only show on desktop */}
+      {!isFullScreen && window.innerWidth >= 1024 && (
         <>
           {isResizing && (
             <div className="fixed inset-0 bg-black bg-opacity-0 z-50" />
@@ -391,30 +415,25 @@ const ChatBot = ({
       )}
 
       {/* Header */}
-      <div className={`flex items-center justify-between p-4 border-b border-gray-800 ${isFullScreen ? 'px-6' : ''}`}>
-        <div className="flex items-center space-x-3">
+      <div className={`flex items-center justify-between p-2 sm:p-3 md:p-4 border-b border-gray-800 ${isFullScreen ? 'px-3 sm:px-5 md:px-6' : ''} bg-gray-900`}>
+        <div className="flex items-center space-x-2">
           <div className="flex flex-col">
-            <h3 className="text-xl font-bold text-white">AI Study Assistant</h3>
-            <KeyboardShortcut shortcut="Ctrl+Shift+L" />
+            <h3 className="text-sm sm:text-lg md:text-xl font-bold text-white">AI Study Assistant</h3>
+            <div className="hidden sm:block">
+              <KeyboardShortcut shortcut="Ctrl+Shift+L" />
+            </div>
           </div>
-          <button
-            onClick={() => setShowHelpButtons(!showHelpButtons)}
-            className="p-1 text-gray-400 hover:text-white transition-colors rounded-full hover:bg-gray-800"
-            aria-label="Toggle help options"
-          >
-            <QuestionMarkCircleIcon className="w-6 h-6" />
-          </button>
         </div>
         <div className="flex items-center space-x-2">
           <button
             onClick={() => setIsFullScreen(!isFullScreen)}
-            className="p-1 text-gray-400 hover:text-white transition-colors"
+            className="p-1.5 hover:bg-gray-800 rounded-lg transition-colors"
             aria-label={isFullScreen ? "Exit full screen" : "Enter full screen"}
           >
             {isFullScreen ? (
-              <ArrowsPointingInIcon className="w-5 h-5" />
+              <ArrowsPointingInIcon className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
             ) : (
-              <ArrowsPointingOutIcon className="w-5 h-5" />
+              <ArrowsPointingOutIcon className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
             )}
           </button>
           <button
@@ -424,49 +443,46 @@ const ChatBot = ({
                 setIsFullScreen(false);
               }
             }}
-            className="p-1 text-gray-400 hover:text-white transition-colors"
+            className="p-1.5 hover:bg-gray-800 rounded-lg transition-colors"
             aria-label="Close chat"
           >
-            <XMarkIcon className="w-5 h-5" />
+            <XMarkIcon className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
           </button>
         </div>
       </div>
 
-      {/* Help Buttons */}
-      {showHelpButtons && (
-        <div className={`p-2 border-b border-gray-800 flex flex-wrap gap-2 ${isFullScreen ? 'px-6' : ''}`}>
+      {/* Help Buttons - Always visible */}
+      <div className="bg-gray-900 border-b border-gray-800">
+        <div className="flex overflow-x-auto gap-1 p-1.5 hide-scrollbar">
           {helpButtons.map((button) => (
             <button
               key={button.type}
-              onClick={() => {
-                handleHelpClick(button.type);
-                setShowHelpButtons(false);
-              }}
-              className="flex items-center space-x-2 px-3 py-2 bg-gray-800 rounded-lg hover:bg-gray-700 transition-colors text-sm text-gray-300 hover:text-white"
+              onClick={() => handleHelpClick(button.type)}
+              className="flex items-center gap-1 px-2 py-1 bg-gray-800 rounded-lg hover:bg-gray-700 transition-colors text-[11px] sm:text-sm text-gray-300 hover:text-white whitespace-nowrap flex-shrink-0"
             >
-              <span>{button.icon}</span>
+              <span className="text-base">{button.icon}</span>
               <span>{button.text}</span>
             </button>
           ))}
         </div>
-      )}
+      </div>
 
       {/* Messages */}
-      <div className={`flex-1 overflow-y-auto p-4 no-scrollbar [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] ${isFullScreen ? 'px-6' : ''}`}>
+      <div className="flex-1 overflow-y-auto p-2 sm:p-3 md:p-4 bg-gray-900 hide-scrollbar">
         {messages.map(renderMessage)}
         {isLoading && (
-          <div className="flex justify-start mb-4">
-            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-r from-purple-500 to-indigo-500 flex items-center justify-center mr-2">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-white" viewBox="0 0 20 20" fill="currentColor">
+          <div className="flex justify-start mb-2">
+            <div className="flex-shrink-0 w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-gradient-to-r from-purple-500 to-indigo-500 flex items-center justify-center mr-2">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 sm:h-5 sm:w-5 text-white" viewBox="0 0 20 20" fill="currentColor">
                 <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm0-2a6 6 0 100-12 6 6 0 000 12z" clipRule="evenodd" />
               </svg>
             </div>
-            <div className="bg-gradient-to-r from-gray-800 to-gray-900 rounded-lg p-4 shadow-xl">
-              <div className="flex space-x-2">
-                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+            <div className="bg-gradient-to-r from-gray-800 to-gray-900 rounded-lg p-2 shadow-xl">
+              <div className="flex gap-1">
+                <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
               </div>
             </div>
           </div>
@@ -475,44 +491,23 @@ const ChatBot = ({
       </div>
 
       {/* Input with Pinned Content */}
-      <div className={`p-4 border-t border-gray-700 ${isFullScreen ? 'px-6' : ''}`}>
+      <div className="p-2 border-t border-gray-800 bg-gray-900">
         {/* Pinned Text */}
         {pinnedText && (
-          <div className="mb-3 flex items-center bg-gray-800 rounded-lg p-2">
-            <div className="flex-1 text-sm text-gray-300 line-clamp-2">
+          <div className="mb-2 flex items-center bg-gray-800 rounded-lg p-1.5">
+            <div className="flex-1 text-xs text-gray-300 line-clamp-2">
               <span className="text-blue-400 font-medium">Selected text:</span> {pinnedText}
             </div>
             <button
               onClick={() => setPinnedText(null)}
-              className="ml-2 p-1 hover:bg-gray-700 rounded-full transition-colors flex-shrink-0"
+              className="ml-1 p-1 hover:bg-gray-700 rounded-full transition-colors flex-shrink-0"
             >
-              <XMarkIcon className="h-5 w-5 text-gray-400 hover:text-white" />
+              <XMarkIcon className="h-4 w-4 text-gray-400 hover:text-white" />
             </button>
           </div>
         )}
 
-        {/* Pinned Image */}
-        {pinnedImage && (
-          <div className="mb-3 flex items-center bg-gray-800 rounded-lg p-2">
-            <div className="relative w-12 h-12 flex-shrink-0">
-              <img
-                src={pinnedImage.content}
-                alt="Pinned"
-                className="w-full h-full object-cover rounded"
-              />
-            </div>
-            <div className="ml-2 flex-1 text-sm text-gray-300 truncate">
-              {pinnedImage.fileName}
-            </div>
-            <button
-              onClick={() => setPinnedImage(null)}
-              className="ml-2 p-1 hover:bg-gray-700 rounded-full transition-colors"
-            >
-              <XMarkIcon className="h-5 w-5 text-gray-400 hover:text-white" />
-            </button>
-          </div>
-        )}
-
+        {/* Input Form */}
         <form onSubmit={handleSubmit} className="relative">
           <input
             ref={inputRef}
@@ -520,22 +515,22 @@ const ChatBot = ({
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             placeholder="Ask a question..."
-            className="w-full bg-gray-800 text-white rounded-lg pl-4 pr-24 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full bg-gray-800 text-white text-sm rounded-lg pl-3 pr-20 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
           />
-          <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center space-x-1">
+          <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-0.5">
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="p-2 hover:bg-gray-700 rounded-full transition-colors"
+              className="p-1.5 hover:bg-gray-700 rounded-full transition-colors"
             >
-              <PaperClipIcon className="h-5 w-5 text-gray-400 hover:text-white" />
+              <PaperClipIcon className="h-4 w-4 text-gray-400 hover:text-white" />
             </button>
             <button
               type="submit"
               disabled={!message.trim() && !pinnedImage && !pinnedText}
-              className="p-2 hover:bg-gray-700 rounded-full transition-colors disabled:opacity-50"
+              className="p-1.5 hover:bg-gray-700 rounded-full transition-colors disabled:opacity-50"
             >
-              <PaperAirplaneIcon className="h-5 w-5 text-gray-400 hover:text-white" />
+              <PaperAirplaneIcon className="h-4 w-4 text-gray-400 hover:text-white" />
             </button>
           </div>
           <input
