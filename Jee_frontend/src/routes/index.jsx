@@ -20,6 +20,9 @@ import FlashCards from '../components/FlashCards';
 import SavedNotes from '../components/SavedNotes';
 import StudyMaterials from '../components/StudyMaterials';
 
+// settings with subscription components
+import Settings from '../components/subscription/Settings';
+
 // // Landing Page Components
 // import Hero from '../components/Hero';
 // import Features from '../components/Features';
@@ -72,6 +75,13 @@ const AppRoutes = ({ quote }) => {
             <SubjectSelection />
           </DefaultLayout>
         } />
+        <Route path="/settings" element={
+          <DefaultLayout>
+            <Settings />
+          </DefaultLayout>
+        } />
+      
+
 
         <Route path="/dashboard/:subject" element={<DefaultLayout>
           <Outlet />

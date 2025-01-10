@@ -17,7 +17,7 @@ class MathAgent:
     def __init__(self):
         self.llm = ChatOpenAI(
             temperature=0.7,
-            model="gpt-4o",
+            model="gpt-4o-mini",
             max_tokens=1000,
             api_key=os.getenv('OPENAI_API_KEY')
         )
@@ -218,7 +218,7 @@ class MathAgent:
             # Actually call the LLM
             response = await self.llm.agenerate([messages])
             
-            # Extract the response
+            # Extract the responseP
             llm_response = response.generations[0][0].text
 
              # Store interaction in database

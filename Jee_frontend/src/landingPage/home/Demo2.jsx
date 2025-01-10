@@ -53,7 +53,7 @@ const Demo2 = () => {
   };
 
   return (
-    <section id="demo" className="relative py-20 overflow-hidden">
+    <section id="demo" className="relative py-10 overflow-hidden">
       <div className="container mx-auto px-4 relative">
         <h2 className="text-4xl font-bold text-center mb-12 bg-clip-text text-transparent bg-gradient-to-r from-[#6366f1] to-[#8b5cf6]">
           Test your AI teacher now

@@ -1,7 +1,9 @@
 import { motion } from 'framer-motion';
 import { useInView } from 'react-intersection-observer';
+import { useNavigate } from 'react-router-dom';
 
 const Pricing = () => {
+  const navigate = useNavigate();
   const [ref, inView] = useInView({
     threshold: 0.1,
     triggerOnce: true,
@@ -35,6 +37,28 @@ const Pricing = () => {
 
   return (
     <section id="pricing" className="relative py-20 overflow-hidden">
+      <button
+        onClick={() => navigate(-1)}
+        className="absolute top-4 left-4 z-20 flex items-center gap-2 px-4 py-2 text-gray-300 
+                   hover:text-white bg-[#4a1942]/40 rounded-lg border border-[#6e2960]/50 
+                   hover:bg-[#4a1942]/60 transition-all duration-300"
+      >
+        <svg
+          className="w-5 h-5"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M10 19l-7-7m0 0l7-7m-7 7h18"
+          />
+        </svg>
+        Back
+      </button>
+
       <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/30" />
 
       <div className="container mx-auto px-4 relative">
@@ -45,12 +69,9 @@ const Pricing = () => {
           transition={{ duration: 0.6 }}
           className="text-center mb-12"
         >
-          <h2 className="text-4xl md:text-5xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-400">
-            Simple, Transparent Pricing
-          </h2>
-          <p className="text-lg text-gray-300 pb-10">
+          <h2 className="text-4xl md:text-5xl font-bold mb-20 bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-400">
             Choose the plan that works best for you
-          </p>
+          </h2>
         </motion.div>
 
         <motion.div

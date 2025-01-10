@@ -1,110 +1,92 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate, useParams } from 'react-router-dom';
+import { message, Modal } from 'antd';
+import { getBooksList } from '../interceptors/services';
+import { Document, Page, pdfjs } from 'react-pdf';
+
+// Set up PDF.js worker
+pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 
 const BooksList = () => {
   const navigate = useNavigate();
   const { subject } = useParams();
   const [selectedBook, setSelectedBook] = useState(null);
+  const [books, setBooks] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [pdfUrl, setPdfUrl] = useState(null);
+  const [isPdfModalVisible, setIsPdfModalVisible] = useState(false);
+  const [numPages, setNumPages] = useState(null);
+  const [pageNumber, setPageNumber] = useState(1);
 
-  const bookCategories = {
-    physics: [
-      {
-        category: 'NCERT',
-        books: [
-          { 
-            title: 'NCERT Physics Class 11', 
-            author: 'NCERT', 
-            type: 'Textbook',
-            topics: [
-              { id: 'kinematics', name: 'Kinematics', color: 'from-blue-500 to-blue-700' },
-              { id: 'laws_of_motion', name: 'Laws of Motion', color: 'from-indigo-500 to-indigo-700' },
-              { id: 'work_energy', name: 'Work, Energy and Power', color: 'from-purple-500 to-purple-700' },
-              { id: 'rotational_motion', name: 'Rotational Motion', color: 'from-pink-500 to-pink-700' }
-            ]
-          },
-          { 
-            title: 'NCERT Physics Class 12', 
-            author: 'NCERT', 
-            type: 'Textbook',
-            topics: [
-              { id: 'electrostatics', name: 'Electrostatics', color: 'from-red-500 to-red-700' },
-              { id: 'current', name: 'Current Electricity', color: 'from-orange-500 to-orange-700' },
-              { id: 'magnetic_effects', name: 'Magnetic Effects', color: 'from-yellow-500 to-yellow-700' },
-              { id: 'emi', name: 'EMI and AC', color: 'from-green-500 to-green-700' }
-            ]
-          }
-        ]
-      }
-    ],
-    chemistry: [
-      {
-        category: 'NCERT',
-        books: [
-          { 
-            title: 'NCERT Chemistry Class 11', 
-            author: 'NCERT', 
-            type: 'Textbook',
-            topics: [
-              { id: 'chemical_bonding', name: 'Chemical Bonding', color: 'from-blue-500 to-blue-700' },
-              { id: 'states_of_matter', name: 'States of Matter', color: 'from-indigo-500 to-indigo-700' },
-              { id: 'thermodynamics_chem', name: 'Thermodynamics', color: 'from-purple-500 to-purple-700' },
-              { id: 'equilibrium', name: 'Equilibrium', color: 'from-pink-500 to-pink-700' }
-            ]
-          },
-          { 
-            title: 'NCERT Chemistry Class 12', 
-            author: 'NCERT', 
-            type: 'Textbook',
-            topics: [
-              { id: 'solid_state', name: 'Solid State', color: 'from-red-500 to-red-700' },
-              { id: 'solutions', name: 'Solutions', color: 'from-orange-500 to-orange-700' },
-              { id: 'electrochemistry', name: 'Electrochemistry', color: 'from-yellow-500 to-yellow-700' },
-              { id: 'organic_chemistry', name: 'Organic Chemistry', color: 'from-green-500 to-green-700' }
-            ]
-          }
-        ]
-      }
-    ],
-    mathematics: [
-      {
-        category: 'NCERT',
-        books: [
-          { 
-            title: 'NCERT Mathematics Class 11', 
-            author: 'NCERT', 
-            type: 'Textbook',
-            topics: [
-              { id: 'sets_functions', name: 'Sets and Functions', color: 'from-blue-500 to-blue-700' },
-              { id: 'trigonometry', name: 'Trigonometry', color: 'from-indigo-500 to-indigo-700' },
-              { id: 'straight_lines', name: 'Straight Lines', color: 'from-purple-500 to-purple-700' },
-              { id: 'conic_sections', name: 'Conic Sections', color: 'from-pink-500 to-pink-700' }
-            ]
-          },
-          { 
-            title: 'NCERT Mathematics Class 12', 
-            author: 'NCERT', 
-            type: 'Textbook',
-            topics: [
-              { id: 'matrices', name: 'Matrices', color: 'from-red-500 to-red-700' },
-              { id: 'determinants', name: 'Determinants', color: 'from-orange-500 to-orange-700' },
-              { id: 'calculus', name: 'Calculus', color: 'from-yellow-500 to-yellow-700' },
-              { id: 'vector_algebra', name: 'Vector Algebra', color: 'from-green-500 to-green-700' }
-            ]
-          }
-        ]
-      }
-    ]
-  };
+  useEffect(() => {
+    const fetchBooks = async () => {
+      try {
+        setLoading(true);
+        const response = await getBooksList(subject);
+        const booksData = response.data;
 
-  const books = bookCategories[subject]?.[0]?.books || [];
+        // Group books by class (XI or XII)
+        const groupedBooks = booksData.reduce((acc, book) => {
+          const isClass12 = book.topic.toLowerCase().includes('xii') || 
+                          book.file_name.toLowerCase().includes('xii');
+          const className = isClass12 ? 'Class XII' : 'Class XI';
+          
+          if (!acc[className]) {
+            acc[className] = [];
+          }
+          
+          acc[className].push({
+            ...book,
+            displayName: book.file_name.replace('.pdf', '')
+                                     .replace('Unit', 'Unit:')
+                                     .split('Unit:')
+                                     .map(part => part.trim())
+                                     .filter(Boolean)
+          });
+          
+          return acc;
+        }, {});
+
+        setBooks(groupedBooks);
+      } catch (error) {
+        message.error(error.message || 'Failed to fetch books');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (subject) {
+      fetchBooks();
+    }
+  }, [subject]);
 
   const handleBookClick = (book) => {
-    setSelectedBook(selectedBook?.title === book.title ? null : book);
+    setSelectedBook(selectedBook?.id === book.id ? null : book);
   };
 
-  const handleTopicClick = (topicId) => {
-    navigate(`/dashboard/${subject}/books/${topicId}`);
+  const handlePdfClick = (url) => {
+    setPdfUrl(url);
+    setIsPdfModalVisible(true);
+    setPageNumber(1);
+  };
+
+  const onDocumentLoadSuccess = ({ numPages }) => {
+    setNumPages(numPages);
+  };
+
+  const getRandomColor = () => {
+    const colors = [
+      'from-blue-500 to-blue-700',
+      'from-indigo-500 to-indigo-700',
+      'from-purple-500 to-purple-700',
+      'from-pink-500 to-pink-700',
+      'from-red-500 to-red-700',
+      'from-orange-500 to-orange-700',
+      'from-yellow-500 to-yellow-700',
+      'from-green-500 to-green-700'
+    ];
+    return colors[Math.floor(Math.random() * colors.length)];
   };
 
   const containerVariants = {
@@ -129,6 +111,14 @@ const BooksList = () => {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-4 md:p-6 lg:p-8">
       <h2 className="text-3xl font-bold mb-8 capitalize">{subject} Books for JEE Preparation</h2>
@@ -137,74 +127,122 @@ const BooksList = () => {
         variants={containerVariants}
         initial="hidden"
         animate="visible"
-        className="grid grid-cols-1 gap-6"
+        className="grid grid-cols-1 gap-8"
       >
-        {books.map((book, index) => (
-          <motion.div
-            key={index}
-            variants={itemVariants}
-            className={`bg-gray-900 rounded-xl p-6 transition-all duration-300 ${
-              selectedBook?.title === book.title ? 'ring-2 ring-blue-500' : ''
-            }`}
-          >
-            <div
-              className="cursor-pointer"
-              onClick={() => handleBookClick(book)}
-            >
-              <h3 className="text-2xl font-bold text-white mb-2">{book.title}</h3>
-              <p className="text-gray-400 text-sm mb-4">Author: {book.author}</p>
-            </div>
-
-            <motion.div
-              initial="hidden"
-              animate={selectedBook?.title === book.title ? "visible" : "hidden"}
-              variants={{
-                visible: { height: "auto", opacity: 1 },
-                hidden: { height: 0, opacity: 0 }
-              }}
-              transition={{ duration: 0.3 }}
-              className="overflow-hidden"
-            >
-              <h4 className="text-xl font-semibold mb-4">Topics:</h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {book.topics.map((topic) => (
-                  <motion.button
-                    key={topic.id}
-                    onClick={() => handleTopicClick(topic.id)}
-                    className={`w-full p-6 rounded-xl shadow-lg hover:shadow-2xl 
-                              transition-all duration-300 bg-gradient-to-r ${topic.color}
-                              flex items-center justify-between group`}
-                    whileHover={{ scale: 1.03 }}
-                    whileTap={{ scale: 0.98 }}
+        {Object.entries(books).map(([className, classBooks]) => (
+          <div key={className} className="space-y-6">
+            <h3 className="text-2xl font-semibold text-white">{className}</h3>
+            <div className="grid grid-cols-1 gap-6">
+              {classBooks.map((book) => (
+                <motion.div
+                  key={book.id}
+                  variants={itemVariants}
+                  className={`bg-gray-900 rounded-xl p-6 transition-all duration-300 ${
+                    selectedBook?.id === book.id ? 'ring-2 ring-blue-500' : ''
+                  }`}
+                >
+                  <div
+                    className="cursor-pointer"
+                    onClick={() => handleBookClick(book)}
                   >
-                    <div className="flex items-center">
-                      <span className="text-4xl mr-4 group-hover:scale-110 transition-transform">
-                        📝
-                      </span>
-                      <div className="text-left">
-                        <span className="text-xl font-bold text-white block">
-                          {topic.name}
-                        </span>
-                        <span className="text-sm text-gray-200 opacity-80">
-                          Start learning {topic.name.toLowerCase()}
-                        </span>
-                      </div>
+                    <h3 className="text-2xl font-bold text-white mb-2">{book.displayName[0]}</h3>
+                    {book.displayName[1] && (
+                      <p className="text-gray-400 text-sm mb-4">Unit: {book.displayName[1]}</p>
+                    )}
+                  </div>
+
+                  <motion.div
+                    initial="hidden"
+                    animate={selectedBook?.id === book.id ? "visible" : "hidden"}
+                    variants={{
+                      visible: { height: "auto", opacity: 1 },
+                      hidden: { height: 0, opacity: 0 }
+                    }}
+                    transition={{ duration: 0.3 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="mt-4">
+                      <motion.button
+                        onClick={() => handlePdfClick(book.storage_url)}
+                        className={`w-full p-6 rounded-xl shadow-lg hover:shadow-2xl 
+                                  transition-all duration-300 bg-gradient-to-r ${getRandomColor()}
+                                  flex items-center justify-between group`}
+                        whileHover={{ scale: 1.03 }}
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        <div className="flex items-center">
+                          <span className="text-4xl mr-4 group-hover:scale-110 transition-transform">
+                            📚
+                          </span>
+                          <div className="text-left">
+                            <span className="text-xl font-bold text-white block">
+                              View PDF
+                            </span>
+                            <span className="text-sm text-gray-200 opacity-80">
+                              Click to open the book
+                            </span>
+                          </div>
+                        </div>
+                        <motion.div 
+                          className="text-white"
+                          whileHover={{ x: 5 }}
+                        >
+                          →
+                        </motion.div>
+                      </motion.button>
                     </div>
-                    <motion.div 
-                      className="text-white"
-                      whileHover={{ x: 5 }}
-                    >
-                      →
-                    </motion.div>
-                  </motion.button>
-                ))}
-              </div>
-            </motion.div>
-          </motion.div>
+                  </motion.div>
+                </motion.div>
+              ))}
+            </div>
+          </div>
         ))}
       </motion.div>
 
-      {books.length === 0 && (
+      <Modal
+        title="PDF Viewer"
+        open={isPdfModalVisible}
+        onCancel={() => setIsPdfModalVisible(false)}
+        width="80%"
+        footer={[
+          <div key="pagination" className="flex justify-center items-center space-x-4">
+            <button
+              onClick={() => setPageNumber(Math.max(1, pageNumber - 1))}
+              disabled={pageNumber <= 1}
+              className="px-4 py-2 bg-blue-500 text-white rounded disabled:opacity-50"
+            >
+              Previous
+            </button>
+            <span className="text-lg">
+              Page {pageNumber} of {numPages}
+            </span>
+            <button
+              onClick={() => setPageNumber(Math.min(numPages, pageNumber + 1))}
+              disabled={pageNumber >= numPages}
+              className="px-4 py-2 bg-blue-500 text-white rounded disabled:opacity-50"
+            >
+              Next
+            </button>
+          </div>
+        ]}
+      >
+        <div className="flex justify-center">
+          <Document
+            file={pdfUrl}
+            onLoadSuccess={onDocumentLoadSuccess}
+            loading={<div>Loading PDF...</div>}
+          >
+            <Page 
+              pageNumber={pageNumber} 
+              renderTextLayer={false}
+              renderAnnotationLayer={false}
+              width={Math.min(window.innerWidth * 0.7, 800)}
+            />
+          </Document>
+        </div>
+      </Modal>
+
+      {Object.keys(books).length === 0 && (
         <div className="text-center py-8">
           <p className="text-gray-400">No books available for this subject.</p>
         </div>
