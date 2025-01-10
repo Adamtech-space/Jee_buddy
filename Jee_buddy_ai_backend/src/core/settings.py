@@ -35,7 +35,7 @@ DEBUG = True
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['.vercel.app']
 
 
 # Application definition
