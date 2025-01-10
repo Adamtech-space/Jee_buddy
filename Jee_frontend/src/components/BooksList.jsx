@@ -1,8 +1,12 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate, useParams } from 'react-router-dom';
-import { message } from 'antd';
+import { message, Modal } from 'antd';
 import { getBooksList } from '../interceptors/services';
+import { Document, Page, pdfjs } from 'react-pdf';
+
+// Set up PDF.js worker
+pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 
 const BooksList = () => {
   const navigate = useNavigate();
@@ -10,29 +14,41 @@ const BooksList = () => {
   const [selectedBook, setSelectedBook] = useState(null);
   const [books, setBooks] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [pdfUrl, setPdfUrl] = useState(null);
+  const [isPdfModalVisible, setIsPdfModalVisible] = useState(false);
+  const [numPages, setNumPages] = useState(null);
+  const [pageNumber, setPageNumber] = useState(1);
 
   useEffect(() => {
     const fetchBooks = async () => {
       try {
         setLoading(true);
-        const booksData = await getBooksList(subject);
-        
-        // Process books data to match UI structure
-        const processedBooks = booksData.map(book => ({
-          title: book.file_name,
-          author: 'NCERT', // You can add author field in Supabase if needed
-          type: 'Textbook',
-          storage_url: book.storage_url,
-          topics: [
-            {
-              id: book.topic,
-              name: book.topic,
-              color: getRandomColor()
-            }
-          ]
-        }));
-        
-        setBooks(processedBooks);
+        const response = await getBooksList(subject);
+        const booksData = response.data;
+
+        // Group books by class (XI or XII)
+        const groupedBooks = booksData.reduce((acc, book) => {
+          const isClass12 = book.topic.toLowerCase().includes('xii') || 
+                          book.file_name.toLowerCase().includes('xii');
+          const className = isClass12 ? 'Class XII' : 'Class XI';
+          
+          if (!acc[className]) {
+            acc[className] = [];
+          }
+          
+          acc[className].push({
+            ...book,
+            displayName: book.file_name.replace('.pdf', '')
+                                     .replace('Unit', 'Unit:')
+                                     .split('Unit:')
+                                     .map(part => part.trim())
+                                     .filter(Boolean)
+          });
+          
+          return acc;
+        }, {});
+
+        setBooks(groupedBooks);
       } catch (error) {
         message.error(error.message || 'Failed to fetch books');
       } finally {
@@ -44,6 +60,20 @@ const BooksList = () => {
       fetchBooks();
     }
   }, [subject]);
+
+  const handleBookClick = (book) => {
+    setSelectedBook(selectedBook?.id === book.id ? null : book);
+  };
+
+  const handlePdfClick = (url) => {
+    setPdfUrl(url);
+    setIsPdfModalVisible(true);
+    setPageNumber(1);
+  };
+
+  const onDocumentLoadSuccess = ({ numPages }) => {
+    setNumPages(numPages);
+  };
 
   const getRandomColor = () => {
     const colors = [
@@ -57,19 +87,6 @@ const BooksList = () => {
       'from-green-500 to-green-700'
     ];
     return colors[Math.floor(Math.random() * colors.length)];
-  };
-
-  const handleBookClick = (book) => {
-    setSelectedBook(selectedBook?.title === book.title ? null : book);
-  };
-
-  const handleTopicClick = (book, topicId) => {
-    // Open PDF in a new tab or viewer component
-    if (book.storage_url) {
-      window.open(book.storage_url, '_blank');
-    } else {
-      message.warning('PDF URL not available');
-    }
   };
 
   const containerVariants = {
@@ -110,74 +127,122 @@ const BooksList = () => {
         variants={containerVariants}
         initial="hidden"
         animate="visible"
-        className="grid grid-cols-1 gap-6"
+        className="grid grid-cols-1 gap-8"
       >
-        {books.map((book, index) => (
-          <motion.div
-            key={index}
-            variants={itemVariants}
-            className={`bg-gray-900 rounded-xl p-6 transition-all duration-300 ${
-              selectedBook?.title === book.title ? 'ring-2 ring-blue-500' : ''
-            }`}
-          >
-            <div
-              className="cursor-pointer"
-              onClick={() => handleBookClick(book)}
-            >
-              <h3 className="text-2xl font-bold text-white mb-2">{book.title}</h3>
-              <p className="text-gray-400 text-sm mb-4">Author: {book.author}</p>
-            </div>
-
-            <motion.div
-              initial="hidden"
-              animate={selectedBook?.title === book.title ? "visible" : "hidden"}
-              variants={{
-                visible: { height: "auto", opacity: 1 },
-                hidden: { height: 0, opacity: 0 }
-              }}
-              transition={{ duration: 0.3 }}
-              className="overflow-hidden"
-            >
-              <h4 className="text-xl font-semibold mb-4">Topics:</h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {book.topics.map((topic) => (
-                  <motion.button
-                    key={topic.id}
-                    onClick={() => handleTopicClick(book, topic.id)}
-                    className={`w-full p-6 rounded-xl shadow-lg hover:shadow-2xl 
-                              transition-all duration-300 bg-gradient-to-r ${topic.color}
-                              flex items-center justify-between group`}
-                    whileHover={{ scale: 1.03 }}
-                    whileTap={{ scale: 0.98 }}
+        {Object.entries(books).map(([className, classBooks]) => (
+          <div key={className} className="space-y-6">
+            <h3 className="text-2xl font-semibold text-white">{className}</h3>
+            <div className="grid grid-cols-1 gap-6">
+              {classBooks.map((book) => (
+                <motion.div
+                  key={book.id}
+                  variants={itemVariants}
+                  className={`bg-gray-900 rounded-xl p-6 transition-all duration-300 ${
+                    selectedBook?.id === book.id ? 'ring-2 ring-blue-500' : ''
+                  }`}
+                >
+                  <div
+                    className="cursor-pointer"
+                    onClick={() => handleBookClick(book)}
                   >
-                    <div className="flex items-center">
-                      <span className="text-4xl mr-4 group-hover:scale-110 transition-transform">
-                        📝
-                      </span>
-                      <div className="text-left">
-                        <span className="text-xl font-bold text-white block">
-                          {topic.name}
-                        </span>
-                        <span className="text-sm text-gray-200 opacity-80">
-                          Click to view PDF
-                        </span>
-                      </div>
+                    <h3 className="text-2xl font-bold text-white mb-2">{book.displayName[0]}</h3>
+                    {book.displayName[1] && (
+                      <p className="text-gray-400 text-sm mb-4">Unit: {book.displayName[1]}</p>
+                    )}
+                  </div>
+
+                  <motion.div
+                    initial="hidden"
+                    animate={selectedBook?.id === book.id ? "visible" : "hidden"}
+                    variants={{
+                      visible: { height: "auto", opacity: 1 },
+                      hidden: { height: 0, opacity: 0 }
+                    }}
+                    transition={{ duration: 0.3 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="mt-4">
+                      <motion.button
+                        onClick={() => handlePdfClick(book.storage_url)}
+                        className={`w-full p-6 rounded-xl shadow-lg hover:shadow-2xl 
+                                  transition-all duration-300 bg-gradient-to-r ${getRandomColor()}
+                                  flex items-center justify-between group`}
+                        whileHover={{ scale: 1.03 }}
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        <div className="flex items-center">
+                          <span className="text-4xl mr-4 group-hover:scale-110 transition-transform">
+                            📚
+                          </span>
+                          <div className="text-left">
+                            <span className="text-xl font-bold text-white block">
+                              View PDF
+                            </span>
+                            <span className="text-sm text-gray-200 opacity-80">
+                              Click to open the book
+                            </span>
+                          </div>
+                        </div>
+                        <motion.div 
+                          className="text-white"
+                          whileHover={{ x: 5 }}
+                        >
+                          →
+                        </motion.div>
+                      </motion.button>
                     </div>
-                    <motion.div 
-                      className="text-white"
-                      whileHover={{ x: 5 }}
-                    >
-                      →
-                    </motion.div>
-                  </motion.button>
-                ))}
-              </div>
-            </motion.div>
-          </motion.div>
+                  </motion.div>
+                </motion.div>
+              ))}
+            </div>
+          </div>
         ))}
       </motion.div>
 
-      {books.length === 0 && (
+      <Modal
+        title="PDF Viewer"
+        open={isPdfModalVisible}
+        onCancel={() => setIsPdfModalVisible(false)}
+        width="80%"
+        footer={[
+          <div key="pagination" className="flex justify-center items-center space-x-4">
+            <button
+              onClick={() => setPageNumber(Math.max(1, pageNumber - 1))}
+              disabled={pageNumber <= 1}
+              className="px-4 py-2 bg-blue-500 text-white rounded disabled:opacity-50"
+            >
+              Previous
+            </button>
+            <span className="text-lg">
+              Page {pageNumber} of {numPages}
+            </span>
+            <button
+              onClick={() => setPageNumber(Math.min(numPages, pageNumber + 1))}
+              disabled={pageNumber >= numPages}
+              className="px-4 py-2 bg-blue-500 text-white rounded disabled:opacity-50"
+            >
+              Next
+            </button>
+          </div>
+        ]}
+      >
+        <div className="flex justify-center">
+          <Document
+            file={pdfUrl}
+            onLoadSuccess={onDocumentLoadSuccess}
+            loading={<div>Loading PDF...</div>}
+          >
+            <Page 
+              pageNumber={pageNumber} 
+              renderTextLayer={false}
+              renderAnnotationLayer={false}
+              width={Math.min(window.innerWidth * 0.7, 800)}
+            />
+          </Document>
+        </div>
+      </Modal>
+
+      {Object.keys(books).length === 0 && (
         <div className="text-center py-8">
           <p className="text-gray-400">No books available for this subject.</p>
         </div>
