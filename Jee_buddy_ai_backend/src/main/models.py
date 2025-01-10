@@ -74,5 +74,12 @@ class ChatHistory(models.Model):
         ).order_by('-timestamp')[:limit])
         return [item.to_dict() for item in history]  # Convert to dictionary
 
+    @classmethod
+    def get_user_history(cls, user_id, limit=5):
+        """Get user's recent history across all sessions"""
+        return cls.objects.filter(
+            user_id=user_id
+        ).order_by('-timestamp')[:limit]
+    
     class Meta:
         ordering = ['-timestamp']
