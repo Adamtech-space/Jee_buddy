@@ -1,6 +1,5 @@
 import logging
 import os
-logger = logging.getLogger(__name__)
 
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
@@ -9,6 +8,10 @@ from typing import List, Dict, Any, Optional
 from pydantic import BaseModel, Field
 from langchain.schema import SystemMessage, HumanMessage
 from main.models import ChatHistory
+
+logger = logging.getLogger(__name__)
+
+
 class MathProblemInput(BaseModel):
     question: str = Field(description="The math problem to solve")
     approach: Optional[str] = Field(default="auto", description="The approach to use for solving")
@@ -16,10 +19,12 @@ class MathProblemInput(BaseModel):
 class MathAgent:
     def __init__(self):
         self.llm = ChatOpenAI(
-            temperature=0.7,
+            temperature=0.2,
             model="gpt-4o",
             max_tokens=1000,
-            api_key=os.getenv('OPENAI_API_KEY')
+            api_key=os.getenv('OPENAI_API_KEY'),
+            top_p=0.9,
+            
         )
         self.chat_history = []
         self.max_history = 100
@@ -169,6 +174,62 @@ class MathAgent:
             session_id = context.get('session_id')
             history_limit = context.get('history_limit', 100)
 
+            formatted_history = []
+
+            # First check database history (this works across sessions)
+            if user_id:
+                db_history = ChatHistory.objects.filter(
+                    user_id=user_id  # Only filtering by user_id, not session_id
+                ).order_by('-timestamp')[:history_limit]
+                
+                if db_history:
+                    # Convert database history to formatted history
+                    for h in db_history:
+                        formatted_history.append({
+                            'question': h.question,
+                            'response': h.response,
+                            'timestamp': h.timestamp,
+                            'session_id': h.session_id,  # Keep track of which session it was from
+                            'subject': h.context.get('subject', ''),
+                            'topic': h.context.get('topic', ''),
+                            'interaction_type': h.context.get('interaction_type', '')
+                        })
+
+                # Then add current session's history if available
+            if context.get('chat_history'):
+                def extract_history(chat_list):
+                    for chat in chat_list:
+                        if isinstance(chat, dict):
+                            chat_context = chat.get('context', {})
+                            formatted_history.append({
+                                'question': chat.get('question', ''),
+                                'response': chat.get('response', ''),
+                                'timestamp': chat.get('timestamp', ''),
+                                'session_id': chat.get('session_id', ''),
+                                'subject': chat_context.get('subject', ''),
+                                'topic': chat_context.get('topic', ''),
+                                'interaction_type': chat_context.get('interaction_type', '')
+                            })
+                            if chat_context.get('chat_history'):
+                                extract_history(chat_context['chat_history'])
+
+                extract_history(context['chat_history'])
+
+
+            formatted_history.sort(key=lambda x: x['timestamp'])
+
+
+            # Format history for LLM with session information
+            if formatted_history:
+                history_context = "\n\n".join([
+                    f"Question ({h['timestamp']}, Session: {h['session_id']}):\n"
+                    f"Topic: {h['topic']}\n"
+                    f"Q: {h['question']}\n"
+                    f"A: {h['response']}"
+                    for h in formatted_history
+                ])
+            else:
+                history_context = "No previous conversation context."
              # Get chat history from database
             history_context = ""
             if user_id:
@@ -189,13 +250,7 @@ class MathAgent:
             if context.get('image'):
                 image_context = "[Image provided for reference]"
 
-            # # Build conversation history context
-            # history_context = ""
-            # if context.get('chat_history'):
-            #     history_context = "\n".join([
-            #         f"User: {msg['question']}\nAssistant: {msg['response']}"
-            #         for msg in context['chat_history']
-            #     ])
+           
 
            
 
@@ -239,7 +294,9 @@ class MathAgent:
                     'history': history_context,
                     'current_question': question,
                     'response': llm_response,
-                    'previous_interactions': history_context
+                    'previous_interactions': formatted_history,
+                    'user_id': user_id,
+                    'current_session_id': session_id
 
                 }
                 
