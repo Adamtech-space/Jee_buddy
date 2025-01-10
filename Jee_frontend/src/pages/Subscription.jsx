@@ -1,11 +1,131 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { aiService } from '../interceptors/ai.service';
+import PropTypes from 'prop-types';
+
+// Define plan IDs
+const PLANS = {
+  'BASIC': 'plan_PhmnKiiVXD3B1M',
+  'PREMIUM': 'plan_Phmo9yOZAKb0P8',
+  'PRO': 'plan_PhmnlqjWH24hwy'
+};
+
+const SubscriptionCard = ({ plan, isActive, onSubscribe, subscriptionDetails }) => {
+  const isCurrentPlan = isActive && subscriptionDetails?.plan_id === plan.id;
+  
+  const getExpiryStatusColor = (status) => {
+    switch (status) {
+      case 'expiring_soon':
+        return 'text-yellow-500';
+      case 'expired':
+        return 'text-red-500';
+      default:
+        return 'text-green-500';
+    }
+  };
+
+  const getExpiryStatusText = (status) => {
+    switch (status) {
+      case 'expiring_soon':
+        return 'Expiring Soon';
+      case 'expired':
+        return 'Expired';
+      default:
+        return 'Active';
+    }
+  };
+  
+  return (
+    <div 
+      className={`bg-gray-900 rounded-xl p-6 cursor-pointer transition-all duration-300 ${
+        isCurrentPlan ? 'border-2 border-blue-500 shadow-lg shadow-blue-500/20' : 'hover:border-2 hover:border-gray-700'
+      }`}
+      onClick={() => onSubscribe && onSubscribe(plan)}
+    >
+      <div className="text-center mb-4">
+        <h3 className="text-xl font-bold text-white">{plan.name}</h3>
+        <p className="text-3xl font-bold text-white mt-2">
+          ₹{plan.price}<span className="text-sm text-gray-400">/month</span>
+        </p>
+        {isCurrentPlan && subscriptionDetails && (
+          <div className="mt-4 p-3 bg-gray-800 rounded-lg">
+            <div className="flex justify-between items-center mb-2">
+              <p className="text-sm text-gray-300">Subscription Status</p>
+              <span className={`text-sm font-medium ${getExpiryStatusColor(subscriptionDetails.expiry_status)}`}>
+                {getExpiryStatusText(subscriptionDetails.expiry_status)}
+              </span>
+            </div>
+            <p className="text-lg font-semibold text-white mt-1">
+              {subscriptionDetails.days_remaining} days remaining
+            </p>
+            <div className="w-full bg-gray-700 rounded-full h-2.5 mt-2">
+              <div 
+                className={`h-2.5 rounded-full transition-all duration-300 ${
+                  subscriptionDetails.expiry_status === 'expired' 
+                    ? 'bg-red-500' 
+                    : subscriptionDetails.expiry_status === 'expiring_soon'
+                    ? 'bg-yellow-500'
+                    : 'bg-blue-500'
+                }`}
+                style={{ width: `${(subscriptionDetails.days_used / subscriptionDetails.total_days) * 100}%` }}
+              ></div>
+            </div>
+            <div className="mt-2 space-y-1">
+              <p className="text-xs text-gray-400">
+                {subscriptionDetails.subscription_progress}
+              </p>
+              <p className="text-xs text-gray-400">
+                Started: {new Date(subscriptionDetails.start_date).toLocaleDateString()}
+              </p>
+              <p className="text-xs text-gray-400">
+                Expires: {new Date(subscriptionDetails.end_date).toLocaleDateString()}
+              </p>
+            </div>
+            {subscriptionDetails.reminder_message && (
+              <div className="mt-3 p-2 bg-gray-700 rounded text-xs text-yellow-400">
+                {subscriptionDetails.reminder_message}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+SubscriptionCard.propTypes = {
+  plan: PropTypes.shape({
+    id: PropTypes.string.isRequired,
+    name: PropTypes.string.isRequired,
+    price: PropTypes.number.isRequired,
+    features: PropTypes.arrayOf(PropTypes.string).isRequired,
+    type: PropTypes.string.isRequired
+  }).isRequired,
+  isActive: PropTypes.bool.isRequired,
+  onSubscribe: PropTypes.func.isRequired,
+  subscriptionDetails: PropTypes.shape({
+    plan_id: PropTypes.string,
+    days_remaining: PropTypes.number,
+    days_used: PropTypes.number,
+    total_days: PropTypes.number,
+    subscription_progress: PropTypes.string,
+    start_date: PropTypes.string,
+    end_date: PropTypes.string,
+    expiry_status: PropTypes.oneOf(['active', 'expiring_soon', 'expired']),
+    reminder_message: PropTypes.string
+  })
+};
+
+SubscriptionCard.defaultProps = {
+  subscriptionDetails: null
+};
 
 const Subscription = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [isSubscribed, setIsSubscribed] = useState(false);
-  const [subscriptionData, setSubscriptionData] = useState(null);
+  const [currentPlan, setCurrentPlan] = useState(null);
+  const [selectedPlan, setSelectedPlan] = useState(null);
 
   const loadScript = (src) => {
     return new Promise((resolve) => {
@@ -21,92 +141,142 @@ const Subscription = () => {
     });
   };
 
+  const getUserId = () => {
+    try {
+      const userDataStr = localStorage.getItem('user');
+      if (!userDataStr) return null;
+      
+      const userData = JSON.parse(userDataStr);
+      return userData.id || null;
+    } catch (error) {
+      console.error('Error getting user ID:', error);
+      return null;
+    }
+  };
+
   useEffect(() => {
-    loadScript("https://checkout.razorpay.com/v1/checkout.js");
-    const userId = localStorage.getItem('uuid');
+    const initializeSubscription = async () => {
+      await loadScript("https://checkout.razorpay.com/v1/checkout.js");
+      const userId = getUserId();
     console.log('Current user ID:', userId);
     if (!userId) {
       console.warn('No user ID found in localStorage');
-      // You might want to redirect to login here
-      // navigate('/login');
-    }
-    checkSubscriptionStatus();
+        navigate('/login');
+        return;
+      }
+      
+      await checkSubscriptionStatus();
+    };
+
+    initializeSubscription();
   }, []);
 
   const checkSubscriptionStatus = async () => {
     try {
-      const userId = localStorage.getItem('uuid');
-      const response = await fetch(`http://127.0.0.1:8000/api/subscription/status/?user_id=${userId}`);
-      const data = await response.json();
+      const userId = getUserId();
+      if (!userId) {
+        console.warn('No user ID available for subscription check');
+        return;
+      }
+      const response = await aiService.checkSubscriptionStatus(userId);
       
-      if (data.status === 'success') {
-        setIsSubscribed(data.is_subscribed);
-        setSubscriptionData(data);
+      if (response.status === 'success') {
+        setIsSubscribed(response.is_subscribed);
+        // Set current plan based on subscription details
+        if (response.is_subscribed && response.plan_id) {
+          // Find plan type based on plan_id
+          const planType = Object.keys(PLANS).find(key => PLANS[key] === response.plan_id);
+          setCurrentPlan({
+            type: planType,
+            name: `${planType.charAt(0) + planType.slice(1).toLowerCase()} Plan`,
+            price: planType === 'BASIC' ? 499 : planType === 'PRO' ? 1499 : 4999
+          });
+        }
       }
     } catch (error) {
       console.error('Failed to check subscription status:', error);
     }
   };
 
+  const handleGetStarted = async (plan) => {
+    try {
+      setLoading(true);
+      console.log('handleGetStarted called with plan:', plan);
+      
+      const userId = getUserId();
+      console.log('Current userId:', userId);
+      
+      if (!userId) {
+        alert('Please login first');
+        navigate('/login');
+        return;
+      }
+
+      console.log('Proceeding to handlePayment with:', {
+        price: plan.price,
+        name: plan.name,
+        id: plan.id
+      });
+
+      await handlePayment(plan.price, plan.name, plan.id);
+    } catch (error) {
+      console.error('Failed to process plan selection:', error);
+      alert('Failed to process your request. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handlePayment = async (price, product_name, plan_id) => {
     try {
       setLoading(true);
-      console.log('Starting payment process...');
+      console.log('handlePayment called with:', { price, product_name, plan_id });
       
-      const userId = localStorage.getItem('uuid');
+      const userId = getUserId();
       if (!userId) {
         alert('Please login first');
         return;
       }
 
+      const userData = JSON.parse(localStorage.getItem('user'));
       const requestData = {
-        price,
+        price: Number(price),
         product_name,
         plan_id,
-        user_id: userId
+        user_id: userId,
+        email: userData.email || '',
+        name: userData.name || ''
       };
 
-      console.log('Sending request with data:', requestData);
+      console.log('Sending subscription request with data:', requestData);
 
-      const response = await fetch('http://127.0.0.1:8000/api/subscription/create/', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify(requestData)
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Server error:', errorText);
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      console.log('Response status:', response.status);
-      const data = await response.json();
-      console.log('Response data:', data);
+      const data = await aiService.createSubscription(requestData);
+      console.log('Received subscription response:', data);
 
       if (!data.razorpay_key || !data.order) {
+        console.error('Invalid server response:', data);
         throw new Error('Invalid response from server');
       }
       
       const options = {
         key: data.razorpay_key,
-        amount: data.order.amount,
-        currency: "INR",
-        name: data.product_name,
         subscription_id: data.order.id,
-        callback_url: data.callback_url,
+        name: "JEE Buddy",
+        description: `${product_name} Subscription`,
+        image: "https://your-logo-url.png",
+        currency: "INR",
         prefill: {
-          email: localStorage.getItem('userEmail') || '',
+          email: userData.email || '',
+          name: userData.name || '',
           contact: ''
         },
         notes: {
-          user_id: userId
+          user_id: userId,
+          plan_name: product_name,
+          plan_id: plan_id
         },
         handler: function(response) {
-          console.log('Payment success:', response);
+          console.log('Razorpay payment success:', response);
           verifyPayment(response);
         },
         modal: {
@@ -120,12 +290,23 @@ const Subscription = () => {
         }
       };
 
-      console.log('Razorpay options:', options);
+      console.log('Initializing Razorpay with options:', options);
+
+      if (!window.Razorpay) {
+        throw new Error('Razorpay script not loaded');
+      }
+
       const razorpay = new window.Razorpay(options);
+      console.log('Opening Razorpay modal...');
       razorpay.open();
     } catch (error) {
       console.error('Payment error:', error);
-      alert('Failed to initiate payment. Please try again.');
+      console.error('Error details:', {
+        message: error.message,
+        stack: error.stack,
+        response: error.response?.data
+      });
+      alert(`Failed to initiate payment: ${error.message}`);
     } finally {
       setLoading(false);
     }
@@ -133,89 +314,256 @@ const Subscription = () => {
 
   const verifyPayment = async (paymentResponse) => {
     try {
-      const response = await fetch('http://127.0.0.1:8000/api/subscription/callback/', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify({
+      console.log('Payment response:', paymentResponse);
+      const userId = getUserId();
+      const verificationData = {
           razorpay_payment_id: paymentResponse.razorpay_payment_id,
           razorpay_subscription_id: paymentResponse.razorpay_subscription_id,
           razorpay_signature: paymentResponse.razorpay_signature,
-          user_id: localStorage.getItem('uuid')
-        })
-      });
+        user_id: userId
+      };
 
-      const data = await response.json();
+      console.log('Sending verification data:', verificationData);
+      const data = await aiService.verifySubscription(verificationData);
       console.log('Verification response:', data);
 
       if (data.status === 'success') {
         setIsSubscribed(true);
-        alert('Payment successful! You are now subscribed.');
+        // Update current plan after successful payment
+        const planType = Object.keys(PLANS).find(key => PLANS[key] === data.plan_id);
+        setCurrentPlan({
+          type: planType,
+          name: `${planType.charAt(0) + planType.slice(1).toLowerCase()} Plan`,
+          price: planType === 'BASIC' ? 499 : planType === 'PRO' ? 1499 : 4999
+        });
+        alert('Payment successful! Your plan has been updated.');
         navigate('/dashboard');
       } else {
+        console.error('Verification failed:', data);
         alert('Payment verification failed. Please contact support.');
       }
     } catch (error) {
       console.error('Verification error:', error);
+      console.error('Error details:', {
+        message: error.message,
+        response: error.response?.data
+      });
       alert('Payment verification failed. Please contact support.');
     }
   };
 
-  return (
-    <div className="min-h-screen bg-black flex items-center justify-center p-4">
-      <div className="max-w-md w-full bg-gray-900 rounded-2xl shadow-xl p-8">
-        <div className="text-center mb-8">
-          <h2 className="text-3xl font-bold text-white mb-4">Premium Access</h2>
-          {isSubscribed && (
-            <p className="text-green-400 mb-4">
-              You are currently subscribed!
-              <br />
-              Subscription ID: {subscriptionData?.subscription_id}
-            </p>
-          )}
-        </div>
+  // Helper function to get plan features
+  const getPlanFeatures = (planType) => {
+    switch (planType) {
+      case 'BASIC':
+        return [
+          'Access to AI Learning Assistant',
+          'Basic Study Materials',
+          'Limited AI Usage',
+          'Email Support'
+        ];
+      case 'PRO':
+        return [
+          'Extra AI Usage',
+          'Advanced Materials',
+          'Question Bank',
+          'Priority Support',
+          'Strength and Weakness Analysis'
+        ];
+      case 'PREMIUM':
+        return [
+          'Unlimited AI Usage',
+          'AI Generated Question Bank',
+          'Performance Analytics',
+          'Priority Support',
+          'Advanced Analytics'
+        ];
+      default:
+        return [];
+    }
+  };
 
-        <div className="bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl p-6 mb-8">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-2xl font-bold text-white">Premium Plan</h3>
-            <span className="text-3xl font-bold text-white">₹499</span>
+  const handlePlanSelect = (plan) => {
+    setSelectedPlan(plan);
+    handleGetStarted(plan);
+  };
+
+  return (
+    <div className="min-h-screen bg-black">
+      <div className="max-w-7xl mx-auto px-4 py-8">
+        {/* Back Button */}
+        <button
+          onClick={() => navigate(-1)}
+          className="flex items-center text-white mb-8 hover:text-purple-400 transition-colors"
+        >
+          <svg className="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          </svg>
+          Back
+        </button>
+
+        {isSubscribed && currentPlan ? (
+          <div className="max-w-6xl mx-auto">
+            <div className="text-center mb-12">
+              <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent mb-4">
+                Your JEE Buddy Subscription
+              </h1>
+              <p className="text-gray-400 text-lg">
+                {currentPlan.type === 'PREMIUM' 
+                  ? 'You are enjoying our highest tier plan with all premium features!' 
+                  : 'Upgrade your plan anytime to unlock more features and benefits'}
+              </p>
+            </div>
+
+            {/* Current Plan Card */}
+            <div className="mb-16">
+              <h2 className="text-2xl text-white font-semibold mb-6">Current Plan</h2>
+              <div className="rounded-3xl bg-gradient-to-b from-[#2c2439] to-[#1a1625] p-8 relative overflow-hidden">
+                {/* Decorative Elements */}
+                <div className="absolute top-0 right-0 w-40 h-40 bg-purple-500 opacity-10 rounded-full transform translate-x-20 -translate-y-20"></div>
+                <div className="absolute bottom-0 left-0 w-32 h-32 bg-blue-500 opacity-10 rounded-full transform -translate-x-16 translate-y-16"></div>
+                
+                {/* Active Plan Badge */}
+                <div className="absolute top-4 right-4">
+                  <span className="bg-green-500 text-white px-4 py-1 rounded-full text-sm font-medium">
+                    Active Plan
+                  </span>
+                </div>
+
+                <div className="relative z-10">
+                  <h2 className="text-3xl font-bold text-white mb-4">{currentPlan.name}</h2>
+                  <div className="flex items-baseline mb-8">
+                    <span className="text-2xl text-[#8075FF]">₹</span>
+                    <span className="text-5xl font-bold text-[#8075FF]">{currentPlan.price}</span>
+                    <span className="text-gray-400 ml-2">/month</span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4 text-left mb-8">
+                    {getPlanFeatures(currentPlan.type).map((feature, index) => (
+                      <div key={index} className="flex items-center text-white">
+                        <svg className="w-5 h-5 mr-3 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                        {feature}
+                      </div>
+                    ))}
+                  </div>
+
+                  <button
+                    onClick={() => navigate('/dashboard')}
+                    className="w-full py-3 rounded-lg bg-[#1e1b29] text-white font-semibold hover:bg-[#2a2635] transition-colors"
+                  >
+                    Return to Dashboard
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Show upgrade option only if not on Premium plan */}
+            {currentPlan.type !== 'PREMIUM' && (
+              <div>
+                <h2 className="text-2xl text-white font-semibold mb-6">Available Upgrades</h2>
+                <div className="rounded-3xl bg-[#1a1625] p-8">
+                  <div className="flex flex-col md:flex-row items-center justify-between gap-8">
+                    <div>
+                      <h3 className="text-2xl font-bold text-white mb-2">Premium Plan</h3>
+                      <p className="text-gray-400 mb-4">Unlock unlimited AI usage and advanced features</p>
+                      <div className="flex items-baseline mb-4">
+                        <span className="text-xl text-[#8075FF]">₹</span>
+                        <span className="text-4xl font-bold text-[#8075FF]">4,999</span>
+                        <span className="text-gray-400 ml-2">/month</span>
+                      </div>
+                      <ul className="space-y-2 mb-6">
+                        <li className="flex items-center text-white">
+                          <svg className="w-5 h-5 mr-3 text-[#8075FF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                          Unlimited AI Usage
+                        </li>
+                        <li className="flex items-center text-white">
+                          <svg className="w-5 h-5 mr-3 text-[#8075FF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                          AI Generated Question Bank
+                        </li>
+                        <li className="flex items-center text-white">
+                          <svg className="w-5 h-5 mr-3 text-[#8075FF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                          Performance Analytics
+                        </li>
+                      </ul>
+                    </div>
+                    <div className="flex flex-col items-center">
+                      <button
+                        onClick={() => handleGetStarted({
+                          type: 'PREMIUM',
+                          price: 4999,
+                          name: 'Premium Plan',
+                          id: PLANS['PREMIUM']
+                        })}
+                        disabled={loading}
+                        className="px-8 py-3 rounded-lg bg-[#8075FF] text-white font-semibold hover:bg-[#6a5ff0] transition-colors"
+                      >
+                        {loading ? 'Processing...' : 'Upgrade to Premium'}
+                      </button>
+                      <p className="text-gray-500 text-sm mt-2">Cancel or change plans anytime</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
-          <ul className="space-y-3 mb-6">
-            <li className="flex items-center text-white">
-              <span className="mr-2">✓</span>
-              Unlimited AI Conversations
-            </li>
-            <li className="flex items-center text-white">
-              <span className="mr-2">✓</span>
-              Advanced Learning Features
-            </li>
-            <li className="flex items-center text-white">
-              <span className="mr-2">✓</span>
-              Personalized Study Plans
-            </li>
-          </ul>
-          {!isSubscribed && (
-            <button
-              onClick={() => handlePayment(499, "JEE AI Premium", "plan_MtHhFwXXEAQhXa")}
-              disabled={loading}
-              className={`w-full py-3 px-4 rounded-lg bg-white text-blue-600 font-bold hover:bg-gray-100 
-                        transition-colors ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
-            >
-              {loading ? 'Processing...' : 'Subscribe Now'}
-            </button>
-          )}
-          {isSubscribed && (
-            <button
-              onClick={() => navigate('/dashboard')}
-              className="w-full py-3 px-4 rounded-lg bg-green-500 text-white font-bold hover:bg-green-600 
-                        transition-colors"
-            >
-              Go to Dashboard
-            </button>
-          )}
-        </div>
+        ) : (
+          // Non-subscribed User View - Keep existing plans grid
+          <>
+            <h1 className="text-4xl md:text-5xl text-center font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent mb-16">
+              Choose the plan that works best for you
+            </h1>
+            
+            {/* Existing plans grid */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              {/* Basic Plan */}
+              <SubscriptionCard
+                plan={{
+                  type: 'BASIC',
+                  price: 499,
+                  name: 'Basic Plan',
+                  id: PLANS['BASIC'],
+                  features: getPlanFeatures('BASIC')
+                }}
+                isActive={selectedPlan?.type === 'BASIC'}
+                onSubscribe={handlePlanSelect}
+              />
+
+              {/* Pro Plan */}
+              <SubscriptionCard
+                plan={{
+                  type: 'PRO',
+                  price: 1499,
+                  name: 'Pro Plan',
+                  id: PLANS['PRO'],
+                  features: getPlanFeatures('PRO')
+                }}
+                isActive={selectedPlan?.type === 'PRO'}
+                onSubscribe={handlePlanSelect}
+              />
+
+              {/* Premium Plan */}
+              <SubscriptionCard
+                plan={{
+                  type: 'PREMIUM',
+                  price: 4999,
+                  name: 'Premium Plan',
+                  id: PLANS['PREMIUM'],
+                  features: getPlanFeatures('PREMIUM')
+                }}
+                isActive={selectedPlan?.type === 'PREMIUM'}
+                onSubscribe={handlePlanSelect}
+              />
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

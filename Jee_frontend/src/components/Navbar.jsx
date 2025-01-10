@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import PropTypes from 'prop-types';
 import { motion } from 'framer-motion';
+import { useSubscription } from '../context/SubscriptionContext';
 
 const Navbar = ({ isMobileOpen, setIsMobileOpen }) => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -10,13 +11,15 @@ const Navbar = ({ isMobileOpen, setIsMobileOpen }) => {
   const navigate = useNavigate();
   const isDashboard = location.pathname.includes('/dashboard') || location.pathname.includes('/subject-selection');
   const profileRef = useRef(null);
-  const [subscriptionStatus, setSubscriptionStatus] = useState('free');
+  const { isSubscribed, currentPlan } = useSubscription();
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const userStr = localStorage.getItem('user');
     if (userStr) {
-      setUser(JSON.parse(userStr));
+      const userData = JSON.parse(userStr);
+      setUser(userData);
+      setIsLoading(false);
     }
   }, []);
 
@@ -32,17 +35,72 @@ const Navbar = ({ isMobileOpen, setIsMobileOpen }) => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
-  // subscription status
-  // useEffect(() => {
-  //   if (user && user.subscription) {
-  //     setSubscriptionStatus(user.subscription.status);
-  //   }
-  // }, [user]);
 
   const handleLogout = () => {
     localStorage.removeItem('user');
     localStorage.removeItem('tokens');
     navigate('/login');
+  };
+
+  const getSubscriptionBadge = () => {
+    if (!currentPlan) return null;
+
+    const badges = {
+      'PREMIUM': (
+        <div className="flex items-center space-x-2">
+          <div className="flex flex-col">
+            <span className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-3 py-1 rounded-full text-sm font-medium animate-pulse">
+              PREMIUM
+            </span>
+            {currentPlan.daysRemaining && (
+              <span className="text-xs text-gray-400 mt-1 text-center">
+                {currentPlan.daysRemaining} days left
+              </span>
+            )}
+          </div>
+          <span className="text-xs text-gray-400">Unlimited Access</span>
+        </div>
+      ),
+      'PRO': (
+        <div className="flex items-center space-x-2">
+          <div className="flex flex-col">
+            <span className="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-3 py-1 rounded-full text-sm font-medium">
+              PRO
+            </span>
+            {currentPlan.daysRemaining && (
+              <span className="text-xs text-gray-400 mt-1 text-center">
+                {currentPlan.daysRemaining} days left
+              </span>
+            )}
+          </div>
+          <span className="text-xs text-gray-400">Extended Access</span>
+        </div>
+      ),
+      'BASIC': (
+        <div className="flex items-center space-x-2">
+          <div className="flex flex-col">
+            <span className="bg-gradient-to-r from-gray-500 to-gray-600 text-white px-3 py-1 rounded-full text-sm font-medium">
+              BASIC
+            </span>
+            {currentPlan.daysRemaining && (
+              <span className="text-xs text-gray-400 mt-1 text-center">
+                {currentPlan.daysRemaining} days left
+              </span>
+            )}
+          </div>
+          <span className="text-xs text-gray-400">Limited Access</span>
+        </div>
+      )
+    };
+
+    return badges[currentPlan.type] || (
+      <div className="flex items-center space-x-2">
+        <span className="bg-gradient-to-r from-green-500 to-green-600 text-white px-3 py-1 rounded-full text-sm font-medium">
+          TRIAL
+        </span>
+        <span className="text-xs text-gray-400">Basic Access</span>
+      </div>
+    );
   };
 
   return (
@@ -92,33 +150,9 @@ const Navbar = ({ isMobileOpen, setIsMobileOpen }) => {
               </span>
             </Link>
              {/* Subscription status badge */}
-          {user && subscriptionStatus && (
-            <div className="mx-4">
-              {subscriptionStatus === 'premium' && (
-                <span className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-3 py-1 rounded-full text-sm font-medium shadow-lg ">
-                  PREMIUM
-                </span>
-              )}
-              {subscriptionStatus === 'pro' && (
-                <span className="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-3 py-1 rounded-full text-sm font-medium">
-                  PRO
-                </span>
-              )}
-              {subscriptionStatus === 'free' && (
-                <span className="bg-gradient-to-r from-green-500 to-green-600 text-white px-3 py-1 rounded-full text-sm font-medium">
-                  TRIAL
-                </span>
-              )}
-              {subscriptionStatus === 'basic' && (
-                <span className="bg-gradient-to-r from-gray-500 to-gray-600 text-white px-3 py-1 rounded-full text-sm font-medium">
-                  BASIC
-                </span>
-              )}
-              {subscriptionStatus === 'expired' && (
-                <span className="bg-gradient-to-r from-red-500 to-red-600 text-white px-3 py-1 rounded-full text-sm font-medium">
-                  EXPIRED
-                </span>
-              )}
+          {user && !isLoading && (
+            <div className="mx-4 transition-all duration-300 hover:opacity-80">
+              {getSubscriptionBadge()}
             </div>
           )}
 
