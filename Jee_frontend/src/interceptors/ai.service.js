@@ -1,6 +1,30 @@
 import aiInstance from './aiAxios';
 
 export const aiService = {
+  async getCurrentProfile() {
+    try {
+      const userId = localStorage.getItem('uuid');
+      if (!userId) {
+        throw new Error('No user ID found');
+      }
+
+      const response = await aiInstance.get('api/profile/', {
+        headers: {
+          'X-User-Id': userId
+        }
+      });
+      
+      const profile = response.data;
+      localStorage.setItem('uuid', profile.uuid);
+      localStorage.setItem('current_session_id', profile.current_session_id);
+      
+      return profile;
+    } catch (error) {
+      console.error('Failed to fetch profile:', error);
+      throw error;
+    }
+  },
+
   async askQuestion(message, context) {
     try {
       console.log('Sending request with data:', { message, context });
@@ -17,7 +41,7 @@ export const aiService = {
           selectedText: context.selectedText || '',
           image: context.image || null,
           history_limit: 100,
-          chat_history: [] // The backend will fetch history based on user_id
+          chat_history: context.chatHistory || []
         }
       };
 

@@ -6,10 +6,67 @@ from .agents.math_agent_1 import MathAgent
 import asyncio
 import logging
 import json
-from .models import ChatHistory
+from .models import ChatHistory, UserProfile
 import base64
+import uuid
+from django.db import connections
 
 logger = logging.getLogger(__name__)
+
+@api_view(['GET'])
+def get_current_profile(request):
+    """Get user profile from Supabase profiles table"""
+    try:
+        # Get the user ID from request headers or query params
+        user_id = request.GET.get('user_id') or request.headers.get('X-User-Id')
+        
+        if not user_id:
+            return Response({
+                'error': 'User ID is required'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Query the profiles table
+        with connections['default'].cursor() as cursor:
+            cursor.execute("""
+                SELECT uuid, name, email, current_session_id, created_at, updated_at
+                FROM profiles 
+                WHERE uuid = %s
+            """, [user_id])
+            
+            row = cursor.fetchone()
+            
+            if row:
+                profile_data = {
+                    'uuid': row[0],
+                    'name': row[1],
+                    'email': row[2],
+                    'current_session_id': row[3],
+                    'created_at': row[4],
+                    'updated_at': row[5]
+                }
+                
+                # If no session ID exists, generate one and update
+                if not profile_data['current_session_id']:
+                    new_session_id = f"session_{uuid.uuid4().hex[:8]}"
+                    cursor.execute("""
+                        UPDATE profiles 
+                        SET current_session_id = %s,
+                            updated_at = CURRENT_TIMESTAMP
+                        WHERE uuid = %s
+                    """, [new_session_id, user_id])
+                    profile_data['current_session_id'] = new_session_id
+                
+                return Response(profile_data)
+            
+            return Response({
+                'error': 'Profile not found'
+            }, status=status.HTTP_404_NOT_FOUND)
+            
+    except Exception as e:
+        logger.error(f"Error in get_current_profile: {str(e)}", exc_info=True)
+        return Response({
+            'error': str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['POST'])
 @parser_classes([JSONParser, MultiPartParser, FormParser])
