@@ -1,221 +1,215 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { 
-  PlusIcon,
-  PencilIcon,
-  TrashIcon,
-  ArrowPathIcon,
-  ChevronLeftIcon,
-  ChevronRightIcon
-} from '@heroicons/react/24/outline';
-
-const FlashCard = ({ card, onFlip }) => {
-  const [isFlipped, setIsFlipped] = useState(false);
-
-  const handleClick = () => {
-    setIsFlipped(!isFlipped);
-    if (onFlip) onFlip();
-  };
-
-  return (
-    <div 
-      className="relative w-full h-64 cursor-pointer perspective-1000"
-      onClick={handleClick}
-    >
-      <div className={`absolute inset-0 w-full h-full transition-transform duration-500 preserve-3d 
-                      ${isFlipped ? 'rotate-y-180' : ''}`}>
-        {/* Front of card */}
-        <div className={`absolute w-full h-full backface-hidden bg-gray-800 rounded-xl p-6
-                        flex flex-col items-center justify-center text-center`}>
-          <h3 className="text-lg font-semibold mb-4 text-gray-200">Question:</h3>
-          <p className="text-white text-xl">{card.question}</p>
-        </div>
-        
-        {/* Back of card */}
-        <div className={`absolute w-full h-full backface-hidden bg-blue-900 rounded-xl p-6
-                        flex flex-col items-center justify-center text-center rotate-y-180`}>
-          <h3 className="text-lg font-semibold mb-4 text-gray-200">Answer:</h3>
-          <p className="text-white text-xl">{card.answer}</p>
-        </div>
-      </div>
-    </div>
-  );
-};
+import { Card, Button, message, Spin, Empty, Modal } from 'antd';
+import { DeleteOutlined, EditOutlined, EyeOutlined } from '@ant-design/icons';
+import { getFlashCards, deleteFlashCard, updateFlashCard } from '../interceptors/services';
 
 const FlashCards = () => {
   const { subject } = useParams();
-  const [cards, setCards] = useState([
-    {
-      id: 1,
-      question: "What is Newton's First Law?",
-      answer: "An object remains at rest or in uniform motion unless acted upon by an external force.",
-      category: "Mechanics"
-    },
-    {
-      id: 2,
-      question: "What is the SI unit of force?",
-      answer: "Newton (N)",
-      category: "Mechanics"
-    }
-  ]);
-  
-  const [currentCardIndex, setCurrentCardIndex] = useState(0);
-  const [showAddCard, setShowAddCard] = useState(false);
-  const [newCard, setNewCard] = useState({ question: '', answer: '', category: '' });
-  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [flashcards, setFlashcards] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedCard, setSelectedCard] = useState(null);
+  const [isViewModalVisible, setIsViewModalVisible] = useState(false);
+  const [isEditModalVisible, setIsEditModalVisible] = useState(false);
+  const [editForm, setEditForm] = useState({ content: '', topic: '' });
 
-  // Get unique categories
-  const categories = ['all', ...new Set(cards.map(card => card.category))];
+  useEffect(() => {
+    fetchFlashCards();
+  }, [subject]);
 
-  // Filter cards by category
-  const filteredCards = selectedCategory === 'all' 
-    ? cards 
-    : cards.filter(card => card.category === selectedCategory);
-
-  const handlePrevCard = () => {
-    setCurrentCardIndex((prev) => 
-      prev === 0 ? filteredCards.length - 1 : prev - 1
-    );
-  };
-
-  const handleNextCard = () => {
-    setCurrentCardIndex((prev) => 
-      prev === filteredCards.length - 1 ? 0 : prev + 1
-    );
-  };
-
-  const handleAddCard = () => {
-    if (newCard.question.trim() && newCard.answer.trim() && newCard.category.trim()) {
-      setCards(prev => [...prev, { ...newCard, id: Date.now() }]);
-      setNewCard({ question: '', answer: '', category: '' });
-      setShowAddCard(false);
+  const fetchFlashCards = async () => {
+    try {
+      setLoading(true);
+      const response = await getFlashCards(subject);
+      setFlashcards(response.data);
+    } catch {
+      message.error('Failed to fetch flash cards');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleDeleteCard = (cardId) => {
-    setCards(prev => prev.filter(card => card.id !== cardId));
-    setCurrentCardIndex(0);
+  const handleDelete = async (cardId) => {
+    try {
+      await deleteFlashCard(cardId);
+      message.success('Flash card deleted successfully');
+      fetchFlashCards();
+    } catch {
+      message.error('Failed to delete flash card');
+    }
   };
+
+  const handleEdit = (card) => {
+    setSelectedCard(card);
+    setEditForm({ content: card.content, topic: card.topic });
+    setIsEditModalVisible(true);
+  };
+
+  const handleView = (card) => {
+    setSelectedCard(card);
+    setIsViewModalVisible(true);
+  };
+
+  const handleUpdate = async () => {
+    try {
+      await updateFlashCard(selectedCard.id, editForm);
+      message.success('Flash card updated successfully');
+      setIsEditModalVisible(false);
+      fetchFlashCards();
+    } catch {
+      message.error('Failed to update flash card');
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-gray-900">
+        <Spin size="large" />
+      </div>
+    );
+  }
+
+  if (!flashcards.length) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-gray-900">
+        <Empty
+          description={
+            <span className="text-gray-300">
+              No flash cards found for {subject}. Create some by selecting text from books!
+            </span>
+          }
+        />
+      </div>
+    );
+  }
 
   return (
-    <div className="h-full flex flex-col bg-gray-900 rounded-lg p-6">
-      {/* Header */}
-      <div className="flex justify-between items-center mb-8">
-        <h2 className="text-2xl font-bold text-white capitalize">{subject} Flash Cards</h2>
-        <button
-          onClick={() => setShowAddCard(true)}
-          className="flex items-center px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
-        >
-          <PlusIcon className="w-5 h-5 mr-2" />
-          Add Card
-        </button>
-      </div>
-
-      {/* Category Filter */}
-      <div className="flex flex-wrap gap-2 mb-6">
-        {categories.map(category => (
-          <button
-            key={category}
-            onClick={() => {
-              setSelectedCategory(category);
-              setCurrentCardIndex(0);
-            }}
-            className={`px-4 py-2 rounded-lg transition-colors ${
-              selectedCategory === category
-                ? 'bg-blue-500 text-white'
-                : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
-            }`}
+    <div className="p-6 bg-gray-900 min-h-screen">
+      <h1 className="text-2xl font-bold mb-6 text-white capitalize">
+        {subject} Flash Cards
+      </h1>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {flashcards.map((card) => (
+          <Card
+            key={card.id}
+            className="bg-gray-800 border-gray-700 hover:shadow-lg transition-shadow"
+            style={{ borderRadius: '0.75rem' }}
+            actions={[
+              <Button 
+                key="view"
+                type="text" 
+                icon={<EyeOutlined className="text-blue-400" />} 
+                onClick={() => handleView(card)}
+                className="text-gray-300 hover:text-blue-400"
+              >
+                View
+              </Button>,
+              <Button 
+                key="edit"
+                type="text" 
+                icon={<EditOutlined className="text-green-400" />} 
+                onClick={() => handleEdit(card)}
+                className="text-gray-300 hover:text-green-400"
+              >
+                Edit
+              </Button>,
+              <Button 
+                key="delete"
+                type="text" 
+                danger 
+                icon={<DeleteOutlined />} 
+                onClick={() => handleDelete(card.id)}
+                className="hover:text-red-500"
+              >
+                Delete
+              </Button>
+            ]}
           >
-            {category.charAt(0).toUpperCase() + category.slice(1)}
-          </button>
+            <Card.Meta
+              title={<span className="text-white">{card.topic}</span>}
+              description={
+                <div className="h-24 overflow-hidden text-gray-300">
+                  {card.content.length > 150
+                    ? `${card.content.substring(0, 150)}...`
+                    : card.content}
+                </div>
+              }
+            />
+            <div className="mt-4 text-sm text-gray-400">
+              Source: {card.source}
+            </div>
+          </Card>
         ))}
       </div>
 
-      {/* Flash Card Display */}
-      {filteredCards.length > 0 ? (
-        <div className="flex-1 flex flex-col items-center justify-center">
-          <div className="w-full max-w-2xl mb-8">
-            <FlashCard card={filteredCards[currentCardIndex]} />
-          </div>
-          
-          <div className="flex items-center justify-center gap-4">
-            <button
-              onClick={handlePrevCard}
-              className="p-2 text-gray-400 hover:text-white"
-            >
-              <ChevronLeftIcon className="w-6 h-6" />
-            </button>
-            <span className="text-gray-400">
-              {currentCardIndex + 1} / {filteredCards.length}
-            </span>
-            <button
-              onClick={handleNextCard}
-              className="p-2 text-gray-400 hover:text-white"
-            >
-              <ChevronRightIcon className="w-6 h-6" />
-            </button>
-          </div>
+      {/* View Modal */}
+      <Modal
+        title={<span className="text-gray-200">{selectedCard?.topic}</span>}
+        open={isViewModalVisible}
+        onCancel={() => setIsViewModalVisible(false)}
+        footer={[
+          <Button 
+            key="close" 
+            onClick={() => setIsViewModalVisible(false)}
+            className="bg-gray-700 text-white border-gray-600 hover:bg-gray-600"
+          >
+            Close
+          </Button>
+        ]}
+        width={800}
+        className="dark-modal"
+        style={{
+          backgroundColor: '#1f2937',
+          color: '#fff'
+        }}
+      >
+        <div className="whitespace-pre-wrap text-gray-300">{selectedCard?.content}</div>
+        <div className="mt-4 text-sm text-gray-400">
+          Source: {selectedCard?.source}
         </div>
-      ) : (
-        <div className="flex-1 flex items-center justify-center text-gray-400">
-          No flash cards available in this category.
-        </div>
-      )}
+      </Modal>
 
-      {/* Add Card Modal */}
-      {showAddCard && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
-          <div className="bg-gray-800 rounded-xl p-6 w-full max-w-md">
-            <h3 className="text-xl font-bold text-white mb-4">Add New Flash Card</h3>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-gray-300 mb-2">Category</label>
-                <input
-                  type="text"
-                  value={newCard.category}
-                  onChange={(e) => setNewCard(prev => ({ ...prev, category: e.target.value }))}
-                  className="w-full px-3 py-2 bg-gray-700 rounded-lg text-white"
-                  placeholder="e.g., Mechanics"
-                />
-              </div>
-              <div>
-                <label className="block text-gray-300 mb-2">Question</label>
-                <textarea
-                  value={newCard.question}
-                  onChange={(e) => setNewCard(prev => ({ ...prev, question: e.target.value }))}
-                  className="w-full px-3 py-2 bg-gray-700 rounded-lg text-white"
-                  rows={3}
-                  placeholder="Enter your question"
-                />
-              </div>
-              <div>
-                <label className="block text-gray-300 mb-2">Answer</label>
-                <textarea
-                  value={newCard.answer}
-                  onChange={(e) => setNewCard(prev => ({ ...prev, answer: e.target.value }))}
-                  className="w-full px-3 py-2 bg-gray-700 rounded-lg text-white"
-                  rows={3}
-                  placeholder="Enter the answer"
-                />
-              </div>
-              <div className="flex justify-end gap-2">
-                <button
-                  onClick={() => setShowAddCard(false)}
-                  className="px-4 py-2 text-gray-300 hover:text-white"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleAddCard}
-                  className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
-                >
-                  Add Card
-                </button>
-              </div>
-            </div>
+      {/* Edit Modal */}
+      <Modal
+        title={<span className="text-gray-200">Edit Flash Card</span>}
+        open={isEditModalVisible}
+        onOk={handleUpdate}
+        onCancel={() => setIsEditModalVisible(false)}
+        width={800}
+        className="dark-modal"
+        style={{
+          backgroundColor: '#1f2937',
+          color: '#fff'
+        }}
+        okButtonProps={{
+          className: 'bg-blue-500 text-white hover:bg-blue-600 border-none'
+        }}
+        cancelButtonProps={{
+          className: 'bg-gray-700 text-white hover:bg-gray-600 border-gray-600'
+        }}
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-300">Topic</label>
+            <input
+              type="text"
+              value={editForm.topic}
+              onChange={(e) => setEditForm({ ...editForm, topic: e.target.value })}
+              className="mt-1 block w-full rounded-md bg-gray-700 border-gray-600 text-white focus:border-blue-500 focus:ring-blue-500"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-300">Content</label>
+            <textarea
+              value={editForm.content}
+              onChange={(e) => setEditForm({ ...editForm, content: e.target.value })}
+              rows={6}
+              className="mt-1 block w-full rounded-md bg-gray-700 border-gray-600 text-white focus:border-blue-500 focus:ring-blue-500"
+            />
           </div>
         </div>
-      )}
+      </Modal>
     </div>
   );
 };

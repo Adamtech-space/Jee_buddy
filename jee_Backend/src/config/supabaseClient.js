@@ -3,18 +3,27 @@ require('dotenv').config();
 const logger = require('./logger');
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing Supabase URL or Anonymous Key');
+if (!supabaseUrl || !supabaseServiceKey) {
+  throw new Error('Missing Supabase URL or Service Role Key');
 }
 
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+  auth: {
+    autoRefreshToken: false,
+    persistSession: false
+  }
+});
 
 // Test the connection
 async function testConnection() {
   try {
-    const { data, error } = await supabase.auth.getSession();
+    const { data, error } = await supabase
+      .from('flashcards')
+      .select('count')
+      .limit(1);
+      
     if (error) throw error;
     logger.info('Connected to Supabase successfully');
   } catch (error) {

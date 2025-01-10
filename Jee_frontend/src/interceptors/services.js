@@ -119,3 +119,24 @@ export const getBookById = async (bookId) => {
   }
 };
 
+// Flash Cards Services
+export const saveFlashCard = async (data) => {
+  const response = await apiInstance.post('/flashcards/saveFlashCard', data);
+  return response.data;
+};
+
+export const getFlashCards = async (subject) => {
+  const response = await apiInstance.get(`/flashcards/getFlashCards?subject=${subject}`);
+  return response.data;
+};
+
+export const updateFlashCard = async (cardId, data) => {
+  const response = await apiInstance.put(`/flashcards/updateFlashCard/${cardId}`, data);
+  return response.data;
+};
+
+export const deleteFlashCard = async (cardId) => {
+  const response = await apiInstance.delete(`/flashcards/deleteFlashCard/${cardId}`);
+  return response.data;
+};
+

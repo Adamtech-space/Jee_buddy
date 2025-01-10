@@ -1,9 +1,8 @@
 const express = require('express');
 const authRoute = require('./auth.route');
 const userRoute = require('./user.route');
-const subscriptionRoute = require('./subscription.route');
 const booksRoute = require('./books.route');
-const config = require('../../config/config');
+const flashcardsRoute = require('./flashcards.route');
 
 const router = express.Router();
 
@@ -17,12 +16,12 @@ const defaultRoutes = [
     route: userRoute,
   },
   {
-    path: '/subscription',
-    route: subscriptionRoute,
-  },
-  {
     path: '/books',
     route: booksRoute,
+  },
+  {
+    path: '/flashcards',
+    route: flashcardsRoute,
   },
 ];
 
@@ -30,4 +29,4 @@ defaultRoutes.forEach((route) => {
   router.use(route.path, route.route);
 });
 
-module.exports = router;
+module.exports = router; 

@@ -14,10 +14,6 @@ const BooksList = () => {
   const [selectedBook, setSelectedBook] = useState(null);
   const [books, setBooks] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [pdfUrl, setPdfUrl] = useState(null);
-  const [isPdfModalVisible, setIsPdfModalVisible] = useState(false);
-  const [numPages, setNumPages] = useState(null);
-  const [pageNumber, setPageNumber] = useState(1);
 
   useEffect(() => {
     const fetchBooks = async () => {
@@ -66,9 +62,9 @@ const BooksList = () => {
   };
 
   const handlePdfClick = (url) => {
-    setPdfUrl(url);
-    setIsPdfModalVisible(true);
-    setPageNumber(1);
+    // Navigate to the PDF viewer page with the URL
+    const encodedUrl = encodeURIComponent(url);
+    navigate(`/dashboard/${subject}/pdf/${encodedUrl}`, { state: { pdfUrl: url } });
   };
 
   const onDocumentLoadSuccess = ({ numPages }) => {
@@ -198,49 +194,6 @@ const BooksList = () => {
           </div>
         ))}
       </motion.div>
-
-      <Modal
-        title="PDF Viewer"
-        open={isPdfModalVisible}
-        onCancel={() => setIsPdfModalVisible(false)}
-        width="80%"
-        footer={[
-          <div key="pagination" className="flex justify-center items-center space-x-4">
-            <button
-              onClick={() => setPageNumber(Math.max(1, pageNumber - 1))}
-              disabled={pageNumber <= 1}
-              className="px-4 py-2 bg-blue-500 text-white rounded disabled:opacity-50"
-            >
-              Previous
-            </button>
-            <span className="text-lg">
-              Page {pageNumber} of {numPages}
-            </span>
-            <button
-              onClick={() => setPageNumber(Math.min(numPages, pageNumber + 1))}
-              disabled={pageNumber >= numPages}
-              className="px-4 py-2 bg-blue-500 text-white rounded disabled:opacity-50"
-            >
-              Next
-            </button>
-          </div>
-        ]}
-      >
-        <div className="flex justify-center">
-          <Document
-            file={pdfUrl}
-            onLoadSuccess={onDocumentLoadSuccess}
-            loading={<div>Loading PDF...</div>}
-          >
-            <Page 
-              pageNumber={pageNumber} 
-              renderTextLayer={false}
-              renderAnnotationLayer={false}
-              width={Math.min(window.innerWidth * 0.7, 800)}
-            />
-          </Document>
-        </div>
-      </Modal>
 
       {Object.keys(books).length === 0 && (
         <div className="text-center py-8">

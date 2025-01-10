@@ -44,11 +44,15 @@ const resetPassword = {
   }),
 };
 
-module.exports = {
+const authValidation = {
   register,
   login,
   logout,
   refreshTokens,
   forgotPassword,
   resetPassword,
+};
+
+module.exports = {
+  authValidation
 }; 

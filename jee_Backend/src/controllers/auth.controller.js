@@ -1,25 +1,60 @@
 const httpStatus = require('http-status');
 const catchAsync = require('../utils/catchAsync');
-const { login, refreshAuth, logout } = require('../services/auth.service');
+const authService = require('../services/auth.service');
+const emailService = require('../services/email.service');
 
-const loginHandler = catchAsync(async (req, res) => {
+const register = catchAsync(async (req, res) => {
+  const user = await authService.createUser(req.body);
+  const tokens = await authService.generateAuthTokens(user);
+  res.status(httpStatus.CREATED).send({ user, tokens });
+});
+
+const login = catchAsync(async (req, res) => {
   const { email, password } = req.body;
-  const { user, tokens } = await login(email, password);
+  const user = await authService.loginUserWithEmailAndPassword(email, password);
+  const tokens = await authService.generateAuthTokens(user);
   res.send({ user, tokens });
 });
 
-const logoutHandler = catchAsync(async (req, res) => {
-  await logout(req.user.id);
+const logout = catchAsync(async (req, res) => {
+  await authService.logout(req.body.refreshToken);
   res.status(httpStatus.NO_CONTENT).send();
 });
 
-const refreshTokenHandler = catchAsync(async (req, res) => {
-  const tokens = await refreshAuth(req.body.refreshToken);
+const refreshTokens = catchAsync(async (req, res) => {
+  const tokens = await authService.refreshAuth(req.body.refreshToken);
   res.send({ tokens });
 });
 
+const forgotPassword = catchAsync(async (req, res) => {
+  const resetPasswordToken = await authService.generateResetPasswordToken(req.body.email);
+  await emailService.sendResetPasswordEmail(req.body.email, resetPasswordToken);
+  res.status(httpStatus.NO_CONTENT).send();
+});
+
+const resetPassword = catchAsync(async (req, res) => {
+  await authService.resetPassword(req.query.token, req.body.password);
+  res.status(httpStatus.NO_CONTENT).send();
+});
+
+const googleAuth = catchAsync(async (req, res) => {
+  const url = await authService.getGoogleOAuthUrl();
+  res.send({ url });
+});
+
+const googleCallback = catchAsync(async (req, res) => {
+  const { code } = req.query;
+  const { user, tokens } = await authService.handleGoogleCallback(code);
+  res.send({ user, tokens });
+});
+
 module.exports = {
-  loginHandler,
-  logoutHandler,
-  refreshTokenHandler,
+  register,
+  login,
+  logout,
+  refreshTokens,
+  forgotPassword,
+  resetPassword,
+  googleAuth,
+  googleCallback,
 }; 

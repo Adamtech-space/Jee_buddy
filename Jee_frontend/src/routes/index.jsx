@@ -22,6 +22,7 @@ import StudyMaterials from '../components/StudyMaterials';
 
 // settings with subscription components
 import Settings from '../components/subscription/Settings';
+import PdfViewer from '../components/PdfViewer';
 
 // // Landing Page Components
 // import Hero from '../components/Hero';
@@ -92,6 +93,9 @@ const AppRoutes = ({ quote }) => {
           <Route path="flashcards" element={<FlashCards />} />
           <Route path="notes" element={<SavedNotes />} />
           <Route path="materials" element={<StudyMaterials />} />
+          <Route path="pdf/:pdfUrl" element={<PdfViewer />} />
+          <Route path="topic/:topicId" element={<TopicContent />} />
+          <Route path="settings" element={<Settings />} />
         </Route>
       </Route>
 
