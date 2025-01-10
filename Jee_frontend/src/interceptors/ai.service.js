@@ -120,5 +120,104 @@ export const aiService = {
       };
       reader.onerror = error => reject(error);
     });
+  },
+
+  // Subscription related methods
+  async checkSubscriptionStatus(userId) {
+    try {
+      console.log('Checking subscription status for user:', userId);
+      if (!userId) {
+        throw new Error('User ID is required');
+      }
+      const response = await aiInstance.get(`api/subscription/status/?user_id=${userId}`);
+      console.log('Subscription status response:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Subscription status check failed:', error);
+      console.error('Error details:', {
+        status: error.response?.status,
+        data: error.response?.data,
+        message: error.message
+      });
+      throw error.response?.data || { message: error.message || 'Failed to check subscription status' };
+    }
+  },
+
+  async createSubscription(subscriptionData) {
+    try {
+      console.log('Creating subscription with data:', subscriptionData);
+      
+      // Validate required fields
+      if (!subscriptionData.price || !subscriptionData.product_name || !subscriptionData.plan_id || !subscriptionData.user_id) {
+        throw new Error('Missing required subscription data');
+      }
+
+      const response = await aiInstance.post('api/subscription/create/', subscriptionData);
+      console.log('Subscription creation response:', response.data);
+      
+      if (!response.data) {
+        throw new Error('Empty response from server');
+      }
+      
+      return response.data;
+    } catch (error) {
+      console.error('Subscription creation failed:', error);
+      console.error('Error details:', {
+        status: error.response?.status,
+        data: error.response?.data,
+        message: error.message,
+        stack: error.stack
+      });
+      if (error.response?.data) {
+        throw error.response.data;
+      } else if (error.message) {
+        throw { message: error.message };
+      } else {
+        throw { message: 'Failed to create subscription' };
+      }
+    }
+  },
+
+  async verifySubscription(verificationData) {
+    try {
+      console.log('Verifying subscription with data:', verificationData);
+      
+      // Validate required fields
+      if (!verificationData.razorpay_payment_id || !verificationData.razorpay_subscription_id || 
+          !verificationData.razorpay_signature || !verificationData.user_id) {
+        throw new Error('Missing required verification data');
+      }
+
+      const response = await aiInstance.post('api/subscription/callback/', verificationData);
+      console.log('Subscription verification response:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Subscription verification failed:', error);
+      console.error('Error details:', {
+        status: error.response?.status,
+        data: error.response?.data,
+        message: error.message,
+        stack: error.stack
+      });
+      if (error.response?.data) {
+        throw error.response.data;
+      } else if (error.message) {
+        throw { message: error.message };
+      } else {
+        throw { message: 'Failed to verify subscription' };
+      }
+    }
+  },
+
+  async getUserUsage(userId) {
+    try {
+      console.log('Fetching usage data for user:', userId);
+      const response = await aiInstance.get(`/api/usage/stats/?user_id=${userId}`);
+      console.log('Usage data response:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching usage data:', error);
+      throw new Error(error.response?.data?.message || 'Failed to fetch usage data');
+    }
   }
 }; 

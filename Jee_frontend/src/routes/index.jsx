@@ -19,7 +19,7 @@ import FlashCards from '../components/FlashCards';
 import StudyMaterials from '../components/StudyMaterials';
 
 // settings with subscription components
-import Settings from '../components/subscription/Settings';
+import Settings from '../pages/Subscription';
 import PdfViewer from '../components/PdfViewer';
 
 // // Landing Page Components
