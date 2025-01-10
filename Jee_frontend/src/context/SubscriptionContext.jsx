@@ -1,5 +1,5 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { aiService } from '../interceptors/ai.service';
 import PropTypes from 'prop-types';
 
@@ -7,11 +7,16 @@ const SubscriptionContext = createContext();
 
 export const useSubscription = () => useContext(SubscriptionContext);
 
+// List of routes that are accessible without subscription
+const PUBLIC_ROUTES = ['/login', '/register', '/subscription'];
+
 export const SubscriptionProvider = ({ children }) => {
   const [showPopup, setShowPopup] = useState(false);
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [forceSubscribe, setForceSubscribe] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
 
   const getUserId = () => {
     try {
@@ -39,9 +44,8 @@ export const SubscriptionProvider = ({ children }) => {
       
       if (response.status === 'success') {
         setIsSubscribed(response.is_subscribed);
-        // Only set up popup timer if user is not subscribed and hasn't seen popup
-        if (!response.is_subscribed && !sessionStorage.getItem('hasSeenPopup')) {
-          setupPopupTimer();
+        if (!response.is_subscribed) {
+          setupSubscriptionTimer();
         }
       }
     } catch (error) {
@@ -52,34 +56,32 @@ export const SubscriptionProvider = ({ children }) => {
     }
   };
 
-  const setupPopupTimer = () => {
-    // Show popup after 30 seconds for non-subscribed users
+  const setupSubscriptionTimer = () => {
+    // After 30 seconds, force subscription for non-subscribed users
     setTimeout(() => {
-      if (!sessionStorage.getItem('hasSeenPopup')) {
-        setShowPopup(true);
-        sessionStorage.setItem('hasSeenPopup', 'true');
-      }
-    }, 30000); // 30 seconds
+      setForceSubscribe(true);
+      navigate('/subscription');
+    }, 30000);
+  };
+
+  // Check if current route is public
+  const isPublicRoute = () => {
+    return PUBLIC_ROUTES.some(route => location.pathname.startsWith(route));
   };
 
   useEffect(() => {
     checkSubscriptionStatus();
-
-    // Cleanup function to handle component unmount
-    return () => {
-      setShowPopup(false);
-    };
   }, []);
 
-  const handleSubscribe = () => {
-    setShowPopup(false);
-    sessionStorage.setItem('hasSeenPopup', 'true');
-    navigate('/subscription');
-  };
+  // Effect to handle route protection
+  useEffect(() => {
+    if (!loading && !isSubscribed && forceSubscribe && !isPublicRoute()) {
+      navigate('/subscription');
+    }
+  }, [loading, isSubscribed, forceSubscribe, location.pathname]);
 
-  const handleClose = () => {
-    setShowPopup(false);
-    sessionStorage.setItem('hasSeenPopup', 'true');
+  const handleSubscribe = () => {
+    navigate('/settings');
   };
 
   const value = {
@@ -88,7 +90,8 @@ export const SubscriptionProvider = ({ children }) => {
     isSubscribed,
     loading,
     handleSubscribe,
-    checkSubscriptionStatus
+    checkSubscriptionStatus,
+    forceSubscribe
   };
 
   if (loading) {
@@ -98,31 +101,21 @@ export const SubscriptionProvider = ({ children }) => {
   return (
     <SubscriptionContext.Provider value={value}>
       {children}
-      {showPopup && !isSubscribed && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      {!isSubscribed && forceSubscribe && !isPublicRoute() && (
+        <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50">
           <div className="bg-gray-900 p-8 rounded-xl max-w-md w-full mx-4 relative">
-            {/* Close button */}
-            <button
-              onClick={handleClose}
-              className="absolute top-4 right-4 text-gray-400 hover:text-white"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-
             <h2 className="text-2xl font-bold text-white mb-4">
-              Upgrade Your JEE Preparation
+              Subscription Required
             </h2>
             <p className="text-gray-300 mb-6">
-              Get unlimited access to AI assistance, practice questions, and advanced analytics by subscribing to our premium plans.
+              To continue using JEE Buddy's features, please subscribe to one of our plans. This will give you access to all our premium features and AI assistance.
             </p>
             <div className="flex justify-end">
               <button
                 onClick={handleSubscribe}
                 className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
               >
-                View Plans
+                View Subscription Plans
               </button>
             </div>
           </div>
