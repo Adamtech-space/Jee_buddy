@@ -79,8 +79,7 @@ const config = {
   
   supabase: {
     url: envVars.NEXT_PUBLIC_SUPABASE_URL,
-    anonKey: envVars.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-    serviceRoleKey: envVars.SUPABASE_SERVICE_ROLE_KEY,
+    serviceKey: envVars.SUPABASE_SERVICE_ROLE_KEY,
   },
 
   razorpay: {
