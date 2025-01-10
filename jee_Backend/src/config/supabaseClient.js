@@ -1,5 +1,6 @@
 const { createClient } = require('@supabase/supabase-js');
 const config = require('./config');
+const logger = require('./logger');
 
 const supabase = createClient(
   config.supabase.url,
@@ -21,9 +22,9 @@ const testConnection = async () => {
       .limit(1);
 
     if (error) throw error;
-    console.log('Connected to Supabase successfully');
+    logger.info('Connected to Supabase successfully');
   } catch (error) {
-    console.error('Error connecting to Supabase:', error);
+    logger.error('Error connecting to Supabase:', error);
   }
 };
 
