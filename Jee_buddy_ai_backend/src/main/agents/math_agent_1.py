@@ -1,4 +1,5 @@
 import logging
+import os
 logger = logging.getLogger(__name__)
 
 from langchain_openai import ChatOpenAI
@@ -7,7 +8,7 @@ from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 from typing import List, Dict, Any, Optional
 from pydantic import BaseModel, Field
 from langchain.schema import SystemMessage, HumanMessage
-
+from main.models import ChatHistory
 class MathProblemInput(BaseModel):
     question: str = Field(description="The math problem to solve")
     approach: Optional[str] = Field(default="auto", description="The approach to use for solving")
@@ -18,7 +19,7 @@ class MathAgent:
             temperature=0.7,
             model="gpt-4o",
             max_tokens=1000,
-            api_key="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"
+            api_key=os.getenv('OPENAI_API_KEY')
         )
         self.chat_history = []
         self.max_history = 100
@@ -162,25 +163,44 @@ class MathAgent:
 
     async def solve(self, question: str, context: Dict[Any, Any]) -> dict:
         try:
+
+            # Get user and session info
+            user_id = context.get('user_id')
+            session_id = context.get('session_id')
+            history_limit = context.get('history_limit', 100)
+
+             # Get chat history from database
+            history_context = ""
+            if user_id:
+                # Get last 5 interactions regardless of session
+                db_history = ChatHistory.objects.filter(
+                    user_id=user_id
+                ).order_by('-timestamp')[:history_limit]  # Adjust number as needed
+                
+                if db_history:
+                    history_context = "\n".join([
+                        f"User: {h.question}\nAssistant: {h.response}"
+                        for h in db_history
+                    ])
+                else:
+                    history_context = "No previous conversation context."
             # Process image if present
             image_context = ""
             if context.get('image'):
                 image_context = "[Image provided for reference]"
 
-            # Build conversation history context
-            history_context = ""
-            if context.get('chat_history'):
-                history_context = "\n".join([
-                    f"User: {msg['question']}\nAssistant: {msg['response']}"
-                    for msg in context['chat_history']
-                ])
+            # # Build conversation history context
+            # history_context = ""
+            # if context.get('chat_history'):
+            #     history_context = "\n".join([
+            #         f"User: {msg['question']}\nAssistant: {msg['response']}"
+            #         for msg in context['chat_history']
+            #     ])
 
-            # Determine interaction type
-            interaction_type = context.get('interaction_type', 'general')
-            interaction_prompt = self.interaction_prompts[interaction_type]
+           
 
             messages = [
-                SystemMessage(content=f"""You are an expert JEE tutor specialized in Physics, Chemistry, and Mathematics.
+                SystemMessage(content=f"""You are an expert friendly JEE tutor specialized in Physics, Chemistry, and Mathematics.
                 
                 Previous conversation context:
                 {history_context}
@@ -188,9 +208,9 @@ class MathAgent:
                 Additional context:
                 {context.get('pinnedText', '')}
                 {image_context}
-
-                Interaction type: {interaction_type}
-                {interaction_prompt}
+                If the user asks about previous conversations or history, please summarize the above context.
+                Format your response with clear sections using markdown.
+                Include specific details {history_context} from previous questions and their solutions.
                 """),
                 HumanMessage(content=question)
             ]
@@ -201,29 +221,31 @@ class MathAgent:
             # Extract the response
             llm_response = response.generations[0][0].text
 
-            # Format the response based on interaction type
-            if interaction_type == 'solve':
-                if 'step by step' not in llm_response.lower():
-                    llm_response = f"Let me solve this step by step:\n\n{llm_response}"
-            elif interaction_type == 'explain':
-                if 'concept' not in llm_response.lower():
-                    llm_response = f"Let me explain this concept:\n\n{llm_response}"
-
+             # Store interaction in database
+            if user_id and session_id:
+                ChatHistory.add_interaction(
+                    user_id=user_id,
+                    session_id=session_id,
+                    question=question,
+                    response=llm_response,
+                    context={
+                        'pinned_text': context.get('pinnedText', ''),
+                        'has_image': bool(context.get('image')),  
+                    }
+                )            
             return {
                 'solution': llm_response,
-                'context': messages,
-                'approach_used': interaction_type
+                'context': {
+                    'history': history_context,
+                    'current_question': question,
+                    'response': llm_response,
+                    'previous_interactions': history_context
+
+                }
+                
             }
 
         except Exception as e:
             logger.error(f"Error in MathAgent solve method: {str(e)}", exc_info=True)
             raise Exception(f"Failed to process question: {str(e)}")
 
-    def get_memory_usage(self) -> int:
-        """Get current memory usage of the agent"""
-        import sys
-        return sys.getsizeof(self.chat_history)
-
-    async def cleanup(self):
-        """Cleanup resources"""
-        self.chat_history.clear()
