@@ -6,7 +6,7 @@
             "use": "@vercel/python",
             "config": {
                 "maxLambdaSize": "15mb",
-                "runtime": "python3.9",
+                "runtime": "python3.12.7",
                 "buildCommand": "pip install -r requirements.txt"
             }
         }
@@ -14,11 +14,11 @@
     "routes": [
         {
             "src": "/static/(.*)",
-            "dest": "/src/static/$1"
+            "dest": "/src/main/static/$1"
         },
         {
             "src": "/(.*)",
-            "dest": "src/wsgi.py"
+            "dest": "src/core/wsgi.py"
         }
     ],
     "env": {
@@ -26,8 +26,8 @@
         "RAZORPAY_KEY_SECRET": "UqRhiHj1x9qoSmSEYi6khUKk",
         "DJANGO_SETTINGS_MODULE": "src.settings",
         "ALLOWED_HOSTS": ".vercel.app,localhost,127.0.0.1",
-        "PYTHON_VERSION": "3.9",
-        "DEBUG": "True",
+        "PYTHON_VERSION": "3.12.7",
+        "DEBUG": "False",
         "PYTHONPATH": "/var/task/src"
     }
 }
