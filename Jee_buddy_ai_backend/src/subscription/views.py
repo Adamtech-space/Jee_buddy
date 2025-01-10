@@ -38,6 +38,9 @@ def calculate_days_remaining(valid_till):
     now = timezone.now()
     if valid_till < now:
         return 0
+    # Ensure both datetimes are timezone aware
+    if timezone.is_naive(valid_till):
+        valid_till = timezone.make_aware(valid_till)
     return (valid_till - now).days
 
 @csrf_exempt
@@ -57,7 +60,12 @@ def get_subscription_status(request):
         ).order_by('-created_at').first()
 
         if subscription:
-            days_remaining = calculate_days_remaining(subscription.valid_till)
+            # Ensure valid_till is timezone aware
+            valid_till = subscription.valid_till
+            if timezone.is_naive(valid_till):
+                valid_till = timezone.make_aware(valid_till)
+                
+            days_remaining = calculate_days_remaining(valid_till)
             is_active = days_remaining > 0
 
             return JsonResponse({
@@ -65,10 +73,10 @@ def get_subscription_status(request):
                 'is_subscribed': is_active,
                 'subscription_id': subscription.subscription_id,
                 'plan_id': subscription.plan_id,
-                'created_at': subscription.created_at,
-                'valid_till': subscription.valid_till,
+                'created_at': subscription.created_at.isoformat(),
+                'valid_till': valid_till.isoformat(),
                 'days_remaining': days_remaining,
-                'next_billing_date': subscription.valid_till.isoformat() if subscription.valid_till else None
+                'next_billing_date': valid_till.isoformat() if valid_till else None
             })
         else:
             return JsonResponse({
@@ -117,7 +125,7 @@ def subscription_callback(request):
                     "message": "Payment not captured"
                 }, status=400)
 
-            # Calculate subscription validity
+            # Calculate subscription validity with timezone awareness
             start_date = timezone.now()
             valid_till = start_date + timedelta(days=28)  # 28-day cycle
 
@@ -204,7 +212,7 @@ def create_subscription(request):
             
             subscription = razorpay_client.subscription.create(subscription_data)
             
-            # Create local subscription record
+            # Create local subscription record with timezone-aware datetime
             Subscription.objects.create(
                 user_id=user_id,
                 subscription_id=subscription['id'],
