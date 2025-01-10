@@ -8,8 +8,12 @@ import {
   QuestionMarkCircleIcon
 } from '@heroicons/react/24/outline';
 import PropTypes from 'prop-types';
+import { Popover, message } from 'antd';
 import { aiService } from '../interceptors/ai.service';
 import { useAuthContext } from '../context/AuthContext';
+import { saveFlashCard } from '../interceptors/services';
+import SelectionPopup from './SelectionPopup';
+import { SaveOutlined } from '@ant-design/icons';
 
 const KeyboardShortcut = ({ shortcut }) => (
   <span className="inline-flex items-center text-[9px] text-gray-500 mt-0.5">
@@ -39,7 +43,7 @@ const ChatBot = ({
   onResize 
 }) => {
   const { user } = useAuthContext();
-  const [message, setMessage] = useState('');
+  const [chatMessage, setChatMessage] = useState('');
   const [messages, setMessages] = useState([]);
   const [width, setWidth] = useState(450);
   const [isResizing, setIsResizing] = useState(false);
@@ -54,6 +58,9 @@ const ChatBot = ({
   const [isTyping, setIsTyping] = useState(false);
   const [currentTypingIndex, setCurrentTypingIndex] = useState(0);
   const [displayedResponse, setDisplayedResponse] = useState('');
+  const [localSelectedText, setLocalSelectedText] = useState('');
+  const [popoverVisible, setPopoverVisible] = useState(false);
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
 
   // Effect to handle selected text
   useEffect(() => {
@@ -73,6 +80,78 @@ const ChatBot = ({
       setUserProfile(JSON.parse(userData));
     }
   }, []);
+
+  // Add text selection handler
+  useEffect(() => {
+    const handleTextSelection = () => {
+      const selection = window.getSelection();
+      const text = selection.toString().trim();
+      
+      if (text) {
+        setLocalSelectedText(text);
+        const range = selection.getRangeAt(0);
+        const rect = range.getBoundingClientRect();
+        setMousePosition({
+          x: rect.left + rect.width / 2,
+          y: rect.top - 10
+        });
+        setPopoverVisible(true);
+      } else {
+        setPopoverVisible(false);
+      }
+    };
+
+    document.addEventListener('mouseup', handleTextSelection);
+    return () => document.removeEventListener('mouseup', handleTextSelection);
+  }, []);
+
+  const handleSaveToFlashCard = async () => {
+    if (!localSelectedText) {
+      message.error('Please select some text to save');
+      return;
+    }
+
+    const hide = message.loading('Saving to flash cards...', 0);
+    try {
+      const payload = {
+        subject: subject || 'General',
+        topic: 'AI Chat Bot',
+        content: localSelectedText,
+        source: 'AI Chat Bot'
+      };
+
+      const response = await saveFlashCard(payload);
+      hide();
+      
+      if (response) {
+        message.success({
+          content: 'Successfully saved to flash cards!',
+          icon: <SaveOutlined style={{ color: '#52c41a' }} />,
+          duration: 3
+        });
+        setPopoverVisible(false);
+        setLocalSelectedText('');
+      } else {
+        throw new Error('Failed to save flash card');
+      }
+    } catch (error) {
+      console.error('Error details:', error);
+      hide();
+      message.error({
+        content: error.message || 'Failed to save to flash cards',
+        duration: 3
+      });
+    }
+  };
+
+  const handleAskAI = () => {
+    setPinnedText(localSelectedText);
+    setChatMessage('');
+    if (inputRef.current) {
+      inputRef.current.focus();
+    }
+    setPopoverVisible(false);
+  };
 
   const helpButtons = [
     { type: "explain", icon: "📝", text: "Step-by-Step" },
@@ -188,7 +267,7 @@ const ChatBot = ({
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!message.trim() && !pinnedImage && !pinnedText) return;
+    if (!chatMessage.trim() && !pinnedImage && !pinnedText) return;
 
     let currentImage = null;
     if (pinnedImage) {
@@ -211,21 +290,21 @@ const ChatBot = ({
       setPinnedText(null);
     }
 
-    if (message.trim()) {
+    if (chatMessage.trim()) {
       const newMessage = { 
         sender: 'user', 
         type: 'text',
-        content: message
+        content: chatMessage
       };
       setMessages(prev => [...prev, newMessage]);
     }
-    setMessage('');
+    setChatMessage('');
     setIsLoading(true);
 
     try {
       // Get user data from localStorage
       const userData = JSON.parse(localStorage.getItem('user'));
-      const response = await aiService.askQuestion(message, {
+      const response = await aiService.askQuestion(chatMessage, {
         subject,
         topic,
         type: 'solve', // interaction_type
@@ -389,6 +468,27 @@ const ChatBot = ({
         zIndex: isFullScreen ? 60 : 50
       }}
     >
+      {/* Selection Popup */}
+      <Popover
+        open={popoverVisible}
+        onOpenChange={setPopoverVisible}
+        content={
+          <SelectionPopup
+            selectedText={localSelectedText}
+            onSaveToFlashCard={handleSaveToFlashCard}
+            onAskAI={handleAskAI}
+          />
+        }
+        trigger="click"
+        destroyTooltipOnHide
+        overlayStyle={{
+          position: 'fixed',
+          left: `${mousePosition.x}px`,
+          top: `${mousePosition.y}px`,
+          transform: 'translate(-50%, -100%)'
+        }}
+      />
+
       {/* Resize Handle - Only show on desktop */}
       {!isFullScreen && window.innerWidth >= 1024 && (
         <>
@@ -512,8 +612,8 @@ const ChatBot = ({
           <input
             ref={inputRef}
             type="text"
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
+            value={chatMessage}
+            onChange={(e) => setChatMessage(e.target.value)}
             placeholder="Ask a question..."
             className="w-full bg-gray-800 text-white text-sm rounded-lg pl-3 pr-20 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
           />
@@ -527,7 +627,7 @@ const ChatBot = ({
             </button>
             <button
               type="submit"
-              disabled={!message.trim() && !pinnedImage && !pinnedText}
+              disabled={!chatMessage.trim() && !pinnedImage && !pinnedText}
               className="p-1.5 hover:bg-gray-700 rounded-full transition-colors disabled:opacity-50"
             >
               <PaperAirplaneIcon className="h-4 w-4 text-gray-400 hover:text-white" />
