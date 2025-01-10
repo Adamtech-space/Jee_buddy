@@ -16,6 +16,11 @@ app.use(express.urlencoded({ extended: true }));
 // enable cors
 app.use(cors());
 
+// root route to show server status
+app.get("/", (req, res) => {
+  res.json("JEE Buddy Backend Server is running");
+});
+
 // v1 api routes
 app.use("/v1", routes);
 
