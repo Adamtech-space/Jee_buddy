@@ -125,7 +125,6 @@ const Subscription = () => {
   const [loading, setLoading] = useState(false);
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [currentPlan, setCurrentPlan] = useState(null);
-  const [selectedPlan, setSelectedPlan] = useState(null);
 
   const loadScript = (src) => {
     return new Promise((resolve) => {
@@ -383,11 +382,6 @@ const Subscription = () => {
     }
   };
 
-  const handlePlanSelect = (plan) => {
-    setSelectedPlan(plan);
-    handleGetStarted(plan);
-  };
-
   return (
     <div className="min-h-screen bg-black">
       <div className="max-w-7xl mx-auto px-4 py-8">
@@ -524,43 +518,177 @@ const Subscription = () => {
             {/* Existing plans grid */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               {/* Basic Plan */}
-              <SubscriptionCard
-                plan={{
-                  type: 'BASIC',
-                  price: 499,
-                  name: 'Basic Plan',
-                  id: PLANS['BASIC'],
-                  features: getPlanFeatures('BASIC')
-                }}
-                isActive={selectedPlan?.type === 'BASIC'}
-                onSubscribe={handlePlanSelect}
-              />
+              <div className="rounded-3xl bg-[#1a1625] p-8 flex flex-col">
+                <div className="mb-6">
+                  <h2 className="text-2xl font-bold text-white mb-4">Basic</h2>
+                  <div className="flex items-baseline">
+                    <span className="text-2xl text-[#8075FF]">₹</span>
+                    <span className="text-4xl font-bold text-[#8075FF]">499</span>
+                    <span className="text-gray-400 ml-2">/month</span>
+                  </div>
+                </div>
+                <ul className="space-y-4 mb-8 flex-grow">
+                  <li className="flex items-center text-white">
+                    <svg className="w-5 h-5 mr-3 text-[#8075FF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    Access to AI Learning Assistant
+                  </li>
+                  <li className="flex items-center text-white">
+                    <svg className="w-5 h-5 mr-3 text-[#8075FF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    Basic Study Materials
+                  </li>
+                  <li className="flex items-center text-white">
+                    <svg className="w-5 h-5 mr-3 text-[#8075FF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    Limited AI Usage
+                  </li>
+                  <li className="flex items-center text-white">
+                    <svg className="w-5 h-5 mr-3 text-[#8075FF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    Email Support
+                  </li>
+                </ul>
+                {!isSubscribed && (
+                  <button
+                    onClick={() => handleGetStarted({
+                      type: 'BASIC',
+                      price: 499,
+                      name: 'Basic Plan',
+                      id: PLANS['BASIC']
+                    })}
+                    disabled={loading}
+                    className="w-full py-3 rounded-lg bg-[#1e1b29] text-white font-semibold hover:bg-[#2a2635] transition-colors"
+                  >
+                    {loading ? 'Processing...' : 'Get Started'}
+                  </button>
+          )}
+        </div>
 
               {/* Pro Plan */}
-              <SubscriptionCard
-                plan={{
-                  type: 'PRO',
-                  price: 1499,
-                  name: 'Pro Plan',
-                  id: PLANS['PRO'],
-                  features: getPlanFeatures('PRO')
-                }}
-                isActive={selectedPlan?.type === 'PRO'}
-                onSubscribe={handlePlanSelect}
-              />
+              <div className="rounded-3xl bg-gradient-to-b from-[#2c2439] to-[#1a1625] p-8 flex flex-col relative">
+                <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
+                  <span className="bg-[#8075FF] text-white px-4 py-1 rounded-full text-sm">
+                    Most Popular
+                  </span>
+                </div>
+                <div className="mb-6">
+                  <h2 className="text-2xl font-bold text-white mb-4">Pro</h2>
+                  <div className="flex items-baseline">
+                    <span className="text-2xl text-[#8075FF]">₹</span>
+                    <span className="text-4xl font-bold text-[#8075FF]">1,499</span>
+                    <span className="text-gray-400 ml-2">/month</span>
+                  </div>
+          </div>
+                <ul className="space-y-4 mb-8 flex-grow">
+                  <li className="flex items-center text-white">
+                    <svg className="w-5 h-5 mr-3 text-[#8075FF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    Everything in Basic
+                  </li>
+                  <li className="flex items-center text-white">
+                    <svg className="w-5 h-5 mr-3 text-[#8075FF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    Extra AI Usage
+                  </li>
+            <li className="flex items-center text-white">
+                    <svg className="w-5 h-5 mr-3 text-[#8075FF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    Advanced Study Materials
+            </li>
+            <li className="flex items-center text-white">
+                    <svg className="w-5 h-5 mr-3 text-[#8075FF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    Question Bank
+            </li>
+            <li className="flex items-center text-white">
+                    <svg className="w-5 h-5 mr-3 text-[#8075FF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    Strength and Weakness Analysis
+            </li>
+          </ul>
+          {!isSubscribed && (
+            <button
+                    onClick={() => handleGetStarted({
+                      type: 'PRO',
+                      price: 1499,
+                      name: 'Pro Plan',
+                      id: PLANS['PRO']
+                    })}
+              disabled={loading}
+                    className="w-full py-3 rounded-lg bg-[#8075FF] text-white font-semibold hover:bg-[#6a5ff0] transition-colors"
+            >
+                    {loading ? 'Processing...' : 'Get Started'}
+            </button>
+          )}
+              </div>
 
               {/* Premium Plan */}
-              <SubscriptionCard
-                plan={{
-                  type: 'PREMIUM',
-                  price: 4999,
-                  name: 'Premium Plan',
-                  id: PLANS['PREMIUM'],
-                  features: getPlanFeatures('PREMIUM')
-                }}
-                isActive={selectedPlan?.type === 'PREMIUM'}
-                onSubscribe={handlePlanSelect}
-              />
+              <div className="rounded-3xl bg-[#1a1625] p-8 flex flex-col">
+                <div className="mb-6">
+                  <h2 className="text-2xl font-bold text-white mb-4">Premium</h2>
+                  <div className="flex items-baseline">
+                    <span className="text-2xl text-[#8075FF]">₹</span>
+                    <span className="text-4xl font-bold text-[#8075FF]">4,999</span>
+                    <span className="text-gray-400 ml-2">/month</span>
+                  </div>
+                </div>
+                <ul className="space-y-4 mb-8 flex-grow">
+                  <li className="flex items-center text-white">
+                    <svg className="w-5 h-5 mr-3 text-[#8075FF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    Everything in Pro
+                  </li>
+                  <li className="flex items-center text-white">
+                    <svg className="w-5 h-5 mr-3 text-[#8075FF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    Unlimited AI Usage
+                  </li>
+                  <li className="flex items-center text-white">
+                    <svg className="w-5 h-5 mr-3 text-[#8075FF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    AI Generated Question Bank
+                  </li>
+                  <li className="flex items-center text-white">
+                    <svg className="w-5 h-5 mr-3 text-[#8075FF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    Performance Analytics
+                  </li>
+                  <li className="flex items-center text-white">
+                    <svg className="w-5 h-5 mr-3 text-[#8075FF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    Priority Support
+                  </li>
+                </ul>
+                {!isSubscribed && (
+            <button
+                    onClick={() => handleGetStarted({
+                      type: 'PREMIUM',
+                      price: 4999,
+                      name: 'Premium Plan',
+                      id: PLANS['PREMIUM']
+                    })}
+                    disabled={loading}
+                    className="w-full py-3 rounded-lg bg-[#1e1b29] text-white font-semibold hover:bg-[#2a2635] transition-colors"
+                  >
+                    {loading ? 'Processing...' : 'Get Started'}
+            </button>
+          )}
+        </div>
             </div>
           </>
         )}
