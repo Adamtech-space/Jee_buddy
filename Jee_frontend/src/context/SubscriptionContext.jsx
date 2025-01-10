@@ -8,7 +8,7 @@ const SubscriptionContext = createContext();
 export const useSubscription = () => useContext(SubscriptionContext);
 
 // List of routes that are accessible without subscription
-const PUBLIC_ROUTES = ['/login', '/register', '/subscription'];
+const PUBLIC_ROUTES = ['/login', '/register', '/settings'];
 
 export const SubscriptionProvider = ({ children }) => {
   const [showPopup, setShowPopup] = useState(false);
@@ -60,7 +60,7 @@ export const SubscriptionProvider = ({ children }) => {
     // After 30 seconds, force subscription for non-subscribed users
     setTimeout(() => {
       setForceSubscribe(true);
-      navigate('/subscription');
+      navigate('/settings');
     }, 30000);
   };
 
@@ -76,7 +76,7 @@ export const SubscriptionProvider = ({ children }) => {
   // Effect to handle route protection
   useEffect(() => {
     if (!loading && !isSubscribed && forceSubscribe && !isPublicRoute()) {
-      navigate('/subscription');
+      navigate('/settings');
     }
   }, [loading, isSubscribed, forceSubscribe, location.pathname]);
 

@@ -37,9 +37,14 @@ const Navbar = ({ isMobileOpen, setIsMobileOpen }) => {
   }, []);
 
   const handleLogout = () => {
-    localStorage.removeItem('user');
-    localStorage.removeItem('tokens');
-    navigate('/login');
+    // Clear all auth-related data from localStorage
+    localStorage.clear();
+    
+    // Reset user state
+    setUser(null);
+    
+    // Force reload and redirect to login
+    window.location.href = '/login';
   };
 
   const getSubscriptionBadge = () => {
