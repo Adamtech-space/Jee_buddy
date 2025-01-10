@@ -3,14 +3,39 @@ import aiInstance from './aiAxios';
 export const aiService = {
   async askQuestion(message, context) {
     try {
-      // Get current user ID from localStorage or context
-      const currentUserId = localStorage.getItem('userId') || context.userId || 'default';
-      const currentSessionId = localStorage.getItem('sessionId') || context.sessionId || `session_${Date.now()}`;
+      // Get current user ID and session ID from profile
+      const currentUserId = localStorage.getItem('uuid') || context.uuid;
+      const currentSessionId = localStorage.getItem('current_session_id');
+
+      if (!currentUserId || !currentSessionId) {
+        // Fetch from profile if not in localStorage
+        try {
+          const profileResponse = await aiInstance.get('api/profile/');
+          const profile = profileResponse.data;
+          
+          // Generate a default session ID if none exists
+          const sessionId = profile.current_session_id;
+          const userId = profile.id;
+          
+          localStorage.setItem('uuid', userId);
+          localStorage.setItem('current_session_id', sessionId);
+          
+          // Update the current values
+          currentUserId = userId;
+          currentSessionId = sessionId;
+        } catch (error) {
+          console.error('Failed to fetch profile:', error);
+          // Set default session ID if profile fetch fails
+          const defaultSessionId = `session_${Date.now()}`;
+          localStorage.setItem('current_session_id', defaultSessionId);
+          currentSessionId = defaultSessionId;
+        }
+      }
 
       const requestData = {
         question: message,
         context: {
-          user_id: currentUserId,
+          user_id: currentUserId || 'default_user',
           session_id: currentSessionId,
           subject: context.subject || '',
           topic: context.topic || '',
@@ -19,7 +44,7 @@ export const aiService = {
           selectedText: context.selectedText || '',
           image: context.image || null,
           history_limit: 100,
-          chat_history: context.chatHistory || []
+          chat_history: [] // The backend will fetch history based on user_id
         }
       };
 
@@ -35,19 +60,19 @@ export const aiService = {
 
   async getHelpResponse(type, context) {
     try {
-      // Combine pinnedText and selectedText
-      const combinedPinnedText = [context.pinnedText, context.selectedText]
-        .filter(text => text)
-        .join('\n\n');
+      const currentUserId = localStorage.getItem('uuid');
+      const currentSessionId = localStorage.getItem('current_session_id');
 
       const response = await aiInstance.post('api/solve-math/', {
         question: `Help me with: ${type}`,
         context: {
-          session_id: context.sessionId || localStorage.getItem('sessionId') || 'default',
+          user_id: currentUserId,
+          session_id: currentSessionId,
           subject: context.subject || '',
           topic: context.topic || '',
-          pinnedText: combinedPinnedText,
-          image: context.image || null
+          pinnedText: context.pinnedText || '',
+          image: context.image || null,
+          history_limit: 100
         }
       });
       return response.data;

@@ -5,6 +5,47 @@ from django.db import models
 import json
 MAX_HISTORY_LENGTH = 10
 
+# models.py
+from django.db import models
+import uuid
+
+class UserProfile(models.Model):
+    uuid = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=255, null=True)
+    email = models.CharField(max_length=255, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    current_session_id = models.CharField(max_length=255, null=True)
+
+    class Meta:
+        db_table = 'chat_profiles'
+        
+
+class ChatHistory(models.Model):
+    user = models.ForeignKey(UserProfile, on_delete=models.CASCADE, to_field='uuid')
+    session_id = models.CharField(max_length=255)
+    question = models.TextField()
+    response = models.TextField()
+    context = models.JSONField(default=dict)
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    @classmethod
+    def get_user_history(cls, user_id, session_id=None, limit=100):
+        query = cls.objects.filter(user_id=user_id)
+        if session_id:
+            query = query.filter(session_id=session_id)
+        return query.order_by('-timestamp')[:limit]
+
+    @classmethod
+    def add_interaction(cls, user_id, session_id, question, response, context):
+        return cls.objects.create(
+            user_id=user_id,
+            session_id=session_id,
+            question=question,
+            response=response,
+            context=context
+        )
+    
 
 class MathProblem(models.Model):
     question = models.TextField()
