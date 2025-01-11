@@ -27,6 +27,7 @@
         "DJANGO_SETTINGS_MODULE": "src.settings",
         "ALLOWED_HOSTS": ".vercel.app",
         "PYTHON_VERSION": "3.9",
-        "DEBUG": "True"
+        "DEBUG": "True",
+        "PYTHONPATH": "."
     }
 }
