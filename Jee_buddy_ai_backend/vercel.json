@@ -24,10 +24,10 @@
     "env": {
         "RAZORPAY_KEY_ID": "rzp_test_ALQVkV4FTktqvh",
         "RAZORPAY_KEY_SECRET": "UqRhiHj1x9qoSmSEYi6khUKk",
-        "DJANGO_SETTINGS_MODULE": "src.settings",
+        "DJANGO_SETTINGS_MODULE": "core.settings",
         "ALLOWED_HOSTS": ".vercel.app",
         "PYTHON_VERSION": "3.9",
         "DEBUG": "True",
-        "PYTHONPATH": "."
+        "PYTHONPATH": "/var/task/src"
     }
 }
