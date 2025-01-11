@@ -6,7 +6,7 @@ from pathlib import Path
 # Build paths inside the project
 BASE_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(BASE_DIR))
-sys.path.insert(0, str(BASE_DIR / 'src'))
+sys.path.insert(0, str(BASE_DIR / 'src/core'))
 
 from django.core.wsgi import get_wsgi_application
 
