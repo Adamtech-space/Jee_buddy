@@ -3,27 +3,27 @@
     "name": "jee-buddy-backend",
     "builds": [
         {
-      "src": "index.js",
-      "use": "@vercel/node"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "index.js",
-      "methods": ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-      "headers": {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Headers": "Origin, X-Requested-With, Content-Type, Accept, Authorization",
-        "Access-Control-Allow-Credentials": "true"
-      }
-    }
-  ],
-  "env": {
-    "NODE_ENV": "production",
-    "NEXT_PUBLIC_SUPABASE_URL": "https://kymdueuxnesfvjdrueww.supabase.co",
-    "NEXT_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt5bWR1ZXV4bmVzZnZqZHJ1ZXd3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzYzMzE5NDYsImV4cCI6MjA1MTkwNzk0Nn0.RqGRBPTkuff10kyk_z0ItRx6gazS9KUdYZLifSg1oLs",
-    "RAZORPAY_KEY_ID": "rzp_test_LP09yDpPnI4V3x",
-    "RAZORPAY_KEY_SECRET": "jMfiPB94jnPtWJDYAvFz4tr9"
-  }
+            "src": "./index.js",
+            "use": "@vercel/node",
+            "config": {
+                "includeFiles": [
+                    "src/**",
+                    "package.json",
+                    "package-lock.json"
+                ]
+            }
+        }
+    ],
+    "routes": [
+        {
+            "src": "/(.*)",
+            "dest": "/",
+            "methods": ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+            "headers": {
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Headers": "Origin, X-Requested-With, Content-Type, Accept, Authorization",
+                "Access-Control-Allow-Credentials": "true"
+            }
+        }
+    ]
 }
