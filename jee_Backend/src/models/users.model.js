@@ -1,37 +1,72 @@
-const mongoose = require("mongoose");
 const { v4 } = require("uuid");
+const supabase = require("../config/supabaseClient");
 
-const userSchema = new mongoose.Schema(
-  {
-    _id: {
-      type: String,
-      default: v4,
-    },
-    name: {
-      type: String,
-      trim: true,
-      required: true,
-    },
-    email: {
-      type: String,
-      required: true,
-    },
-    phonenumber: {
-      type: String,
-      required: true,
-    },
-    password: {
-      type: String,
-      required: true,
-    },
-    active: {
-      type: Boolean,
-      default: true,
-    },
+const userSchema = {
+  id: String,
+  name: String,
+  email: String,
+  phonenumber: String,
+  password: String,
+  active: Boolean,
+  created_at: String,
+  updated_at: String
+};
+
+const User = {
+  async create(userData) {
+    const { data, error } = await supabase
+      .from('publics')
+      .insert([{
+        id: v4(),
+        ...userData,
+        active: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }])
+      .select();
+
+    if (error) throw error;
+    return data[0];
   },
-  { timestamps: true }
-);
-const User = mongoose.model("users", userSchema);
+
+  async findOne(query) {
+    const { data, error } = await supabase
+      .from('publics')
+      .select('*')
+      .match(query)
+      .single();
+
+    if (error) throw error;
+    return data;
+  },
+
+  async findById(id) {
+    const { data, error } = await supabase
+      .from('publics')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (error) throw error;
+    return data;
+  },
+
+  async update(id, updateData) {
+    const { data, error } = await supabase
+      .from('publics')
+      .update({
+        ...updateData,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id)
+      .select();
+
+    if (error) throw error;
+    return data[0];
+  }
+};
+
 module.exports = {
   User,
+  userSchema
 };
