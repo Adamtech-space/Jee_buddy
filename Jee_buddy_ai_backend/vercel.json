@@ -6,7 +6,7 @@
             "use": "@vercel/python",
             "config": {
                 "maxLambdaSize": "15mb",
-                "runtime": "python3.12.7",
+                "runtime": "python3.9",
                 "buildCommand": "pip install -r requirements.txt"
             }
         }
@@ -14,20 +14,19 @@
     "routes": [
         {
             "src": "/static/(.*)",
-            "dest": "/src/main/static/$1"
+            "dest": "/static/$1"
         },
         {
             "src": "/(.*)",
-            "dest": "src/core/wsgi.py"
+            "dest": "src/wsgi.py"
         }
     ],
     "env": {
         "RAZORPAY_KEY_ID": "rzp_test_ALQVkV4FTktqvh",
         "RAZORPAY_KEY_SECRET": "UqRhiHj1x9qoSmSEYi6khUKk",
         "DJANGO_SETTINGS_MODULE": "src.settings",
-        "ALLOWED_HOSTS": ".vercel.app,localhost,127.0.0.1",
-        "PYTHON_VERSION": "3.12.7",
-        "DEBUG": "False",
-        "PYTHONPATH": "/var/task/src"
+        "ALLOWED_HOSTS": ".vercel.app",
+        "PYTHON_VERSION": "3.9",
+        "DEBUG": "True"
     }
 }
