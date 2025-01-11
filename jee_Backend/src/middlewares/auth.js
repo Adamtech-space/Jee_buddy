@@ -19,7 +19,6 @@ const auth = () => {
         throw new ApiError(httpStatus.UNAUTHORIZED, 'Invalid token type');
       }
 
-      console.log('Token payload:', payload); // Debug log
 
       // Get user from Supabase using UUID
       const { data: user, error } = await supabase
@@ -28,15 +27,12 @@ const auth = () => {
         .eq('id', payload.sub)
         .single();
 
-      console.log('Supabase query result:', { user, error }); // Debug log
 
       if (error) {
-        console.error('Supabase error:', error);
         throw new ApiError(httpStatus.UNAUTHORIZED, 'User not found');
       }
 
       if (!user) {
-        console.error('No user found for ID:', payload.sub);
         throw new ApiError(httpStatus.UNAUTHORIZED, 'User not found');
       }
 
@@ -49,10 +45,8 @@ const auth = () => {
         subscription_date: user.subscription_date
       };
 
-      console.log('User data set in request:', req.user); // Debug log
       next();
     } catch (error) {
-      console.error('Auth middleware error:', error);
       if (error instanceof jwt.JsonWebTokenError) {
         next(new ApiError(httpStatus.UNAUTHORIZED, 'Invalid token'));
       } else {
