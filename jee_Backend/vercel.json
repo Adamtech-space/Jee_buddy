@@ -3,14 +3,14 @@
     "name": "jee-buddy-backend",
     "builds": [
         {
-      "src": "index.js",
+      "src": "src/index.js",
       "use": "@vercel/node"
     }
   ],
   "routes": [
     {
-      "src": "/(.*)",
-      "dest": "index.js",
+      "src": "/v1/(.*)",
+      "dest": "src/index.js",
       "methods": ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
       "headers": {
         "Access-Control-Allow-Origin": "*",
@@ -21,9 +21,15 @@
   ],
   "env": {
     "NODE_ENV": "production",
-    "NEXT_PUBLIC_SUPABASE_URL": "https://kymdueuxnesfvjdrueww.supabase.co",
-    "NEXT_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt5bWR1ZXV4bmVzZnZqZHJ1ZXd3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzYzMzE5NDYsImV4cCI6MjA1MTkwNzk0Nn0.RqGRBPTkuff10kyk_z0ItRx6gazS9KUdYZLifSg1oLs",
+    "PORT": "5000",
+    "JWT_SECRET": "thisisasamplesecret",
+    "JWT_ACCESS_EXPIRATION_DAYS": "1",
+    "SUPABASE_URL": "https://kymdueuxnesfvjdrueww.supabase.co",
+    "SUPABASE_SERVICE_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt5bWR1ZXV4bmVzZnZqZHJ1ZXd3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzYzMzE5NDYsImV4cCI6MjA1MTkwNzk0Nn0.RqGRBPTkuff10kyk_z0ItRx6gazS9KUdYZLifSg1oLs",
     "RAZORPAY_KEY_ID": "rzp_test_LP09yDpPnI4V3x",
-    "RAZORPAY_KEY_SECRET": "jMfiPB94jnPtWJDYAvFz4tr9"
+    "RAZORPAY_KEY_SECRET": "jMfiPB94jnPtWJDYAvFz4tr9",
+    "GOOGLE_CLIENT_ID": "1012219091164-5f0f2e0g8d5aqrh8e4e4aqj9aqj9aqj9.apps.googleusercontent.com",
+    "GOOGLE_CLIENT_SECRET": "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aqj9",
+    "GOOGLE_CALLBACK_URL": "http://localhost:5000/v1/auth/google/callback"
   }
 }
