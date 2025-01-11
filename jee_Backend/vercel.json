@@ -1,8 +1,6 @@
 {
     "version": 2,
     "name": "jee-buddy-backend",
-    "buildCommand": "npm run build",
-    "outputDirectory": ".",
     "builds": [
         {
             "src": "index.js",
@@ -16,13 +14,20 @@
     "routes": [
         {
             "src": "/(.*)",
-            "dest": "index.js",
-            "methods": ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-            "headers": {
-                "Access-Control-Allow-Origin": "*",
-                "Access-Control-Allow-Headers": "Origin, X-Requested-With, Content-Type, Accept, Authorization",
-                "Access-Control-Allow-Credentials": "true"
-            }
+            "dest": "index.js"
         }
-    ]
+    ],
+    "env": {
+        "NODE_ENV": "development"
+    },
+    "github": {
+        "enabled": true,
+        "silent": true
+    },
+    "functions": {
+        "index.js": {
+            "memory": 1024,
+            "maxDuration": 10
+        }
+    }
 }
