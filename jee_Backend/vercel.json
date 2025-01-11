@@ -4,7 +4,11 @@
     "builds": [
         {
             "src": "index.js",
-            "use": "@vercel/node"
+            "use": "@vercel/node",
+            "config": {
+                "includeFiles": ["src/**"],
+                "maxLambdaSize": "50mb"
+            }
         }
     ],
     "routes": [
@@ -24,18 +28,5 @@
             "memory": 1024,
             "maxDuration": 10
         }
-    },
-    "env": {
-        "NODE_ENV": "production",
-        "PORT": "5000",
-        "JWT_SECRET": "thisisasamplesecret",
-        "JWT_ACCESS_EXPIRATION_DAYS": "1",
-        "SUPABASE_URL": "https://kymdueuxnesfvjdrueww.supabase.co",
-        "SUPABASE_SERVICE_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt5bWR1ZXV4bmVzZnZqZHJ1ZXd3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzYzMzE5NDYsImV4cCI6MjA1MTkwNzk0Nn0.RqGRBPTkuff10kyk_z0ItRx6gazS9KUdYZLifSg1oLs",
-        "RAZORPAY_KEY_ID": "rzp_test_LP09yDpPnI4V3x",
-        "RAZORPAY_KEY_SECRET": "jMfiPB94jnPtWJDYAvFz4tr9",
-        "GOOGLE_CLIENT_ID": "1012219091164-5f0f2e0g8d5aqrh8e4e4aqj9aqj9aqj9.apps.googleusercontent.com",
-        "GOOGLE_CLIENT_SECRET": "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aqj9",
-        "GOOGLE_CALLBACK_URL": "http://localhost:5000/v1/auth/google/callback"
     }
 }
