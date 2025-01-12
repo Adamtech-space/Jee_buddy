@@ -23,11 +23,6 @@
     "github": {
         "enabled": true,
         "silent": true
-    },
-    "functions": {
-        "index.js": {
-            "memory": 1024,
-            "maxDuration": 10
-        }
     }
+    
 }
