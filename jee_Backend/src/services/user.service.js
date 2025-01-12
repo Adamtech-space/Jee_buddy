@@ -1,6 +1,6 @@
-const { User } = require("../models/users.model");
+const userModel = require("../models/users.model");
+const ApiError = require("../utils/ApiError");
 const Bcrypt = require("bcryptjs");
-const ApiError = require("../utils/apiError");
 const httpStatus = require("http-status");
 
 const createUsers = async (req) => {
@@ -9,7 +9,7 @@ const createUsers = async (req) => {
   const salt = await Bcrypt.genSalt(10);
   const hash = await Bcrypt.hash(password, salt);
   const datas = { ...body, ...{ password: hash } };
-  const creation = await User.create(datas);
+  const creation = await userModel.create(datas);
   return creation;
 };
 
