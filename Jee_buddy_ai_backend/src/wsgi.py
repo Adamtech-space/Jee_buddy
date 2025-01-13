@@ -7,7 +7,8 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent.parent
 sys.path.append(str(BASE_DIR))
 
-from core.wsgi import get_wsgi_application
+from django.core.wsgi import get_wsgi_application
+
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'core.settings')
 
 try:
