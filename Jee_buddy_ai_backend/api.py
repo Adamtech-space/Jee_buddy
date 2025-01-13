@@ -7,6 +7,7 @@ import traceback
 from typing import Union
 import asyncio
 from urllib.parse import urlparse
+from io import BytesIO
 
 # Add the project root directory to Python path
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -50,6 +51,10 @@ def health_check():
 @app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD", "PATCH"])
 async def catch_all(request: Request, path: str):
     try:
+        # Get request body
+        body = await request.body()
+        body_file = BytesIO(body)
+
         # Prepare the WSGI environment
         environ = {
             'REQUEST_METHOD': request.method,
@@ -59,11 +64,14 @@ async def catch_all(request: Request, path: str):
             'SERVER_PROTOCOL': 'HTTP/1.1',
             'wsgi.version': (1, 0),
             'wsgi.url_scheme': request.url.scheme or 'https',
-            'wsgi.input': request.scope.get('_body', b''),
+            'wsgi.input': body_file,
             'wsgi.errors': sys.stderr,
             'wsgi.multithread': False,
             'wsgi.multiprocess': False,
             'wsgi.run_once': False,
+            'CONTENT_LENGTH': str(len(body)),
+            'SERVER_NAME': request.url.hostname or 'localhost',
+            'SERVER_PORT': str(request.url.port or 443),
         }
 
         # Add headers
@@ -75,24 +83,35 @@ async def catch_all(request: Request, path: str):
 
         # Get the response from Django
         response_body = []
-        def start_response(status, headers):
-            nonlocal response_body
+        status_headers = [None, None]
+
+        def start_response(status, headers, exc_info=None):
+            status_headers[0] = status
+            status_headers[1] = headers
             return response_body.append
 
         # Call Django application
         response_content = django_application(environ, start_response)
-        if isinstance(response_content, (bytes, str)):
-            response_body = [response_content]
-        else:
+        if response_content is not None:
             response_body.extend(response_content)
 
-        # Convert response to string if it's bytes
-        content = b''.join(response_body) if isinstance(response_body[0], bytes) else ''.join(response_body)
+        # Get status code from status string
+        status_code = int(status_headers[0].split()[0])
+        
+        # Get content type from headers
+        content_type = 'text/html'  # default
+        for header in status_headers[1]:
+            if header[0].lower() == 'content-type':
+                content_type = header[1]
+                break
+
+        # Convert response to bytes if it's not already
+        content = b''.join(response_body) if isinstance(response_body[0], bytes) else ''.join(response_body).encode()
         
         return Response(
             content=content,
-            status_code=200,
-            headers={'Content-Type': 'application/json'}
+            status_code=status_code,
+            headers={'Content-Type': content_type}
         )
 
     except Exception as e:
