@@ -1,7 +1,8 @@
 import logging
 import os
 
-from langchain_openai import ChatOpenAI
+
+from langchain_core.chat_models import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 from typing import List, Dict, Any, Optional
