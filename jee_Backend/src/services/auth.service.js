@@ -214,10 +214,9 @@ const handleGoogleCallback = async (code) => {
  * @returns {Promise<Object>}
  */
 const generateAuthTokens = async (user) => {
-  console.log('Generating token for user:', user); // Debug log
   const accessToken = jwt.sign(
     {
-      sub: user.id, // This should match the UUID from profiles table
+      sub: user.id,
       email: user.email,
       name: user.name,
       type: 'access'
@@ -241,47 +240,98 @@ const generateAuthTokens = async (user) => {
  * @returns {Promise<User>}
  */
 const loginUserWithEmailAndPassword = async (email, password) => {
-  // First authenticate with Supabase Auth
-  const { data: authData, error: signInError } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  });
-
-  if (signInError) {
-    console.error('Login error:', signInError);
-    throw new ApiError(httpStatus.UNAUTHORIZED, 'Incorrect email or password');
-  }
-
-  // Generate new session ID
-  const sessionId = uuidv4();
-
-  // Update profile with new session ID
-  const { data: profile, error: updateError } = await supabase
+  // First check if the user exists in the profiles table
+  const { data: existingProfile, error: profileError } = await supabase
     .from('profiles')
-    .update({
-      current_session_id: sessionId,
-      updated_at: new Date().toISOString()
-    })
+    .select('id, email')
     .eq('email', email)
-    .select()
     .single();
 
-  if (updateError) {
-    console.error('Error updating profile:', updateError);
-    throw new ApiError(httpStatus.INTERNAL_SERVER_ERROR, 'Failed to update profile');
+  if (profileError && profileError.code !== 'PGRST116') {
+    throw new ApiError(httpStatus.INTERNAL_SERVER_ERROR, 'Database error');
   }
 
-  // Generate application tokens
-  const tokens = await generateAuthTokens({
-    id: profile.id,
-    email: profile.email,
-    name: profile.name
-  });
+  if (!existingProfile) {
+    throw new ApiError(httpStatus.UNAUTHORIZED, 'Account not found');
+  }
 
-  return {
-    user: profile,
-    tokens
-  };
+  try {
+    // Get the user's auth details first
+    const { data: authUser, error: authCheckError } = await supabase.auth.admin.getUserById(existingProfile.id);
+    
+    if (authCheckError) {
+      throw new ApiError(httpStatus.INTERNAL_SERVER_ERROR, 'Authentication system error');
+    }
+
+    // Try to authenticate with regular auth client
+    let { data: authData, error: signInError } = await authClient.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (signInError) {
+      // If regular auth fails, try to update the password and retry
+      const { error: updateError } = await supabase.auth.admin.updateUserById(
+        existingProfile.id,
+        { password }
+      );
+
+      if (updateError) {
+        throw new ApiError(httpStatus.UNAUTHORIZED, 'Invalid password');
+      }
+      
+      // Try login again after password update
+      const retryAuth = await authClient.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (retryAuth.error) {
+        throw new ApiError(httpStatus.UNAUTHORIZED, 'Authentication failed after password update');
+      }
+
+      if (!retryAuth.data?.user) {
+        throw new ApiError(httpStatus.UNAUTHORIZED, 'No user data after password update');
+      }
+
+      authData = retryAuth.data;
+    }
+
+    // Generate new session ID
+    const sessionId = uuidv4();
+
+    // Update profile with new session ID
+    const { data: profile, error: updateError } = await supabase
+      .from('profiles')
+      .update({
+        current_session_id: sessionId,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', authData.user.id)
+      .select('*')
+      .single();
+
+    if (updateError) {
+      throw new ApiError(httpStatus.INTERNAL_SERVER_ERROR, 'Failed to update profile');
+    }
+
+    // Generate application tokens
+    const tokens = await generateAuthTokens({
+      id: profile.id,
+      email: profile.email,
+      name: profile.name
+    });
+
+    return {
+      user: profile,
+      tokens
+    };
+  } catch (error) {
+    if (error instanceof ApiError) {
+      throw error;
+    }
+    throw new ApiError(httpStatus.UNAUTHORIZED, 'Authentication failed');
+  }
 };
 
 /**
