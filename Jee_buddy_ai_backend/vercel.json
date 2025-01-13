@@ -12,12 +12,22 @@
     ],
     "routes": [
         {
+            "src": "/static/(.*)",
+            "dest": "/static/$1"
+        },
+        {
+            "src": "/media/(.*)",
+            "dest": "/media/$1"
+        },
+        {
             "src": "/(.*)",
             "dest": "api.py"
         }
     ],
     "env": {
         "PYTHONPATH": "./src",
-        "DJANGO_SETTINGS_MODULE": "core.settings"
+        "DJANGO_SETTINGS_MODULE": "core.settings",
+        "DJANGO_ALLOWED_HOSTS": ".vercel.app",
+        "DEBUG": "False"
     }
 }
