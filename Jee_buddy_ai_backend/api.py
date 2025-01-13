@@ -5,6 +5,7 @@ from fastapi.responses import JSONResponse
 import os
 import sys
 import traceback
+from typing import Union
 
 # Add the project root directory to Python path
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -28,10 +29,10 @@ app = FastAPI(title="JEE Buddy API")
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allows all origins
+    allow_origins=["*"],
     allow_credentials=True,
-    allow_methods=["*"],  # Allows all methods
-    allow_headers=["*"],  # Allows all headers
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # Error handling
@@ -47,9 +48,25 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 # Health check endpoint
 @app.get("/health")
-async def health_check():
+def health_check():
     return {"status": "healthy"}
 
-# Mount Django WSGI application
+# Create WSGI app
 django_app = get_wsgi_application()
+
+# Create a middleware to handle Django requests
+@app.middleware("http")
+async def django_middleware(request: Request, call_next):
+    try:
+        response = await call_next(request)
+        return response
+    except Exception as e:
+        print(f"Error in middleware: {str(e)}")
+        print(f"Traceback: {traceback.format_exc()}")
+        return JSONResponse(
+            status_code=500,
+            content={"detail": f"Server error: {str(e)}"}
+        )
+
+# Mount Django WSGI application at the end
 app.mount("/", WSGIMiddleware(django_app)) 
