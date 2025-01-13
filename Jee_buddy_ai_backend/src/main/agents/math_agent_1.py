@@ -16,6 +16,8 @@ class MathProblemInput(BaseModel):
     question: str = Field(description="The math problem to solve")
     approach: Optional[str] = Field(default="auto", description="The approach to use for solving")
 
+
+
 class MathAgent:
     def __init__(self):
         self.llm = ChatOpenAI(
