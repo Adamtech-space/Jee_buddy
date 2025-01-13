@@ -9,4 +9,7 @@ if path not in sys.path:
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'core.settings')
 
 from django.core.wsgi import get_wsgi_application
-application = get_wsgi_application() 
+application = get_wsgi_application()
+
+# This is required for Vercel
+app = application 
