@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import Button from './Button'
 import Logo from './Logo'
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false)
   const [isScrolled, setIsScrolled] = useState(false)
+  const navigate = useNavigate()
 
   useEffect(() => {
     const handleScroll = () => {
@@ -34,18 +36,18 @@ const Navbar = () => {
     >
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
-          <a href="#" className="flex items-center">
+          <Link to="/" className="flex items-center">
             <Logo className="h-8 w-auto text-blue-400" />
-          </a>
+          </Link>
 
           {/* Desktop Menu */}
           <div className="hidden lg:flex items-center space-x-8">
             <div className="flex space-x-6">
               {['Home', 'Features', 'Resources', 'Demo', 'Testimonials'].map(
                 (item) => (
-                  <a
+                  <Link
                     key={item}
-                    href={`#${item.toLowerCase()}`}
+                    to={`#${item.toLowerCase()}`}
                     onClick={(e) => {
                       e.preventDefault();
                       document
@@ -63,7 +65,7 @@ const Navbar = () => {
                     after:transition-all after:duration-300`}
                   >
                     {item}
-                  </a>
+                  </Link>
                 )
               )}
             </div>
@@ -74,7 +76,7 @@ const Navbar = () => {
                 className={`border-gray-700 hover:border-blue-500 text-gray-300 
                   hover:text-blue-400 transition-all duration-300
                   ${isScrolled ? 'bg-black/50' : 'bg-black/30'}`}
-                onClick={() => (window.location.href = '/login')}
+                onClick={() => navigate('/login')}
               >
                 Login
               </Button>
@@ -82,7 +84,7 @@ const Navbar = () => {
                 variant="primary"
                 className="bg-sky-800 hover:bg-blue-700 text-white
                   transition-all duration-300 transform hover:scale-105"
-                onClick={() => (window.location.href = '/register')}
+                onClick={() => navigate('/register')}
               >
                 Get Free Trial
               </Button>
@@ -129,9 +131,9 @@ const Navbar = () => {
           <div className="py-6 space-y-4">
             {['home', 'features', 'resources', 'demo', 'testimonials'].map(
               (item) => (
-                <a
+                <Link
                   key={item}
-                  href={`#${item.toLowerCase()}`}
+                  to={`#${item.toLowerCase()}`}
                   onClick={(e) => {
                     e.preventDefault();
                     document
@@ -147,7 +149,7 @@ const Navbar = () => {
                   }`}
                 >
                   {item.charAt(0).toUpperCase() + item.slice(1)}
-                </a>
+                </Link>
               )
             )}
             <div className="px-4 pt-4 space-y-3">
@@ -157,7 +159,7 @@ const Navbar = () => {
                           text-gray-300 hover:text-blue-400 bg-black/50"
                 onClick={() => {
                   closeMenu();
-                  window.location.href = '/login';
+                  navigate('/login');
                 }}
               >
                 Login
@@ -168,7 +170,7 @@ const Navbar = () => {
                           hover:from-blue-700 hover:to-purple-700 text-white"
                 onClick={() => {
                   closeMenu();
-                  window.location.href = '/register';
+                  navigate('/register');
                 }}
               >
                 Get Free Trial

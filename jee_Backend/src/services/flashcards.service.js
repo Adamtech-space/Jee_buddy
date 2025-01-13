@@ -1,5 +1,5 @@
 const flashcardsModel = require('../models/flashcards.model');
-const ApiError = require('../utils/apiError');
+const ApiError = require('../utils/ApiError');
 
 const saveFlashCard = async (userId, data) => {
   try {

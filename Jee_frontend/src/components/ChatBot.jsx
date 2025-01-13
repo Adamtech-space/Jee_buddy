@@ -135,10 +135,9 @@ const ChatBot = ({
         throw new Error('Failed to save flash card');
       }
     } catch (error) {
-      console.error('Error details:', error);
       hide();
       message.error({
-        content: error.message || 'Failed to save to flash cards',
+        content: error?.message || 'Failed to save to flash cards',
         duration: 3
       });
     }
@@ -253,15 +252,17 @@ const ChatBot = ({
         };
         reader.readAsDataURL(file);
       } catch (error) {
-        console.error('File upload failed:', error);
+        const errorMessage = `Image upload failed: ${error?.message || 'Please try again'}`;
         setMessages(prev => [...prev, {
           sender: 'assistant',
           type: 'text',
-          content: "I'm sorry, I couldn't upload the image at the moment. Please try again."
+          content: errorMessage
         }]);
+        setDisplayedResponse(errorMessage);
+        setCurrentTypingIndex(errorMessage.length);
+        // Reset file input to allow selecting the same file again
+        e.target.value = '';
       }
-      // Reset file input to allow selecting the same file again
-      e.target.value = '';
     }
   };
 
@@ -324,12 +325,14 @@ const ChatBot = ({
       setCurrentTypingIndex(0);
       setIsTyping(true);
     } catch (error) {
-      console.error('Chat request failed:', error);
+      const errorMessage = `Failed to process message: ${error?.message || 'Please try again'}`;
       setMessages(prev => [...prev, {
         sender: 'assistant',
         type: 'text',
-        content: "I'm sorry, I couldn't process your message at the moment. Please try again."
+        content: errorMessage
       }]);
+      setDisplayedResponse(errorMessage);
+      setCurrentTypingIndex(errorMessage.length);
     } finally {
       setIsLoading(false);
     }
@@ -364,12 +367,14 @@ const ChatBot = ({
         content: response.solution
       }]);
     } catch (error) {
-      console.error('Help request failed:', error);
+      const errorMessage = `Failed to process request: ${error?.message || 'Please try again'}`;
       setMessages(prev => [...prev, {
         sender: 'assistant',
         type: 'text',
-        content: "I'm sorry, I couldn't process your request at the moment. Please try again."
+        content: errorMessage
       }]);
+      setDisplayedResponse(errorMessage);
+      setCurrentTypingIndex(errorMessage.length);
     } finally {
       setIsLoading(false);
     }

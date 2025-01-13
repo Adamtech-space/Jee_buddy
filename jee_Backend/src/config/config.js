@@ -9,6 +9,11 @@ const envVarsSchema = Joi.object()
     PORT: Joi.number().default(5000),
     FRONTEND_URL: Joi.string().required(),
     
+    // Supabase
+    NEXT_PUBLIC_SUPABASE_URL: Joi.string().required(),
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: Joi.string().required(),
+    SUPABASE_SERVICE_ROLE_KEY: Joi.string().required(),
+    
     // JWT
     JWT_SECRET: Joi.string().required(),
     JWT_ACCESS_EXPIRATION_MINUTES: Joi.number().default(30),
@@ -27,30 +32,24 @@ const envVarsSchema = Joi.object()
     SMTP_USERNAME: Joi.string().required(),
     SMTP_PASSWORD: Joi.string().required(),
     EMAIL_FROM: Joi.string().required(),
-    
-    // Supabase
-    NEXT_PUBLIC_SUPABASE_URL: Joi.string().required(),
-    NEXT_PUBLIC_SUPABASE_ANON_KEY: Joi.string().required(),
-    SUPABASE_SERVICE_ROLE_KEY: Joi.string().required(),
-
-    // Razorpay
-    RAZORPAY_KEY_ID: Joi.string().required(),
-    RAZORPAY_KEY_SECRET: Joi.string().required(),
   })
   .unknown();
 
-const { value: envVars, error } = envVarsSchema
-  .prefs({ errors: { label: "key" } })
-  .validate(process.env);
+const { value: envVars, error } = envVarsSchema.prefs({ errors: { label: 'key' } }).validate(process.env);
+
 if (error) {
   throw new Error(`Config validation error: ${error.message}`);
 }
 
-const config = {
+module.exports = {
   env: envVars.NODE_ENV,
   port: envVars.PORT,
-  frontendUrl: envVars.FRONTEND_URL,
-  
+  clientUrl: envVars.FRONTEND_URL,
+  supabase: {
+    url: envVars.NEXT_PUBLIC_SUPABASE_URL,
+    anonKey: envVars.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    serviceKey: envVars.SUPABASE_SERVICE_ROLE_KEY,
+  },
   jwt: {
     secret: envVars.JWT_SECRET,
     accessExpirationMinutes: envVars.JWT_ACCESS_EXPIRATION_MINUTES,
@@ -58,13 +57,11 @@ const config = {
     resetPasswordExpirationMinutes: envVars.JWT_RESET_PASSWORD_EXPIRATION_MINUTES,
     verifyEmailExpirationMinutes: envVars.JWT_VERIFY_EMAIL_EXPIRATION_MINUTES,
   },
-  
   google: {
     clientId: envVars.GOOGLE_CLIENT_ID,
     clientSecret: envVars.GOOGLE_CLIENT_SECRET,
     callbackUrl: envVars.GOOGLE_CALLBACK_URL,
   },
-  
   email: {
     smtp: {
       host: envVars.SMTP_HOST,
@@ -76,16 +73,4 @@ const config = {
     },
     from: envVars.EMAIL_FROM,
   },
-  
-  supabase: {
-    url: envVars.NEXT_PUBLIC_SUPABASE_URL,
-    serviceKey: envVars.SUPABASE_SERVICE_ROLE_KEY,
-  },
-
-  razorpay: {
-    keyId: envVars.RAZORPAY_KEY_ID,
-    keySecret: envVars.RAZORPAY_KEY_SECRET,
-  },
 };
-
-module.exports = config;
