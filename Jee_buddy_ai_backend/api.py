@@ -5,10 +5,12 @@ import os
 import sys
 
 # Add the project root directory to Python path
-path = os.path.dirname(os.path.abspath(__file__))
-if path not in sys.path:
-    sys.path.append(path)
+current_dir = os.path.dirname(os.path.abspath(__file__))
+src_path = os.path.join(current_dir, 'src')
+if src_path not in sys.path:
+    sys.path.insert(0, src_path)
 
+# Set Django settings module
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'core.settings')
 
 # Initialize Django
@@ -21,4 +23,5 @@ from django.core.wsgi import get_wsgi_application
 app = FastAPI()
 
 # Mount Django WSGI application
-app.mount("/", WSGIMiddleware(get_wsgi_application())) 
+django_app = get_wsgi_application()
+app.mount("/", WSGIMiddleware(django_app)) 
