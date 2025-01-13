@@ -387,7 +387,7 @@ const Subscription = () => {
       <div className="max-w-7xl mx-auto px-4 py-8">
         {/* Back Button */}
         <button
-          onClick={() => navigate('/dashboard')}
+          onClick={() => navigate(-1)}
           className="flex items-center text-white mb-8 hover:text-purple-400 transition-colors"
         >
           <svg className="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
