@@ -1,19 +1,18 @@
 const httpStatus = require('http-status');
 const catchAsync = require('../utils/catchAsync');
 const authService = require('../services/auth.service');
-const emailService = require('../services/email.service');
+const config = require('../config/config');
+const ApiError = require('../utils/ApiError');
 
 const register = catchAsync(async (req, res) => {
   const user = await authService.createUser(req.body);
-  const tokens = await authService.generateAuthTokens(user);
-  res.status(httpStatus.CREATED).send({ user, tokens });
+  res.status(httpStatus.CREATED).send(user);
 });
 
 const login = catchAsync(async (req, res) => {
   const { email, password } = req.body;
   const user = await authService.loginUserWithEmailAndPassword(email, password);
-  const tokens = await authService.generateAuthTokens(user);
-  res.send({ user, tokens });
+  res.send(user);
 });
 
 const logout = catchAsync(async (req, res) => {
@@ -21,20 +20,16 @@ const logout = catchAsync(async (req, res) => {
   res.status(httpStatus.NO_CONTENT).send();
 });
 
-const refreshTokens = catchAsync(async (req, res) => {
-  const tokens = await authService.refreshAuth(req.body.refreshToken);
-  res.send({ tokens });
-});
-
 const forgotPassword = catchAsync(async (req, res) => {
-  const resetPasswordToken = await authService.generateResetPasswordToken(req.body.email);
-  await emailService.sendResetPasswordEmail(req.body.email, resetPasswordToken);
-  res.status(httpStatus.NO_CONTENT).send();
+  const { email } = req.body;
+  await authService.generateResetPasswordToken(email);
+  res.status(httpStatus.OK).send({ message: 'Password reset email sent successfully' });
 });
 
 const resetPassword = catchAsync(async (req, res) => {
-  await authService.resetPassword(req.query.token, req.body.password);
-  res.status(httpStatus.NO_CONTENT).send();
+  const { token, password } = req.body;
+  await authService.resetPassword(token, password);
+  res.status(httpStatus.OK).send({ message: 'Password reset successful' });
 });
 
 const googleAuth = catchAsync(async (req, res) => {
@@ -52,7 +47,6 @@ module.exports = {
   register,
   login,
   logout,
-  refreshTokens,
   forgotPassword,
   resetPassword,
   googleAuth,

@@ -11,11 +11,12 @@ router.post('/register', validate(authValidation.register), authController.regis
 router.post('/login', validate(authValidation.login), authController.login);
 router.post('/forgot-password', validate(authValidation.forgotPassword), authController.forgotPassword);
 router.post('/reset-password', validate(authValidation.resetPassword), authController.resetPassword);
+
+// Google OAuth routes
 router.get('/google', authController.googleAuth);
 router.get('/google/callback', authController.googleCallback);
 
 // Protected routes (require authentication)
-router.post('/logout', auth(), validate(authValidation.logout), authController.logout);
-router.post('/refresh-token', validate(authValidation.refreshTokens), authController.refreshTokens);
+router.post('/logout', auth(), authController.logout);
 
 module.exports = router; 

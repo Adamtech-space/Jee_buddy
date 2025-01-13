@@ -6,6 +6,22 @@ const config = require('../config/config');
 const ApiError = require('../utils/ApiError');
 const querystring = require('querystring');
 const httpStatus = require('http-status');
+const { createClient } = require('@supabase/supabase-js');
+
+// Create a separate client for auth operations using the anon key
+const authClient = createClient(
+  config.supabase.url,
+  config.supabase.anonKey,
+  {
+    auth: {
+      autoRefreshToken: true,
+      persistSession: true,
+      detectSessionInUrl: false
+    }
+  }
+);
+
+// Use the service role client for admin operations
 const supabase = require('../config/supabaseClient');
 
 /**
@@ -255,7 +271,17 @@ const loginUserWithEmailAndPassword = async (email, password) => {
     throw new ApiError(httpStatus.INTERNAL_SERVER_ERROR, 'Failed to update profile');
   }
 
-  return profile;
+  // Generate application tokens
+  const tokens = await generateAuthTokens({
+    id: profile.id,
+    email: profile.email,
+    name: profile.name
+  });
+
+  return {
+    user: profile,
+    tokens
+  };
 };
 
 /**
@@ -264,38 +290,96 @@ const loginUserWithEmailAndPassword = async (email, password) => {
  * @returns {Promise<User>}
  */
 const createUser = async (userBody) => {
-  // Create user with Supabase Auth
-  const { data: authData, error: signUpError } = await supabase.auth.signUp({
-    email: userBody.email,
-    password: userBody.password,
-    options: {
-      data: {
-        name: userBody.name,
-      },
-    },
-  });
+  try {
+    console.log('Starting user creation for email:', userBody.email);
 
-  if (signUpError) {
-    console.error('Signup error:', signUpError);
-    if (signUpError.message.includes('already registered')) {
+    // Check if user already exists in profiles
+    const { data: existingUser, error: checkError } = await supabase
+      .from('profiles')
+      .select('id, email')
+      .eq('email', userBody.email)
+      .single();
+
+    if (existingUser) {
+      console.log('User already exists with email:', userBody.email);
       throw new ApiError(httpStatus.BAD_REQUEST, 'Email already taken');
     }
-    throw new ApiError(httpStatus.INTERNAL_SERVER_ERROR, 'Failed to create user');
+
+    // First try to sign up with Supabase Auth
+    console.log('Creating auth user...');
+    const { data: authData, error: signUpError } = await authClient.auth.signUp({
+      email: userBody.email,
+      password: userBody.password,
+      options: {
+        data: {
+          name: userBody.name,
+        },
+      },
+    });
+
+    if (signUpError) {
+      console.error('Signup error details:', {
+        message: signUpError.message,
+        status: signUpError.status,
+        code: signUpError.code
+      });
+      throw new ApiError(httpStatus.INTERNAL_SERVER_ERROR, 'Failed to create user');
+    }
+
+    if (!authData?.user) {
+      console.error('Auth data missing user object after signup');
+      throw new ApiError(httpStatus.INTERNAL_SERVER_ERROR, 'Failed to create user');
+    }
+
+    console.log('Auth user created with ID:', authData.user.id);
+
+    // Create profile record
+    console.log('Creating profile record...');
+    const { data: profile, error: insertError } = await supabase
+      .from('profiles')
+      .insert([
+        {
+          id: authData.user.id,
+          name: userBody.name,
+          email: userBody.email,
+          phone_number: userBody.phonenumber,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        },
+      ])
+      .select()
+      .single();
+
+    if (insertError) {
+      console.error('Profile creation error:', insertError);
+      // If profile creation fails, we should try to delete the auth user
+      await authClient.auth.admin.deleteUser(authData.user.id);
+      throw new ApiError(httpStatus.INTERNAL_SERVER_ERROR, 'Failed to create user profile');
+    }
+
+    console.log('Profile created successfully');
+    console.log('Generating tokens...');
+
+    // Generate application tokens
+    const tokens = await generateAuthTokens({
+      id: profile.id,
+      email: profile.email,
+      name: profile.name
+    });
+
+    console.log('User creation completed successfully');
+
+    return {
+      user: profile,
+      tokens
+    };
+  } catch (error) {
+    console.error('Signup process error:', error);
+    if (error instanceof ApiError) {
+      throw error;
+    }
+    throw new ApiError(httpStatus.INTERNAL_SERVER_ERROR, 'Registration failed');
   }
-
-  // Get the created profile
-  const { data: profile, error: profileError } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', authData.user.id)
-    .single();
-
-  if (profileError) {
-    console.error('Error fetching profile:', profileError);
-    throw new ApiError(httpStatus.INTERNAL_SERVER_ERROR, 'Failed to fetch user profile');
-  }
-
-  return profile;
 };
 
 const logout = async (userId) => {
@@ -329,6 +413,77 @@ const logout = async (userId) => {
   }
 };
 
+/**
+ * Generate reset password token
+ * @param {string} email
+ * @returns {Promise<string>}
+ */
+const generateResetPasswordToken = async (email) => {
+  try {
+    console.log('Generating reset password token for:', email);
+
+    // Check if user exists in profiles
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('id, email')
+      .eq('email', email)
+      .single();
+
+    if (profileError || !profile) {
+      throw new ApiError(httpStatus.NOT_FOUND, 'No users found with this email');
+    }
+
+    // Use Supabase's built-in password reset
+    const { data, error } = await authClient.auth.resetPasswordForEmail(email, {
+      redirectTo: `${config.clientUrl}/auth/reset-password`,
+    });
+
+    if (error) {
+      console.error('Reset password error:', error);
+      throw new ApiError(httpStatus.INTERNAL_SERVER_ERROR, 'Failed to send reset password email');
+    }
+
+    console.log('Reset password email sent successfully');
+    return true;
+  } catch (error) {
+    console.error('Reset password process error:', error);
+    if (error instanceof ApiError) {
+      throw error;
+    }
+    throw new ApiError(httpStatus.INTERNAL_SERVER_ERROR, 'Failed to process reset password request');
+  }
+};
+
+/**
+ * Reset password
+ * @param {string} token
+ * @param {string} newPassword
+ * @returns {Promise<void>}
+ */
+const resetPassword = async (token, newPassword) => {
+  try {
+    console.log('Attempting to reset password');
+
+    const { data, error } = await authClient.auth.updateUser({
+      password: newPassword
+    });
+
+    if (error) {
+      console.error('Password update error:', error);
+      throw new ApiError(httpStatus.BAD_REQUEST, 'Failed to reset password');
+    }
+
+    console.log('Password reset successful');
+    return true;
+  } catch (error) {
+    console.error('Reset password error:', error);
+    if (error instanceof ApiError) {
+      throw error;
+    }
+    throw new ApiError(httpStatus.INTERNAL_SERVER_ERROR, 'Failed to reset password');
+  }
+};
+
 module.exports = {
   getGoogleOAuthUrl,
   handleGoogleCallback,
@@ -336,4 +491,6 @@ module.exports = {
   loginUserWithEmailAndPassword,
   createUser,
   logout,
+  generateResetPasswordToken,
+  resetPassword,
 }; 
