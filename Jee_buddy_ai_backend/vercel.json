@@ -6,7 +6,8 @@
             "use": "@vercel/python",
             "config": {
                 "runtime": "python3.12",
-                "maxLambdaSize": "15mb"
+                "maxLambdaSize": "15mb",
+                "handler": "api.app"
             }
         }
     ],
@@ -30,15 +31,15 @@
             "dest": "api.py",
             "headers": {
                 "Access-Control-Allow-Origin": "*",
-                "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS",
-                "Access-Control-Allow-Headers": "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version"
+                "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS,HEAD,PATCH",
+                "Access-Control-Allow-Headers": "*"
             }
         }
     ],
     "env": {
         "PYTHONPATH": "./src",
         "DJANGO_SETTINGS_MODULE": "core.settings",
-        "DJANGO_ALLOWED_HOSTS": ".vercel.app",
+        "DJANGO_ALLOWED_HOSTS": "*",
         "DEBUG": "False",
         "PYTHONUNBUFFERED": "1"
     }
