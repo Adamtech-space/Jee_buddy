@@ -387,13 +387,13 @@ const Subscription = () => {
       <div className="max-w-7xl mx-auto px-4 py-8">
         {/* Back Button */}
         <button
-          onClick={() => navigate(-1)}
+          onClick={() => navigate('/dashboard')}
           className="flex items-center text-white mb-8 hover:text-purple-400 transition-colors"
         >
           <svg className="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
           </svg>
-          Back
+          Back to Dashboard
         </button>
 
         {isSubscribed && currentPlan ? (

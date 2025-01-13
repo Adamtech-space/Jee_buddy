@@ -10,7 +10,7 @@ const getBooksList = catchAsync(async (req, res) => {
       topic: req.query.topic
     };
     
-    console.log('Filters:', filters); // Debug log
+
     
     const books = await getBooks(filters);
     
@@ -44,7 +44,6 @@ const getBookById = catchAsync(async (req, res) => {
       data: book
     });
   } catch (error) {
-    console.error('Error in getBookById:', error);
     if (error instanceof ApiError) throw error;
     throw new ApiError(httpStatus.INTERNAL_SERVER_ERROR, 'Error fetching book');
   }
