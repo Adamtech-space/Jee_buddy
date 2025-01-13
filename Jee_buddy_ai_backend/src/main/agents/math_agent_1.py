@@ -168,61 +168,30 @@ class MathAgent:
 
     async def solve(self, question: str, context: Dict[Any, Any]) -> dict:
         try:
-
             # Get user and session info
             user_id = context.get('user_id')
             session_id = context.get('session_id')
             history_limit = context.get('history_limit', 100)
+            subject = context.get('subject', '').lower()
+            topic = context.get('topic', '')
 
+            # Format chat history for context
             formatted_history = []
-
-            # First check database history (this works across sessions)
-            if user_id:
-                db_history = ChatHistory.objects.filter(
-                    user_id=user_id  # Only filtering by user_id, not session_id
-                ).order_by('-timestamp')[:history_limit]
-                
-                if db_history:
-                    # Convert database history to formatted history
-                    for h in db_history:
-                        formatted_history.append({
-                            'question': h.question,
-                            'response': h.response,
-                            'timestamp': h.timestamp,
-                            'session_id': h.session_id,  # Keep track of which session it was from
-                            'subject': h.context.get('subject', ''),
-                            'topic': h.context.get('topic', ''),
-                            'interaction_type': h.context.get('interaction_type', '')
-                        })
-
-                # Then add current session's history if available
             if context.get('chat_history'):
-                def extract_history(chat_list):
-                    for chat in chat_list:
-                        if isinstance(chat, dict):
-                            chat_context = chat.get('context', {})
-                            formatted_history.append({
-                                'question': chat.get('question', ''),
-                                'response': chat.get('response', ''),
-                                'timestamp': chat.get('timestamp', ''),
-                                'session_id': chat.get('session_id', ''),
-                                'subject': chat_context.get('subject', ''),
-                                'topic': chat_context.get('topic', ''),
-                                'interaction_type': chat_context.get('interaction_type', '')
-                            })
-                            if chat_context.get('chat_history'):
-                                extract_history(chat_context['chat_history'])
+                for chat in context['chat_history']:
+                    formatted_history.append({
+                        'question': chat['question'],
+                        'response': chat['response'],
+                        'timestamp': chat['timestamp'],
+                        'subject': chat['context'].get('subject', ''),
+                        'topic': chat['context'].get('topic', '')
+                    })
 
-                extract_history(context['chat_history'])
-
-
-            formatted_history.sort(key=lambda x: x['timestamp'])
-
-
-            # Format history for LLM with session information
+            # Create history context string
             if formatted_history:
                 history_context = "\n\n".join([
-                    f"Question ({h['timestamp']}, Session: {h['session_id']}):\n"
+                    f"Previous Question ({h['timestamp']}):\n"
+                    f"Subject: {h['subject']}\n"
                     f"Topic: {h['topic']}\n"
                     f"Q: {h['question']}\n"
                     f"A: {h['response']}"
@@ -230,103 +199,84 @@ class MathAgent:
                 ])
             else:
                 history_context = "No previous conversation context."
-             # Get chat history from database
-            history_context = ""
-            if user_id:
-                # Get last 5 interactions regardless of session
-                db_history = ChatHistory.objects.filter(
-                    user_id=user_id
-                ).order_by('-timestamp')[:history_limit]  # Adjust number as needed
-                
-                if db_history:
-                    history_context = "\n".join([
-                        f"User: {h.question}\nAssistant: {h.response}"
-                        for h in db_history
-                    ])
-                else:
-                    history_context = "No previous conversation context."
+
             # Process image if present
             image_context = ""
             if context.get('image'):
                 image_context = "[Image provided for reference]"
 
-           
+            # Create system message with subject-specific instructions
+            subject_prompts = {
+                'physics': "As a Physics expert, focus on physical concepts, laws, and their applications.",
+                'chemistry': "As a Chemistry expert, focus on chemical principles, reactions, and molecular understanding.",
+                'mathematics': "As a Mathematics expert, focus on mathematical concepts, proofs, and problem-solving strategies."
+            }
 
-           
+            subject_instruction = subject_prompts.get(subject, "As a JEE expert, provide comprehensive guidance across Physics, Chemistry, and Mathematics.")
 
             messages = [
                 SystemMessage(content=fr"""You are an expert friendly JEE tutor specialized in Physics, Chemistry, and Mathematics.
+                {subject_instruction}
                 
                 Previous conversation context:
                 {history_context}
 
                 Additional context:
+                Subject: {subject}
+                Topic: {topic}
                 {context.get('pinnedText', '')}
                 {image_context}
 
-            Format your response following these rules:
-            1. Use plain text without LaTeX markers or special characters
-            2. For mathematical expressions:
-                - Use simple text: x^2 for powers
-                - Use / for fractions: a/b
-                - Use * for multiplication
-                - Write units in parentheses: (m/s), (kg), etc.
-            
-            3. Structure your response with:
-                - Clear numbered sections
-                - Bullet points using simple dashes (-)
-                - Line breaks between sections
-                - Simple indentation for sub-points
-            
-            4. For equations:
-                - Write them on separate lines
-                - Use = sign with spaces around it
-                - Example: F = m * a
-                - For complex equations, break into multiple lines
-            
-            5. For explanations:
-                - Use step-by-step numbering
-                - Include clear examples
-                - Explain concepts without technical markup
-            
-            If the user asks about previous conversations or history, summarize the above context using this same formatting.
-            
-            Remember to keep all mathematical and scientific content accurate while using this simplified format.
-            Include specific details from previous questions and their solutions.
+                Format your response following these rules:
+                1. Use plain text without LaTeX markers or special characters
+                2. For mathematical expressions:
+                    - Use simple text: x^2 for powers
+                    - Use / for fractions: a/b
+                    - Use * for multiplication
+                    - Write units in parentheses: (m/s), (kg), etc.
+                
+                3. Structure your response with:
+                    - Clear numbered sections
+                    - Bullet points using simple dashes (-)
+                    - Line breaks between sections
+                    - Simple indentation for sub-points
+                
+                4. For equations:
+                    - Write them on separate lines
+                    - Use = sign with spaces around it
+                    - Example: F = m * a
+                    - For complex equations, break into multiple lines
+                
+                5. For explanations:
+                    - Use step-by-step numbering
+                    - Include clear examples
+                    - Explain concepts without technical markup
+                
+                If the user asks about previous conversations or history, summarize the above context using this same formatting.
+                
+                Remember to keep all mathematical and scientific content accurate while using this simplified format.
+                Include specific details from previous questions and their solutions.
                 """),
                 HumanMessage(content=question)
             ]
 
-            # Actually call the LLM
+            # Call the LLM
             response = await self.llm.agenerate([messages])
             
-            # Extract the responseP
+            # Extract the response
             llm_response = response.generations[0][0].text
-            print("This is the response",llm_response)
-             # Store interaction in database
-            if user_id and session_id:
-                ChatHistory.add_interaction(
-                    user_id=user_id,
-                    session_id=session_id,
-                    question=question,
-                    response=llm_response,
-                    context={
-                        'pinned_text': context.get('pinnedText', ''),
-                        'has_image': bool(context.get('image')),  
-                    }
-                )            
+            
             return {
                 'solution': llm_response,
                 'context': {
-                    'history': history_context,
+                    'history': formatted_history,
                     'current_question': question,
                     'response': llm_response,
-                    'previous_interactions': formatted_history,
                     'user_id': user_id,
-                    'current_session_id': session_id
-
+                    'session_id': session_id,
+                    'subject': subject,
+                    'topic': topic
                 }
-                
             }
 
         except Exception as e:

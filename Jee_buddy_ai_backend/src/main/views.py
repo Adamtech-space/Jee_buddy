@@ -89,7 +89,10 @@ def solve_math_problem(request):
             except json.JSONDecodeError:
                 context_data = {}
         
-        session_id = context_data.get('session_id', 'default')
+        # Get user and session info
+        user_id = context_data.get('user_id')
+        session_id = context_data.get('session_id')
+        history_limit = context_data.get('history_limit', 100)
         
         # Handle image if present
         image = request.FILES.get('image')
@@ -97,18 +100,27 @@ def solve_math_problem(request):
         if image:
             image_content = base64.b64encode(image.read()).decode('utf-8')
         
-        # Get chat history - now returns serializable dict
-        chat_history = ChatHistory.get_recent_history(session_id)
+        # Get chat history for the specific user and session
+        chat_history = []
+        if user_id and session_id:
+            chat_history = ChatHistory.get_recent_history(
+                user_id=user_id,
+                session_id=session_id,
+                limit=history_limit
+            )
         
-        # Create the context dictionary
+        # Create the context dictionary with all provided fields
         context = {
-            'selectedText': context_data.get('selectedText', ''),
-            'pinnedText': context_data.get('pinnedText', ''),
-            'subject': context_data.get('subject', ''),
-            'topic': context_data.get('topic', ''),
+            'user_id': user_id,
+            'session_id': session_id,
+            'chat_history': chat_history,
+            'history_limit': history_limit,
             'image': image_content,
-            'chat_history': chat_history,  # Now contains serializable data
-            'interaction_type': context_data.get('interaction_type', 'general')
+            'interaction_type': context_data.get('interaction_type', 'solve'),
+            'pinnedText': context_data.get('pinnedText', ''),
+            'selectedText': context_data.get('selectedText', ''),
+            'subject': context_data.get('subject', ''),
+            'topic': context_data.get('topic', '')
         }
         
         if not question and not context['pinnedText']:
@@ -135,24 +147,45 @@ def solve_math_problem(request):
                 'details': 'The AI agent failed to generate a response.'
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-        # Save the interaction to history
-        try:
-            ChatHistory.add_interaction(
-                session_id=session_id,
-                question=question,
-                response=result['solution'],
-                context=context
-            )
-        except Exception as db_error:
-            logger.error(f"Database error: {str(db_error)}", exc_info=True)
+        # Save the interaction to history if user_id and session_id are present
+        if user_id and session_id:
+            try:
+                ChatHistory.add_interaction(
+                    user_id=user_id,
+                    session_id=session_id,
+                    question=question,
+                    response=result['solution'],
+                    context={
+                        'subject': context.get('subject'),
+                        'topic': context.get('topic'),
+                        'interaction_type': context.get('interaction_type'),
+                        'pinned_text': context.get('pinnedText'),
+                        'has_image': bool(image_content)
+                    }
+                )
+            except Exception as db_error:
+                logger.error(f"Database error: {str(db_error)}", exc_info=True)
         
-        # Refresh chat history after adding new interaction
-        updated_chat_history = ChatHistory.get_recent_history(session_id)
+        # Get updated chat history
+        updated_chat_history = []
+        if user_id and session_id:
+            updated_chat_history = ChatHistory.get_recent_history(
+                user_id=user_id,
+                session_id=session_id,
+                limit=history_limit
+            )
         
         response_data = {
             'solution': result['solution'],
-            'context': result['context'],
-            'chat_history': updated_chat_history  # Using the serializable format
+            'context': {
+                'history': updated_chat_history,
+                'current_question': question,
+                'response': result['solution'],
+                'user_id': user_id,
+                'session_id': session_id,
+                'subject': context.get('subject'),
+                'topic': context.get('topic')
+            }
         }
         
         return Response(response_data)
