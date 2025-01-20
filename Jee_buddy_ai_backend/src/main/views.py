@@ -16,11 +16,9 @@ from django.views.decorators.csrf import csrf_exempt
 from django.db.models import F, Q, Count
 from django.db.models.expressions import Case, When
 from django.db.models.functions import Now, Trunc
-from asgiref.sync import sync_to_async
+from asgiref.sync import sync_to_async, async_to_sync
 from django.utils.decorators import method_decorator
 from django.http import JsonResponse
-
-from django.views.decorators.http import require_http_methods
 from functools import wraps
 logger = logging.getLogger(__name__)
 
@@ -111,7 +109,6 @@ def save_chat_interaction(user_id, session_id, question, response, context_data)
 
 @csrf_exempt
 @api_view(['POST'])
-@async_view
 async def solve_math_problem(request):
     if request.method != 'POST':
         return JsonResponse({'error': 'Method not allowed'}, status=405)
