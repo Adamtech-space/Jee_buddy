@@ -109,12 +109,14 @@ async def solve_math_problem(request):
         chat_history = []
         if user_id and session_id:
             try:
-                # Get recent chat history
-                chat_history = await sync_to_async(ChatHistory.get_recent_history)(
-                    user_id=user_id,
-                    session_id=session_id,
-                    limit=history_limit
-                )
+                @sync_to_async
+                def get_history():
+                    return ChatHistory.get_recent_history(
+                        user_id=user_id,
+                        session_id=session_id,
+                        limit=history_limit
+                    )
+                chat_history = await get_history()
             except Exception as e:
                 logger.error(f"Error fetching chat history: {str(e)}")
         
@@ -147,18 +149,21 @@ async def solve_math_problem(request):
         # Save the interaction to chat history
         if user_id and session_id:
             try:
-                await sync_to_async(ChatHistory.add_interaction)(
-                    user_id=user_id,
-                    session_id=session_id,
-                    question=question,
-                    response=solution['solution'],
-                    context={
-                        'subject': context.get('subject'),
-                        'topic': context.get('topic'),
-                        'interaction_type': context.get('interaction_type'),
-                        'pinned_text': context.get('pinnedText'),
-                    }
-                )
+                @sync_to_async
+                def save_interaction():
+                    return ChatHistory.add_interaction(
+                        user_id=user_id,
+                        session_id=session_id,
+                        question=question,
+                        response=solution['solution'],
+                        context={
+                            'subject': context.get('subject'),
+                            'topic': context.get('topic'),
+                            'interaction_type': context.get('interaction_type'),
+                            'pinned_text': context.get('pinnedText'),
+                        }
+                    )
+                await save_interaction()
             except Exception as e:
                 logger.error(f"Error saving chat history: {str(e)}")
 
@@ -166,11 +171,14 @@ async def solve_math_problem(request):
         updated_chat_history = []
         if user_id and session_id:
             try:
-                updated_chat_history = await sync_to_async(ChatHistory.get_recent_history)(
-                    user_id=user_id,
-                    session_id=session_id,
-                    limit=history_limit
-                )
+                @sync_to_async
+                def get_updated_history():
+                    return ChatHistory.get_recent_history(
+                        user_id=user_id,
+                        session_id=session_id,
+                        limit=history_limit
+                    )
+                updated_chat_history = await get_updated_history()
             except Exception as e:
                 logger.error(f"Error fetching updated chat history: {str(e)}")
 

@@ -12,6 +12,7 @@ import logging
 import os
 from datetime import timedelta
 from dotenv import load_dotenv
+from asgiref.sync import sync_to_async
 
 load_dotenv()
 
@@ -32,63 +33,55 @@ PLANS = {
     'PRO': 'plan_PhmnlqjWH24hwy'
 }
 
+@sync_to_async
+def get_subscription_for_user(user_id):
+    try:
+        subscription = Subscription.objects.filter(user_id=user_id).order_by('-valid_till').first()
+        return subscription
+    except Exception as e:
+        logger.error(f"Error fetching subscription: {str(e)}")
+        return None
+
 def calculate_days_remaining(valid_till):
     if not valid_till:
         return 0
     now = timezone.now()
     if valid_till < now:
         return 0
-    # Ensure both datetimes are timezone aware
     if timezone.is_naive(valid_till):
         valid_till = timezone.make_aware(valid_till)
     return (valid_till - now).days
 
 @csrf_exempt
-def get_subscription_status(request):
+async def get_subscription_status(request):
     try:
         user_id = request.GET.get('user_id')
         if not user_id:
             return JsonResponse({
-                'status': 'error',
-                'message': 'User ID is required'
+                'error': 'User ID is required'
             }, status=400)
 
-        # Check if user has an active subscription
-        subscription = Subscription.objects.filter(
-            user_id=user_id,
-            status='active'
-        ).order_by('-created_at').first()
-
-        if subscription:
-            # Ensure valid_till is timezone aware
-            valid_till = subscription.valid_till
-            if timezone.is_naive(valid_till):
-                valid_till = timezone.make_aware(valid_till)
-                
-            days_remaining = calculate_days_remaining(valid_till)
-            is_active = days_remaining > 0
-
+        subscription = await get_subscription_for_user(user_id)
+        
+        if not subscription:
             return JsonResponse({
-                'status': 'success',
-                'is_subscribed': is_active,
-                'subscription_id': subscription.subscription_id,
-                'plan_id': subscription.plan_id,
-                'created_at': subscription.created_at.isoformat(),
-                'valid_till': valid_till.isoformat(),
-                'days_remaining': days_remaining,
-                'next_billing_date': valid_till.isoformat() if valid_till else None
+                'status': 'inactive',
+                'days_remaining': 0,
+                'plan': None
             })
-        else:
-            return JsonResponse({
-                'status': 'success',
-                'is_subscribed': False
-            })
+
+        days_remaining = calculate_days_remaining(subscription.valid_till)
+        
+        return JsonResponse({
+            'status': 'active' if days_remaining > 0 else 'expired',
+            'days_remaining': days_remaining,
+            'plan': subscription.plan_type
+        })
 
     except Exception as e:
         logger.error(f"Error checking subscription status: {str(e)}")
         return JsonResponse({
-            'status': 'error',
-            'message': str(e)
+            'error': str(e)
         }, status=500)
 
 @csrf_exempt
