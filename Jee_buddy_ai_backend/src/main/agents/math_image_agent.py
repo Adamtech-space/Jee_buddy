@@ -38,31 +38,30 @@ class MathAgent:
             # ... other tools remain the same ...
         }
 
-    # Fix: Changed method signature to match the call
     async def solve(self, question: str, approach_type: str, image_data: Optional[str] = None) -> Dict[str, Any]:
         """Solve math problem using specified approach"""
         try:
             # Handle image if provided
             image_content = None
             if image_data:
-                if image_data.startswith('data:image'):
-                    image_data = image_data.split(',')[1]
+                # Use sync_to_async for string operations
+                image_data_processed = await sync_to_async(lambda: image_data.split(',')[1] if image_data.startswith('data:image') else image_data)()
                 
                 image_content = {
                     "type": "image_url",
                     "image_url": {
-                        "url": f"data:image/jpeg;base64,{image_data}"
+                        "url": f"data:image/jpeg;base64,{image_data_processed}"
                     }
                 }
 
-            # Create messages list
-            messages = [
+            # Create messages list with async-safe operations
+            messages = await sync_to_async(lambda: [
                 {
                     "role": "system",
                     "content": f"""You are a JEE mathematics expert tutor.
                     Previous conversation context: {self._format_history()}"""
                 }
-            ]
+            ])()
 
             # Add user message with image if available
             user_content = []
