@@ -201,14 +201,53 @@ async def process_math_problem(request_data):
 @api_view(['POST'])
 def solve_math_problem(request):
     try:
-        # Parse request data
+        # Debug logging
+        logger.info(f"Request Content-Type: {request.content_type}")
+        
+        # Get the raw request body and clean it
+        body = request.body.decode('utf-8').strip()
+        logger.info(f"Raw request body: {body}")
+        
+        # Try to parse JSON directly from request body
         try:
-            data = json.loads(request.body)
-            print(data)
-        except json.JSONDecodeError:
+            # Use json.loads with custom parser to handle null values
+            data = json.loads(
+                body,
+                parse_constant=lambda x: None if x.lower() == 'null' else x
+            )
+            logger.info(f"Parsed data: {data}")
+        except json.JSONDecodeError as e:
+            logger.error(f"JSON decode error at position {e.pos}: {e.msg}")
+            logger.error(f"JSON string: {e.doc}")
             return JsonResponse({
-                'error': 'Invalid JSON data'
+                'error': 'Invalid JSON format',
+                'details': f'JSON parse error at position {e.pos}: {e.msg}'
             }, status=400)
+
+        # Validate required fields
+        if not isinstance(data, dict):
+            return JsonResponse({
+                'error': 'Invalid request format',
+                'details': 'Request body must be a JSON object'
+            }, status=400)
+
+        if 'question' not in data:
+            return JsonResponse({
+                'error': 'Missing required field',
+                'details': 'Question field is required'
+            }, status=400)
+
+        if 'context' not in data:
+            return JsonResponse({
+                'error': 'Missing required field',
+                'details': 'Context field is required'
+            }, status=400)
+
+        # Clean up the context data
+        if 'context' in data and isinstance(data['context'], dict):
+            context = data['context']
+            if 'image' in context and context['image'] == 'null':
+                context['image'] = None
 
         # Run async process in sync context
         loop = asyncio.new_event_loop()
