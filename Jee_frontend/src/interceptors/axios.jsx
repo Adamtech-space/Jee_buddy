@@ -1,12 +1,11 @@
 import axios from "axios";
 
 const apiInstance = axios.create({
-  // baseURL: "http://localhost:5000/v1",
-  baseURL: "https://jee-buddy-backend-neon.vercel.app",
+  baseURL: "http://localhost:5000/v1",
+  // baseURL: "https://jee-buddy-backend.vercel.app/v1",
   headers: {
     "Content-Type": "application/json",
   },
-  withCredentials: true
 });
 
 apiInstance.interceptors.request.use(
@@ -34,13 +33,14 @@ apiInstance.interceptors.response.use(
       try {
         const tokens = JSON.parse(localStorage.getItem("tokens"));
         if (tokens?.refresh?.token) {
-          // Call refresh token endpoint (you'll need to implement this)
-          const response = await axios.post("/auth/refresh-token", {
+          // Call refresh token endpoint with the correct baseURL
+          const response = await apiInstance.post("/auth/refresh-token", {
             refreshToken: tokens.refresh.token,
           });
 
           if (response.data.tokens) {
             localStorage.setItem("tokens", JSON.stringify(response.data.tokens));
+            // Fix the Bearer token template literal syntax
             apiInstance.defaults.headers.common["Authorization"] = 
               `Bearer ${response.data.tokens.access.token}`;
             
@@ -48,6 +48,8 @@ apiInstance.interceptors.response.use(
             return apiInstance(originalRequest);
           }
         }
+        // If no refresh token exists, clear storage and redirect
+        throw new Error('No refresh token available');
       } catch (refreshError) {
         // If refresh token fails, logout user
         localStorage.removeItem("tokens");
