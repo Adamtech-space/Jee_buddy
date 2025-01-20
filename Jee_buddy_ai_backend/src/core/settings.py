@@ -78,14 +78,16 @@ REST_FRAMEWORK = {
 }
 
 # CORS settings
-CORS_ALLOW_ALL_ORIGINS = True  # For development only
+CORS_ALLOW_ALL_ORIGINS = False  # Changed from True to False
 CORS_ALLOW_CREDENTIALS = True
 
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",  # Vite's default port
+    "http://localhost:5173",
     "http://127.0.0.1:5173",
-    "http://localhost:3000",  # In case you switch to port 3000
+    "http://localhost:3000",
     "http://127.0.0.1:3000",
+    "https://jee-buddy-ai.vercel.app",
+    "https://jee-buddy-yugandhar0609s-projects.vercel.app"  # Removed trailing slash
 ]
 
 CORS_ALLOW_METHODS = [
@@ -108,6 +110,12 @@ CORS_ALLOW_HEADERS = [
     'x-csrftoken',
     'x-requested-with',
 ]
+
+# Add CORS_EXPOSE_HEADERS if you need to expose any headers
+CORS_EXPOSE_HEADERS = []
+
+# Add CORS configuration for handling preflight requests
+CORS_PREFLIGHT_MAX_AGE = 86400  # 24 hours
 
 # Remove any duplicate INSTALLED_APPS
 if 'rest_framework.authtoken' in INSTALLED_APPS:
