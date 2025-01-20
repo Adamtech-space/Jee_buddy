@@ -21,23 +21,13 @@ django.setup()
 
 class VercelWSGIHandler(WSGIHandler):
     def __init__(self):
-        # Ensure apps are loaded
         if not apps.apps_ready:
             django.setup()
         super().__init__()
 
     def __call__(self, environ, start_response):
-        # Add CORS headers for Vercel
-        def custom_start_response(status, headers, exc_info=None):
-            cors_headers = [
-                ('Access-Control-Allow-Origin', '*'),
-                ('Access-Control-Allow-Methods', 'GET, POST, OPTIONS'),
-                ('Access-Control-Allow-Headers', 'Content-Type, Authorization'),
-            ]
-            headers.extend(cors_headers)
-            return start_response(status, headers, exc_info)
-        
-        return super().__call__(environ, custom_start_response)
+        # Remove the custom CORS header addition since Django's CORS middleware handles it
+        return super().__call__(environ, start_response)
 
 # Initialize the application
 application = VercelWSGIHandler()

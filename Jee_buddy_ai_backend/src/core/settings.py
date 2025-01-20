@@ -78,14 +78,15 @@ REST_FRAMEWORK = {
 }
 
 # CORS settings
-CORS_ALLOW_ALL_ORIGINS = True  # For development only
+CORS_ALLOW_ALL_ORIGINS = False  # Change this to False
 CORS_ALLOW_CREDENTIALS = True
 
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",  # Vite's default port
+    "http://localhost:5173",
     "http://127.0.0.1:5173",
-    "http://localhost:3000",  # In case you switch to port 3000
-    "http://127.0.0.1:3000",
+    "http://localhost:3000",
+    "https://jee-buddy-yugandhar0609s-projects.vercel.app",  # Add your Vercel frontend domain
+    "https://jee-buddy.vercel.app"  # Add any other production domains
 ]
 
 CORS_ALLOW_METHODS = [

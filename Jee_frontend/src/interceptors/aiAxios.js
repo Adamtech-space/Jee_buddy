@@ -6,7 +6,8 @@ const aiInstance = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 30000, // 30 seconds timeout
+  withCredentials: true,
+  // timeout: 30000, // 30 seconds timeout
 });
 
 // Request interceptor
