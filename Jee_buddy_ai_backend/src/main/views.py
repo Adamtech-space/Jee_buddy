@@ -10,8 +10,9 @@ from .models import ChatHistory, UserProfile
 import base64
 import uuid
 from django.db import connections
-from asgiref.sync import async_to_sync
+from asgiref.sync import async_to_sync, sync_to_async
 from django.views.decorators.csrf import csrf_exempt
+from functools import partial
 
 logger = logging.getLogger(__name__)
 
@@ -130,12 +131,23 @@ def solve_math_problem(request):
             return Response({
                 'error': 'Either question or pinned text is required'
             }, status=status.HTTP_400_BAD_REQUEST)
-            
+
         # Initialize math agent
         agent = MathAgent()
-        
-        # Use async_to_sync to properly handle the async solve method
-        solution = async_to_sync(agent.solve)(question, context)
+
+        # Create an async function to handle the solve operation
+        async def solve_async():
+            return await agent.solve(question, context)
+
+        # Run the async function in a new event loop
+        try:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            solution = loop.run_until_complete(solve_async())
+            loop.close()
+        except Exception as e:
+            logger.error(f"Error in async execution: {str(e)}", exc_info=True)
+            raise
         
         if not solution.get('solution'):
             return Response({
