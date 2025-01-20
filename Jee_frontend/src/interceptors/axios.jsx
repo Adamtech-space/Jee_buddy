@@ -2,7 +2,7 @@ import axios from "axios";
 
 const apiInstance = axios.create({
   // baseURL: "http://localhost:5000/v1",
-  baseURL: "https://jee-buddy-backend.vercel.app/v1",
+  baseURL: "https://jee-buddy-backend-neon.vercel.app",
   headers: {
     "Content-Type": "application/json",
   },

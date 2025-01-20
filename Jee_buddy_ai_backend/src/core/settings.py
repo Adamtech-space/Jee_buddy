@@ -60,9 +60,9 @@ ASGI_APPLICATION = 'config.asgi.application'
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
-    'django.middleware.common.CommonMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
@@ -78,9 +78,15 @@ REST_FRAMEWORK = {
 }
 
 # CORS settings
-CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_ALL_ORIGINS = True  # For development only
 CORS_ALLOW_CREDENTIALS = True
 
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:5173",  # Vite's default port
+    "http://127.0.0.1:5173",
+    "http://localhost:3000",  # In case you switch to port 3000
+    "http://127.0.0.1:3000",
+]
 
 CORS_ALLOW_METHODS = [
     'DELETE',
@@ -102,25 +108,6 @@ CORS_ALLOW_HEADERS = [
     'x-csrftoken',
     'x-requested-with',
 ]
-
-# Ensure middleware order is correct
-MIDDLEWARE = [
-    'corsheaders.middleware.CorsMiddleware',
-    'django.middleware.common.CommonMiddleware',
-    'django.middleware.security.SecurityMiddleware',
-    'django.contrib.sessions.middleware.SessionMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'django.contrib.messages.middleware.MessageMiddleware',
-    'django.middleware.clickjacking.XFrameOptionsMiddleware',
-]
-
-# Security headers
-SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-CORS_PREFLIGHT_MAX_AGE = 86400
-print(CORS_ALLOW_CREDENTIALS)
-# URL pattern for CORS
-CORS_URLS_REGEX = r'^/api/.*$'
 
 # Remove any duplicate INSTALLED_APPS
 if 'rest_framework.authtoken' in INSTALLED_APPS:
