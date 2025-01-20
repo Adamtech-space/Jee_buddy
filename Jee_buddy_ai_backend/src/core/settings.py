@@ -60,9 +60,9 @@ ASGI_APPLICATION = 'config.asgi.application'
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
+    'django.middleware.common.CommonMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
-    'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
@@ -78,8 +78,9 @@ REST_FRAMEWORK = {
 }
 
 # CORS settings
-CORS_ALLOW_ALL_ORIGINS = False  # Changed from True to False
+CORS_ALLOW_ALL_ORIGINS = False
 CORS_ALLOW_CREDENTIALS = True
+CORS_ORIGIN_ALLOW_ALL = False
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
@@ -87,9 +88,11 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
     "https://jee-buddy-ai.vercel.app",
-    "https://jee-buddy-yugandhar0609s-projects.vercel.app"  # Removed trailing slash
+    "https://jee-buddy-yugandhar0609s-projects.vercel.app"
 ]
 
+# Additional CORS settings
+CORS_ORIGIN_WHITELIST = CORS_ALLOWED_ORIGINS
 CORS_ALLOW_METHODS = [
     'DELETE',
     'GET',
@@ -111,11 +114,26 @@ CORS_ALLOW_HEADERS = [
     'x-requested-with',
 ]
 
-# Add CORS_EXPOSE_HEADERS if you need to expose any headers
-CORS_EXPOSE_HEADERS = []
+# Ensure middleware order is correct
+MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
+    'django.middleware.common.CommonMiddleware',
+    'django.middleware.security.SecurityMiddleware',
+    'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.csrf.CsrfViewMiddleware',
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django.contrib.messages.middleware.MessageMiddleware',
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+]
 
-# Add CORS configuration for handling preflight requests
-CORS_PREFLIGHT_MAX_AGE = 86400  # 24 hours
+# Additional security headers
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+CORS_REPLACE_HTTPS_REFERER = True
+CORS_PREFLIGHT_MAX_AGE = 86400
+
+# Remove any conflicting settings
+CORS_ORIGIN_REGEX_WHITELIST = []
+CORS_URLS_REGEX = r'^/api/.*$'
 
 # Remove any duplicate INSTALLED_APPS
 if 'rest_framework.authtoken' in INSTALLED_APPS:
