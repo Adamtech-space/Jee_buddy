@@ -13,43 +13,21 @@ import uuid
 from django.db import connections
 import os
 from django.views.decorators.csrf import csrf_exempt
-from django.conf import settings
-# Add these settings for Zappa
-ALLOWED_HOSTS = [
-    '*',
-    '.execute-api.us-east-1.amazonaws.com',
-]
-
-# Static files configuration for S3
-STATIC_URL = '/static/'
-STATIC_ROOT = os.path.join(settings.BASE_DIR, 'staticfiles')
-
-# If you're using S3 for static files
-AWS_STORAGE_BUCKET_NAME = 'your-s3-bucket-name'
-AWS_S3_CUSTOM_DOMAIN = f'{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com'
-AWS_S3_OBJECT_PARAMETERS = {
-    'CacheControl': 'max-age=86400',
-}
-AWS_LOCATION = 'static'
-STATICFILES_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
-
+from django.db.models import F, Q, Count
+from django.db.models.expressions import Case, When
+from django.db.models.functions import Now, Trunc
+from asgiref.sync import sync_to_async, async_to_sync
+from django.utils.decorators import method_decorator
+from django.http import JsonResponse
+from functools import wraps
 logger = logging.getLogger(__name__)
 
-CORS_ALLOWED_ORIGINS = [
-    "https://your-frontend-domain.com",
-]
-CORS_ALLOW_CREDENTIALS = True
-
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql_psycopg2',
-        'NAME': os.environ.get('DB_NAME'),
-        'USER': os.environ.get('DB_USER'),
-        'PASSWORD': os.environ.get('DB_PASSWORD'),
-        'HOST': os.environ.get('DB_HOST'),
-        'PORT': os.environ.get('DB_PORT', '5432'),
-    }
-}
+def async_view(view_func):
+    """Decorator to handle async views properly"""
+    @wraps(view_func)
+    def wrapped_view(*args, **kwargs):
+        return asyncio.run(view_func(*args, **kwargs))
+    return wrapped_view
 
 @api_view(['GET'])
 def get_current_profile(request):
@@ -106,50 +84,62 @@ def get_current_profile(request):
             'error': str(e)
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-@api_view(['POST'])
-@csrf_exempt
-def solve_math_problem(request):
-    # Convert async to sync for Lambda
-    loop = asyncio.get_event_loop()
-    return loop.run_until_complete(_solve_math_problem(request))
-
-async def _solve_math_problem(request):
+# Create async database operations
+@sync_to_async
+def get_chat_history(user_id, session_id, limit):
     try:
-        # Parse request data
-        if request.method != 'POST':
-            return JsonResponse({
-                'error': 'Method not allowed'
-            }, status=405)
-            
-        try:
-            data = json.loads(request.body)
-        except json.JSONDecodeError:
-            return JsonResponse({
-                'error': 'Invalid JSON data'
-            }, status=400)
-            
+        return list(ChatHistory.objects.filter(
+            user_id=user_id,
+            session_id=session_id
+        ).order_by('-timestamp')[:limit].values())
+    except Exception as e:
+        logger.error(f"Error in get_chat_history: {str(e)}")
+        return []
+
+@sync_to_async
+def save_chat_interaction(user_id, session_id, question, response, context_data):
+    try:
+        chat = ChatHistory.objects.create(
+            user_id=user_id,
+            session_id=session_id,
+            question=question,
+            response=response,
+            context=context_data
+        )
+        return chat.to_dict() if hasattr(chat, 'to_dict') else None
+    except Exception as e:
+        logger.error(f"Error in save_chat_interaction: {str(e)}")
+        return None
+
+async def process_math_problem(request_data):
+    try:
         # Extract data from request
-        question = data.get('question')
+        question = request_data.get('question')
         if not question:
-            return JsonResponse({
+            return {
                 'error': 'Question is required'
-            }, status=400)
+            }, 400
         
         # Handle context data
-        context_data = data.get('context', {})
+        context_data = request_data.get('context', {})
         
         # Get user and session info
         user_id = context_data.get('user_id')
         session_id = context_data.get('session_id')
         history_limit = context_data.get('history_limit', 100)
+
+        # Get chat history
+        chat_history = []
+        if user_id and session_id:
+            chat_history = await get_chat_history(user_id, session_id, history_limit)
         
-        # Create the context dictionary
+        # Create context
         context = {
             'user_id': user_id,
             'session_id': session_id,
-            'chat_history': [],  # We'll handle chat history separately
+            'chat_history': chat_history,
             'history_limit': history_limit,
-            'image': None,  # Handle image if needed
+            'image': None,
             'interaction_type': context_data.get('interaction_type', 'solve'),
             'pinnedText': context_data.get('pinnedText', ''),
             'selectedText': context_data.get('selectedText', ''),
@@ -157,20 +147,37 @@ async def _solve_math_problem(request):
             'topic': context_data.get('topic', '')
         }
 
-        # Initialize math agent asynchronously
-        agent = await MathAgent()
-        
-        # Call solve method directly since we're in an async view
+        # Initialize math agent and get solution
+        agent = await MathAgent.create()
         solution = await agent.solve(question, context)
         
         if not solution or not solution.get('solution'):
-            return JsonResponse({
+            return {
                 'error': 'No solution generated',
                 'details': 'The AI agent failed to generate a response.'
-            }, status=500)
+            }, 500
 
-        # Prepare response data
-        response_data = {
+        # Save interaction
+        if user_id and session_id:
+            await save_chat_interaction(
+                user_id=user_id,
+                session_id=session_id,
+                question=question,
+                response=solution['solution'],
+                context_data={
+                    'subject': context.get('subject'),
+                    'topic': context.get('topic'),
+                    'interaction_type': context.get('interaction_type'),
+                    'pinned_text': context.get('pinnedText'),
+                }
+            )
+
+        # Get updated history
+        updated_chat_history = []
+        if user_id and session_id:
+            updated_chat_history = await get_chat_history(user_id, session_id, history_limit)
+
+        return {
             'solution': solution['solution'],
             'context': {
                 'current_question': question,
@@ -178,16 +185,81 @@ async def _solve_math_problem(request):
                 'user_id': user_id,
                 'session_id': session_id,
                 'subject': context.get('subject'),
-                'topic': context.get('topic')
+                'topic': context.get('topic'),
+                'chat_history': updated_chat_history
             }
-        }
+        }, 200
+            
+    except Exception as e:
+        logger.error(f"Error in process_math_problem: {str(e)}", exc_info=True)
+        return {
+            'error': str(e),
+            'details': 'An unexpected error occurred while processing your request.'
+        }, 500
+
+@csrf_exempt
+@api_view(['POST'])
+def solve_math_problem(request):
+    try:
+        # Debug logging
+        logger.info(f"Request Content-Type: {request.content_type}")
         
-        return JsonResponse(response_data)
+        # Get the raw request body and clean it
+        body = request.body.decode('utf-8').strip()
+        logger.info(f"Raw request body: {body}")
         
+        # Try to parse JSON directly from request body
+        try:
+            # Use json.loads with custom parser to handle null values
+            data = json.loads(
+                body,
+                parse_constant=lambda x: None if x.lower() == 'null' else x
+            )
+            logger.info(f"Parsed data: {data}")
+        except json.JSONDecodeError as e:
+            logger.error(f"JSON decode error at position {e.pos}: {e.msg}")
+            logger.error(f"JSON string: {e.doc}")
+            return JsonResponse({
+                'error': 'Invalid JSON format',
+                'details': f'JSON parse error at position {e.pos}: {e.msg}'
+            }, status=400)
+
+        # Validate required fields
+        if not isinstance(data, dict):
+            return JsonResponse({
+                'error': 'Invalid request format',
+                'details': 'Request body must be a JSON object'
+            }, status=400)
+
+        if 'question' not in data:
+            return JsonResponse({
+                'error': 'Missing required field',
+                'details': 'Question field is required'
+            }, status=400)
+
+        if 'context' not in data:
+            return JsonResponse({
+                'error': 'Missing required field',
+                'details': 'Context field is required'
+            }, status=400)
+
+        # Clean up the context data
+        if 'context' in data and isinstance(data['context'], dict):
+            context = data['context']
+            if 'image' in context and context['image'] == 'null':
+                context['image'] = None
+
+        # Run async process in sync context
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        response_data, status_code = loop.run_until_complete(process_math_problem(data))
+        loop.close()
+
+        return JsonResponse(response_data, status=status_code)
+            
     except Exception as e:
         logger.error(f"Error in solve_math_problem: {str(e)}", exc_info=True)
         return JsonResponse({
             'error': str(e),
             'details': 'An unexpected error occurred while processing your request.'
         }, status=500)
-

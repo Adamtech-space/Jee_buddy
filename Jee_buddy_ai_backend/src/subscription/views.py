@@ -12,7 +12,6 @@ import logging
 import os
 from datetime import timedelta
 from dotenv import load_dotenv
-from asgiref.sync import sync_to_async
 
 load_dotenv()
 
@@ -33,55 +32,77 @@ PLANS = {
     'PRO': 'plan_PhmnlqjWH24hwy'
 }
 
-@sync_to_async
-def get_subscription_for_user(user_id):
-    try:
-        subscription = Subscription.objects.filter(user_id=user_id).order_by('-valid_till').first()
-        return subscription
-    except Exception as e:
-        logger.error(f"Error fetching subscription: {str(e)}")
-        return None
-
 def calculate_days_remaining(valid_till):
     if not valid_till:
         return 0
     now = timezone.now()
     if valid_till < now:
         return 0
-    if timezone.is_naive(valid_till):
-        valid_till = timezone.make_aware(valid_till)
-    return (valid_till - now).days
+    remaining = (valid_till - now).days
+    return remaining if remaining >= 0 else 0
 
 @csrf_exempt
-async def get_subscription_status(request):
+def get_subscription_status(request):
     try:
         user_id = request.GET.get('user_id')
         if not user_id:
             return JsonResponse({
-                'error': 'User ID is required'
+                'status': 'error',
+                'message': 'User ID is required'
             }, status=400)
 
-        subscription = await get_subscription_for_user(user_id)
-        
-        if not subscription:
-            return JsonResponse({
-                'status': 'inactive',
-                'days_remaining': 0,
-                'plan': None
-            })
+        # Check if user has an active subscription
+        subscription = Subscription.objects.filter(
+            user_id=user_id,
+            status='active'
+        ).order_by('-created_at').first()
 
-        days_remaining = calculate_days_remaining(subscription.valid_till)
-        
-        return JsonResponse({
-            'status': 'active' if days_remaining > 0 else 'expired',
-            'days_remaining': days_remaining,
-            'plan': subscription.plan_type
-        })
+        if subscription:
+            days_remaining = calculate_days_remaining(subscription.valid_till)
+            is_active = days_remaining > 0
+            
+            # Calculate subscription period details
+            start_date = subscription.created_at
+            end_date = subscription.valid_till
+            total_days = 28  # Monthly cycle
+            used_days = total_days - days_remaining
+
+            # Prepare detailed subscription info
+            subscription_info = {
+                'status': 'success',
+                'is_subscribed': is_active,
+                'subscription_id': subscription.subscription_id,
+                'plan_id': subscription.plan_id,
+                'subscription_details': {
+                    'start_date': start_date.isoformat(),
+                    'end_date': end_date.isoformat(),
+                    'total_days': total_days,
+                    'days_used': used_days,
+                    'days_remaining': days_remaining,
+                    'subscription_progress': f"{used_days}/{total_days} days",
+                    'expiry_status': 'active' if days_remaining > 3 else 'expiring_soon' if days_remaining > 0 else 'expired'
+                }
+            }
+
+            # Add reminder message based on remaining days
+            if 0 < days_remaining <= 3:
+                subscription_info['reminder_message'] = f"Your subscription expires in {days_remaining} days. Please renew to maintain uninterrupted access."
+            elif days_remaining == 0:
+                subscription_info['reminder_message'] = "Your subscription has expired. Please renew to continue accessing premium features."
+            
+            return JsonResponse(subscription_info)
+        else:
+            return JsonResponse({
+                'status': 'success',
+                'is_subscribed': False,
+                'subscription_details': None
+            })
 
     except Exception as e:
         logger.error(f"Error checking subscription status: {str(e)}")
         return JsonResponse({
-            'error': str(e)
+            'status': 'error',
+            'message': str(e)
         }, status=500)
 
 @csrf_exempt
@@ -118,7 +139,7 @@ def subscription_callback(request):
                     "message": "Payment not captured"
                 }, status=400)
 
-            # Calculate subscription validity with timezone awareness
+            # Calculate subscription validity
             start_date = timezone.now()
             valid_till = start_date + timedelta(days=28)  # 28-day cycle
 
@@ -138,6 +159,8 @@ def subscription_callback(request):
                     status='active',
                     amount=payment.get('amount', 0) / 100,
                     currency=payment.get('currency', 'INR'),
+                    created_at=start_date,
+                    updated_at=start_date,
                     valid_till=valid_till,
                     payment_status='completed',
                     metadata=json.dumps({
@@ -180,8 +203,6 @@ def create_subscription(request):
         data = json.loads(request.body)
         user_id = data.get('user_id')
         plan_id = data.get('plan_id')
-        email = data.get('email', '')
-        name = data.get('name', '')
 
         if not user_id or not plan_id:
             return JsonResponse({
@@ -190,36 +211,45 @@ def create_subscription(request):
             }, status=400)
 
         try:
+            user = User.objects.get(id=user_id)
+        except User.DoesNotExist:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'User not found'
+            }, status=404)
+
+        try:
             # Create subscription in Razorpay
             subscription_data = {
                 "plan_id": plan_id,
                 "customer_notify": 1,
                 "quantity": 1,
-                "total_count": 1,  # One-time payment
+                "total_count": 1,  # Single month subscription
                 "notes": {
-                    "user_id": str(user_id),
-                    "email": email,
-                    "name": name
+                    "user_id": str(user_id)
                 }
             }
             
             subscription = razorpay_client.subscription.create(subscription_data)
             
-            # Create local subscription record with timezone-aware datetime
+            # Create local subscription record
             Subscription.objects.create(
-                user_id=user_id,
+                user=user,
                 subscription_id=subscription['id'],
                 plan_id=plan_id,
                 status='created',
                 amount=subscription.get('total_amount', 0) / 100,
                 currency=subscription.get('currency', 'INR'),
+                created_at=timezone.now(),
                 metadata=json.dumps(subscription)
             )
 
             return JsonResponse({
                 'status': 'success',
-                'razorpay_key': RAZORPAY_KEY_ID,
-                'order': subscription
+                'subscription_id': subscription['id'],
+                'short_url': subscription.get('short_url'),
+                'plan_id': plan_id,
+                'message': 'Monthly subscription created successfully'
             })
 
         except Exception as e:
@@ -242,30 +272,35 @@ def get_plans(request):
         plans_data = {
             'BASIC': {
                 'id': PLANS['BASIC'],
-                'name': 'Basic Plan',
+                'name': 'Basic Monthly',
                 'price': 499,
+                'interval': 'monthly',
                 'features': [
-                    'Basic AI assistance',
+                    'Basic AI assistance (100 messages/month)',
                     'Study materials access',
-                    'Basic flashcards'
+                    'Basic flashcards',
+                    'Monthly subscription'
                 ]
             },
             'PRO': {
                 'id': PLANS['PRO'],
-                'name': 'Pro Plan',
+                'name': 'Pro Monthly',
                 'price': 1499,
+                'interval': 'monthly',
                 'features': [
-                    'Extended AI assistance',
+                    'Extended AI assistance (500 messages/month)',
                     'Full study materials',
                     'Question bank access',
                     'Performance analytics',
-                    'Priority support'
+                    'Priority support',
+                    'Monthly subscription'
                 ]
             },
             'PREMIUM': {
                 'id': PLANS['PREMIUM'],
-                'name': 'Premium Plan',
+                'name': 'Premium Monthly',
                 'price': 4999,
+                'interval': 'monthly',
                 'features': [
                     'Unlimited AI assistance',
                     'Complete study materials',
@@ -273,7 +308,8 @@ def get_plans(request):
                     'Advanced analytics',
                     'Priority support',
                     'AI content generation',
-                    'Download access'
+                    'Download access',
+                    'Monthly subscription'
                 ]
             }
         }
@@ -288,3 +324,4 @@ def get_plans(request):
             'status': 'error',
             'message': str(e)
         }, status=500)
+        
