@@ -1,3 +1,4 @@
+from django.http import JsonResponse
 from rest_framework.decorators import api_view, parser_classes
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.response import Response
@@ -11,12 +12,10 @@ import base64
 import uuid
 from django.db import connections
 import os
-
+from django.views.decorators.csrf import csrf_exempt
 logger = logging.getLogger(__name__)
 
-CORS_ALLOWED_ORIGINS = [
-    "https://your-frontend-domain.railway.app",
-]
+
 
 @api_view(['GET'])
 def get_current_profile(request):
