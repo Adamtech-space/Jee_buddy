@@ -78,6 +78,21 @@ def get_current_profile(request):
             'error': str(e)
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+# Create async database operations
+@sync_to_async
+def get_chat_history(user_id, session_id, limit):
+    return ChatHistory.get_recent_history(user_id, session_id, limit)
+
+@sync_to_async
+def save_chat_interaction(user_id, session_id, question, response, context_data):
+    return ChatHistory.add_interaction(
+        user_id=user_id,
+        session_id=session_id,
+        question=question,
+        response=response,
+        context=context_data
+    )
+
 @require_http_methods(["POST"])
 @csrf_exempt
 async def solve_math_problem(request):
@@ -109,14 +124,7 @@ async def solve_math_problem(request):
         chat_history = []
         if user_id and session_id:
             try:
-                @sync_to_async
-                def get_history():
-                    return ChatHistory.get_recent_history(
-                        user_id=user_id,
-                        session_id=session_id,
-                        limit=history_limit
-                    )
-                chat_history = await get_history()
+                chat_history = await get_chat_history(user_id, session_id, history_limit)
             except Exception as e:
                 logger.error(f"Error fetching chat history: {str(e)}")
         
@@ -149,21 +157,18 @@ async def solve_math_problem(request):
         # Save the interaction to chat history
         if user_id and session_id:
             try:
-                @sync_to_async
-                def save_interaction():
-                    return ChatHistory.add_interaction(
-                        user_id=user_id,
-                        session_id=session_id,
-                        question=question,
-                        response=solution['solution'],
-                        context={
-                            'subject': context.get('subject'),
-                            'topic': context.get('topic'),
-                            'interaction_type': context.get('interaction_type'),
-                            'pinned_text': context.get('pinnedText'),
-                        }
-                    )
-                await save_interaction()
+                await save_chat_interaction(
+                    user_id=user_id,
+                    session_id=session_id,
+                    question=question,
+                    response=solution['solution'],
+                    context_data={
+                        'subject': context.get('subject'),
+                        'topic': context.get('topic'),
+                        'interaction_type': context.get('interaction_type'),
+                        'pinned_text': context.get('pinnedText'),
+                    }
+                )
             except Exception as e:
                 logger.error(f"Error saving chat history: {str(e)}")
 
@@ -171,14 +176,7 @@ async def solve_math_problem(request):
         updated_chat_history = []
         if user_id and session_id:
             try:
-                @sync_to_async
-                def get_updated_history():
-                    return ChatHistory.get_recent_history(
-                        user_id=user_id,
-                        session_id=session_id,
-                        limit=history_limit
-                    )
-                updated_chat_history = await get_updated_history()
+                updated_chat_history = await get_chat_history(user_id, session_id, history_limit)
             except Exception as e:
                 logger.error(f"Error fetching updated chat history: {str(e)}")
 
