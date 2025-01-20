@@ -5,12 +5,14 @@ from typing import List, Dict, Any, Optional
 from pydantic import BaseModel, Field
 import base64
 from openai import OpenAI
+import os
 
 class MathAgent:
     def __init__(self):
         self.llm = ChatOpenAI(
+            model="gpt-4",
             temperature=0.7,
-            model="gpt-4o"
+            api_key=os.getenv('OPENAI_API_KEY')
         )
         self.chat_history = []
         self.tools = self._create_tools()
@@ -72,8 +74,8 @@ class MathAgent:
 
             # Get response
             if image_content:
-                response = await self.client.chat.completions.acreate(
-                    model="gpt-4o",
+                response = await self.client.chat.completions.create(
+                    model="gpt-4",
                     messages=messages,
                     max_tokens=1000
                 )

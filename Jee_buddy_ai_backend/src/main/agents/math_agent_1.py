@@ -1,15 +1,30 @@
 import logging
 import os
+from typing import Optional
 
+from openai import OpenAI
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any
 from pydantic import BaseModel, Field
-from langchain.schema import SystemMessage, HumanMessage
 from main.models import ChatHistory
 
 logger = logging.getLogger(__name__)
+
+
+def create_chat_model() -> ChatOpenAI:
+    """Create a ChatOpenAI instance with clean configuration."""
+    api_key = os.getenv('OPENAI_API_KEY')
+    if not api_key:
+        raise ValueError("OPENAI_API_KEY environment variable is not set")
+    
+    return ChatOpenAI(
+        model="gpt-3.5-turbo",
+        temperature=0.2,
+        max_tokens=1000,
+        api_key=api_key
+    )
 
 
 class MathProblemInput(BaseModel):
@@ -17,25 +32,25 @@ class MathProblemInput(BaseModel):
     approach: Optional[str] = Field(default="auto", description="The approach to use for solving")
 
 
-
 class MathAgent:
     def __init__(self):
-        self.llm = ChatOpenAI(
-            temperature=0.2,
-            model="gpt-4o",
-            max_tokens=1000,
-            api_key=os.getenv('OPENAI_API_KEY'),
-            top_p=0.9,
-            
-        )
-        self.chat_history = []
-        self.max_history = 100
-        self.tools = self._create_tools()
-        self.interaction_prompts = {
-            'explain': "Explain the concept in detail with examples.",
-            'solve': "Solve this problem step by step.",
-            'general': "Respond naturally to the query.",
-        }
+        try:
+            self.llm = ChatOpenAI(
+                model="gpt-3.5-turbo",
+                temperature=0.2,
+                api_key=os.getenv('OPENAI_API_KEY')
+            )
+            self.chat_history = []
+            self.max_history = 100
+            self.tools = self._create_tools()
+            self.interaction_prompts = {
+                'explain': "Explain the concept in detail with examples.",
+                'solve': "Solve this problem step by step.",
+                'general': "Respond naturally to the query.",
+            }
+        except Exception as e:
+            logger.error(f"Error initializing MathAgent: {str(e)}")
+            raise
 
     def _create_tools(self) -> Dict[str, str]:
         return {

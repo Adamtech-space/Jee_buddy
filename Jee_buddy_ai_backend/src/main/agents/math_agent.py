@@ -3,6 +3,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.messages import HumanMessage, AIMessage
 from typing import List, Dict, Any
 from pydantic import BaseModel, Field
+import os
 
 class MathProblemInput(BaseModel):
     question: str = Field(description="The math problem to solve")
@@ -11,9 +12,9 @@ class MathProblemInput(BaseModel):
 class MathAgent:
     def __init__(self):
         self.llm = ChatOpenAI(
-            temperature=0.7,
             model="gpt-3.5-turbo",
-            api_key="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"
+            temperature=0.7,
+            api_key=os.getenv('OPENAI_API_KEY')
         )
         self.chat_history = []
         self.tools = self._create_tools()
