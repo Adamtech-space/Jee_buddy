@@ -1,8 +1,8 @@
 import axios from "axios";
 
 const apiInstance = axios.create({
-  baseURL: "http://localhost:5000/v1",
-  // baseURL: "https://jee-buddy-backend.vercel.app/v1",
+  // baseURL: "http://localhost:5000/v1",
+  baseURL: "https://jee-buddy-yugandhar0609s-projects.vercel.app//v1",
   headers: {
     "Content-Type": "application/json",
   },
