@@ -10,6 +10,8 @@ from .models import ChatHistory, UserProfile
 import base64
 import uuid
 from django.db import connections
+from asgiref.sync import async_to_sync
+from django.views.decorators.csrf import csrf_exempt
 
 logger = logging.getLogger(__name__)
 
@@ -68,6 +70,7 @@ def get_current_profile(request):
             'error': str(e)
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+@csrf_exempt
 @api_view(['POST'])
 @parser_classes([JSONParser, MultiPartParser, FormParser])
 def solve_math_problem(request):
@@ -128,20 +131,13 @@ def solve_math_problem(request):
                 'error': 'Either question or pinned text is required'
             }, status=status.HTTP_400_BAD_REQUEST)
             
-        try:
-            agent = MathAgent()
-            result = asyncio.run(agent.solve(
-                question=question,
-                context=context
-            ))
-        except Exception as agent_error:
-            logger.error(f"Agent error: {str(agent_error)}", exc_info=True)
-            return Response({
-                'error': f"Failed to process question: {str(agent_error)}",
-                'details': 'The AI agent encountered an error while processing your request.'
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        # Initialize math agent
+        agent = MathAgent()
         
-        if not result.get('solution'):
+        # Use async_to_sync to properly handle the async solve method
+        solution = async_to_sync(agent.solve)(question, context)
+        
+        if not solution.get('solution'):
             return Response({
                 'error': 'No solution generated',
                 'details': 'The AI agent failed to generate a response.'
@@ -154,7 +150,7 @@ def solve_math_problem(request):
                     user_id=user_id,
                     session_id=session_id,
                     question=question,
-                    response=result['solution'],
+                    response=solution['solution'],
                     context={
                         'subject': context.get('subject'),
                         'topic': context.get('topic'),
@@ -176,11 +172,11 @@ def solve_math_problem(request):
             )
         
         response_data = {
-            'solution': result['solution'],
+            'solution': solution['solution'],
             'context': {
                 'history': updated_chat_history,
                 'current_question': question,
-                'response': result['solution'],
+                'response': solution['solution'],
                 'user_id': user_id,
                 'session_id': session_id,
                 'subject': context.get('subject'),
@@ -191,7 +187,7 @@ def solve_math_problem(request):
         return Response(response_data)
         
     except Exception as e:
-        logger.error(f"Error processing request: {str(e)}", exc_info=True)
+        logger.error(f"Error in solve_math_problem: {str(e)}", exc_info=True)
         return Response({
             'error': str(e),
             'details': 'An unexpected error occurred while processing your request.'
