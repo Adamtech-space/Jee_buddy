@@ -41,9 +41,8 @@ def get_openai_api_key_async():
 
 
 class MathAgent:
-    async def __init__(self):
+    def __init__(self, api_key: str):
         try:
-            api_key = await get_openai_api_key_async()
             if not api_key:
                 raise ValueError("OPENAI_API_KEY is not set")
                 
@@ -63,6 +62,12 @@ class MathAgent:
         except Exception as e:
             logger.error(f"Error initializing MathAgent: {str(e)}")
             raise
+
+    @classmethod
+    async def create(cls):
+        """Factory method to create a MathAgent instance"""
+        api_key = await get_openai_api_key_async()
+        return cls(api_key=api_key)
 
     def _create_tools(self) -> Dict[str, str]:
         return {
@@ -209,71 +214,34 @@ class MathAgent:
             topic = context.get('topic', '')
             chat_history = context.get('chat_history', [])
 
-            # Format chat history
-            formatted_history = []
-            for chat in chat_history:
-                formatted_history.append({
-                    'question': chat['question'],
-                    'response': chat['response'],
-                    'timestamp': chat.get('timestamp', ''),
-                    'subject': chat.get('context', {}).get('subject', ''),
-                    'topic': chat.get('context', {}).get('topic', '')
-                })
-
-            # Create history context string
-            history_context = "No previous conversation context."
-            if formatted_history:
-                history_context = "\n\n".join([
-                    f"Previous Question:\n"
-                    f"Subject: {h['subject']}\n"
-                    f"Topic: {h['topic']}\n"
-                    f"Q: {h['question']}\n"
-                    f"A: {h['response']}"
-                    for h in formatted_history
-                ])
-
-            # Create system message with subject-specific instructions
-            subject_prompts = {
-                'physics': "As a Physics expert, focus on physical concepts, laws, and their applications.",
-                'chemistry': "As a Chemistry expert, focus on chemical principles, reactions, and molecular understanding.",
-                'mathematics': "As a Mathematics expert, focus on mathematical concepts, proofs, and problem-solving strategies."
-            }
-
-            subject_instruction = subject_prompts.get(subject, "As a JEE expert, provide comprehensive guidance across Physics, Chemistry, and Mathematics.")
-
+            # Format chat history into messages
             messages = [
                 SystemMessage(content=f"""You are an expert friendly JEE tutor specialized in Physics, Chemistry, and Mathematics.
-                {subject_instruction}
-                
-                Previous conversation context:
-                {history_context}
-
-                Additional context:
-                Subject: {subject}
-                Topic: {topic}
-                {context.get('pinnedText', '')}
-                """),
-                HumanMessage(content=question)
+                You should maintain context from previous messages and remember information shared by the student.
+                Current subject: {subject}
+                Current topic: {topic}""")
             ]
 
-            # Call the LLM with await
+            # Add chat history as messages
+            for chat in chat_history:
+                messages.append(HumanMessage(content=chat['question']))
+                messages.append(AIMessage(content=chat['response']))
+
+            # Add current question
+            messages.append(HumanMessage(content=question))
+
+            # Get response from LLM
             response = await self.llm.ainvoke(messages)
-            llm_response = response.content
-            
+
             return {
-                'solution': llm_response,
-                'context': {
-                    'history': formatted_history,
-                    'current_question': question,
-                    'response': llm_response,
-                    'user_id': user_id,
-                    'session_id': session_id,
-                    'subject': subject,
-                    'topic': topic
-                }
+                "solution": response.content,
+                "context": messages
             }
 
         except Exception as e:
-            logger.error(f"Error in MathAgent solve method: {str(e)}", exc_info=True)
-            raise Exception(f"Failed to process question: {str(e)}")
+            logger.error(f"Error in solve: {str(e)}")
+            return {
+                "solution": "I apologize, but I encountered an error processing your request. Please try again.",
+                "context": []
+            }
 

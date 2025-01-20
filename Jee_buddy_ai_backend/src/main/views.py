@@ -13,6 +13,10 @@ import uuid
 from django.db import connections
 import os
 from django.views.decorators.csrf import csrf_exempt
+from django.db.models import F, Q, Count
+from django.db.models.expressions import Case, When
+from django.db.models.functions import Now, Trunc
+from asgiref.sync import sync_to_async
 logger = logging.getLogger(__name__)
 
 
@@ -102,12 +106,25 @@ async def solve_math_problem(request):
         user_id = context_data.get('user_id')
         session_id = context_data.get('session_id')
         history_limit = context_data.get('history_limit', 100)
+
+        # Get chat history for the specific user and session
+        chat_history = []
+        if user_id and session_id:
+            try:
+                # Get recent chat history
+                chat_history = await sync_to_async(ChatHistory.get_recent_history)(
+                    user_id=user_id,
+                    session_id=session_id,
+                    limit=history_limit
+                )
+            except Exception as e:
+                logger.error(f"Error fetching chat history: {str(e)}")
         
         # Create the context dictionary
         context = {
             'user_id': user_id,
             'session_id': session_id,
-            'chat_history': [],  # We'll handle chat history separately
+            'chat_history': chat_history,
             'history_limit': history_limit,
             'image': None,  # Handle image if needed
             'interaction_type': context_data.get('interaction_type', 'solve'),
@@ -117,8 +134,8 @@ async def solve_math_problem(request):
             'topic': context_data.get('topic', '')
         }
 
-        # Initialize math agent asynchronously
-        agent = await MathAgent()
+        # Initialize math agent using the create() factory method
+        agent = await MathAgent.create()
         
         # Call solve method directly since we're in an async view
         solution = await agent.solve(question, context)
@@ -129,6 +146,36 @@ async def solve_math_problem(request):
                 'details': 'The AI agent failed to generate a response.'
             }, status=500)
 
+        # Save the interaction to chat history
+        if user_id and session_id:
+            try:
+                await sync_to_async(ChatHistory.add_interaction)(
+                    user_id=user_id,
+                    session_id=session_id,
+                    question=question,
+                    response=solution['solution'],
+                    context={
+                        'subject': context.get('subject'),
+                        'topic': context.get('topic'),
+                        'interaction_type': context.get('interaction_type'),
+                        'pinned_text': context.get('pinnedText'),
+                    }
+                )
+            except Exception as e:
+                logger.error(f"Error saving chat history: {str(e)}")
+
+        # Get updated chat history
+        updated_chat_history = []
+        if user_id and session_id:
+            try:
+                updated_chat_history = await sync_to_async(ChatHistory.get_recent_history)(
+                    user_id=user_id,
+                    session_id=session_id,
+                    limit=history_limit
+                )
+            except Exception as e:
+                logger.error(f"Error fetching updated chat history: {str(e)}")
+
         # Prepare response data
         response_data = {
             'solution': solution['solution'],
@@ -138,7 +185,8 @@ async def solve_math_problem(request):
                 'user_id': user_id,
                 'session_id': session_id,
                 'subject': context.get('subject'),
-                'topic': context.get('topic')
+                'topic': context.get('topic'),
+                'chat_history': updated_chat_history
             }
         }
         
