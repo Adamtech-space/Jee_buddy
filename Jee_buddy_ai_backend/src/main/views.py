@@ -88,7 +88,10 @@ def get_current_profile(request):
 @sync_to_async
 def get_chat_history(user_id, session_id, limit):
     try:
-        return ChatHistory.get_recent_history(user_id, session_id, limit)
+        return list(ChatHistory.objects.filter(
+            user_id=user_id,
+            session_id=session_id
+        ).order_by('-timestamp')[:limit].values())
     except Exception as e:
         logger.error(f"Error in get_chat_history: {str(e)}")
         return []
@@ -96,13 +99,14 @@ def get_chat_history(user_id, session_id, limit):
 @sync_to_async
 def save_chat_interaction(user_id, session_id, question, response, context_data):
     try:
-        return ChatHistory.add_interaction(
+        chat = ChatHistory.objects.create(
             user_id=user_id,
             session_id=session_id,
             question=question,
             response=response,
             context=context_data
         )
+        return chat.to_dict() if hasattr(chat, 'to_dict') else None
     except Exception as e:
         logger.error(f"Error in save_chat_interaction: {str(e)}")
         return None
@@ -110,9 +114,6 @@ def save_chat_interaction(user_id, session_id, question, response, context_data)
 @csrf_exempt
 @api_view(['POST'])
 async def solve_math_problem(request):
-    if request.method != 'POST':
-        return JsonResponse({'error': 'Method not allowed'}, status=405)
-        
     try:
         # Parse request data
         try:
@@ -137,75 +138,75 @@ async def solve_math_problem(request):
         session_id = context_data.get('session_id')
         history_limit = context_data.get('history_limit', 100)
 
-        # Get chat history for the specific user and session
-        chat_history = []
-        if user_id and session_id:
-            chat_history = await get_chat_history(user_id, session_id, history_limit)
-        
-        # Create the context dictionary
-        context = {
-            'user_id': user_id,
-            'session_id': session_id,
-            'chat_history': chat_history,
-            'history_limit': history_limit,
-            'image': None,
-            'interaction_type': context_data.get('interaction_type', 'solve'),
-            'pinnedText': context_data.get('pinnedText', ''),
-            'selectedText': context_data.get('selectedText', ''),
-            'subject': context_data.get('subject', ''),
-            'topic': context_data.get('topic', '')
-        }
-
-        # Initialize math agent using the create() factory method
-        agent = await MathAgent.create()
-        
-        # Call solve method
-        solution = await agent.solve(question, context)
-        
-        if not solution or not solution.get('solution'):
-            return JsonResponse({
-                'error': 'No solution generated',
-                'details': 'The AI agent failed to generate a response.'
-            }, status=500)
-
-        # Save the interaction to chat history
-        if user_id and session_id:
-            await save_chat_interaction(
-                user_id=user_id,
-                session_id=session_id,
-                question=question,
-                response=solution['solution'],
-                context_data={
-                    'subject': context.get('subject'),
-                    'topic': context.get('topic'),
-                    'interaction_type': context.get('interaction_type'),
-                    'pinned_text': context.get('pinnedText'),
-                }
-            )
-
-        # Get updated chat history
-        updated_chat_history = []
-        if user_id and session_id:
-            updated_chat_history = await get_chat_history(user_id, session_id, history_limit)
-
-        # Prepare response data
-        response_data = {
-            'solution': solution['solution'],
-            'context': {
-                'current_question': question,
-                'response': solution['solution'],
+        try:
+            # Get chat history
+            chat_history = []
+            if user_id and session_id:
+                chat_history = await get_chat_history(user_id, session_id, history_limit)
+            
+            # Create context
+            context = {
                 'user_id': user_id,
                 'session_id': session_id,
-                'subject': context.get('subject'),
-                'topic': context.get('topic'),
-                'chat_history': updated_chat_history
+                'chat_history': chat_history,
+                'history_limit': history_limit,
+                'image': None,
+                'interaction_type': context_data.get('interaction_type', 'solve'),
+                'pinnedText': context_data.get('pinnedText', ''),
+                'selectedText': context_data.get('selectedText', ''),
+                'subject': context_data.get('subject', ''),
+                'topic': context_data.get('topic', '')
             }
-        }
-        
-        return JsonResponse(response_data)
-        
+
+            # Initialize math agent and get solution
+            agent = await MathAgent.create()
+            solution = await agent.solve(question, context)
+            
+            if not solution or not solution.get('solution'):
+                raise ValueError('No solution generated')
+
+            # Save interaction
+            if user_id and session_id:
+                await save_chat_interaction(
+                    user_id=user_id,
+                    session_id=session_id,
+                    question=question,
+                    response=solution['solution'],
+                    context_data={
+                        'subject': context.get('subject'),
+                        'topic': context.get('topic'),
+                        'interaction_type': context.get('interaction_type'),
+                        'pinned_text': context.get('pinnedText'),
+                    }
+                )
+
+            # Get updated history
+            updated_chat_history = []
+            if user_id and session_id:
+                updated_chat_history = await get_chat_history(user_id, session_id, history_limit)
+
+            return JsonResponse({
+                'solution': solution['solution'],
+                'context': {
+                    'current_question': question,
+                    'response': solution['solution'],
+                    'user_id': user_id,
+                    'session_id': session_id,
+                    'subject': context.get('subject'),
+                    'topic': context.get('topic'),
+                    'chat_history': updated_chat_history
+                }
+            })
+            
+        except Exception as inner_e:
+            logger.error(f"Inner error in solve_math_problem: {str(inner_e)}", exc_info=True)
+            return JsonResponse({
+                'error': str(inner_e),
+                'details': 'An error occurred while processing your request.'
+            }, status=500)
+            
     except Exception as e:
-        logger.error(f"Error in solve_math_problem: {str(e)}", exc_info=True)
+        logger.error(f"Outer error in solve_math_problem: {str(e)}", exc_info=True)
         return JsonResponse({
             'error': str(e),
             'details': 'An unexpected error occurred while processing your request.'
