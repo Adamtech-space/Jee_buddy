@@ -1,3 +1,5 @@
+from django.conf import settings
+from asgiref.sync import sync_to_async
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.messages import HumanMessage, AIMessage
@@ -7,16 +9,24 @@ import base64
 from openai import OpenAI
 import os
 
+def get_openai_api_key():
+    """Get OpenAI API key from settings"""
+    return getattr(settings, 'OPENAI_API_KEY', os.getenv('OPENAI_API_KEY'))
+
 class MathAgent:
     def __init__(self):
+        api_key = get_openai_api_key()
+        if not api_key:
+            raise ValueError("OPENAI_API_KEY is not set")
+            
         self.llm = ChatOpenAI(
             model="gpt-4",
             temperature=0.7,
-            api_key=os.getenv('OPENAI_API_KEY')
+            api_key=api_key
         )
         self.chat_history = []
         self.tools = self._create_tools()
-        self.client = OpenAI()
+        self.client = OpenAI(api_key=api_key)
 
     def _create_tools(self) -> Dict[str, str]:
         return {

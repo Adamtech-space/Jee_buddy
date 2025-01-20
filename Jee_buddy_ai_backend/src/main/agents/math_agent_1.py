@@ -1,6 +1,7 @@
 import logging
 import os
 from typing import Optional
+from asgiref.sync import sync_to_async
 
 from openai import OpenAI
 from langchain_openai import ChatOpenAI
@@ -9,6 +10,7 @@ from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 from typing import List, Dict, Any
 from pydantic import BaseModel, Field
 from main.models import ChatHistory
+from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
@@ -32,13 +34,22 @@ class MathProblemInput(BaseModel):
     approach: Optional[str] = Field(default="auto", description="The approach to use for solving")
 
 
+def get_openai_api_key():
+    """Get OpenAI API key from settings"""
+    return getattr(settings, 'OPENAI_API_KEY', os.getenv('OPENAI_API_KEY'))
+
+
 class MathAgent:
     def __init__(self):
         try:
+            api_key = get_openai_api_key()
+            if not api_key:
+                raise ValueError("OPENAI_API_KEY is not set")
+                
             self.llm = ChatOpenAI(
                 model="gpt-3.5-turbo",
                 temperature=0.2,
-                api_key=os.getenv('OPENAI_API_KEY')
+                api_key=api_key
             )
             self.chat_history = []
             self.max_history = 100
