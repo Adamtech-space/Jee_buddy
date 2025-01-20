@@ -1,15 +1,32 @@
 import logging
 import os
+from typing import Optional
+from asgiref.sync import sync_to_async
 
+from openai import OpenAI
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any
 from pydantic import BaseModel, Field
-from langchain.schema import SystemMessage, HumanMessage
 from main.models import ChatHistory
+from django.conf import settings
 
 logger = logging.getLogger(__name__)
+
+
+def create_chat_model() -> ChatOpenAI:
+    """Create a ChatOpenAI instance with clean configuration."""
+    api_key = os.getenv('OPENAI_API_KEY')
+    if not api_key:
+        raise ValueError("OPENAI_API_KEY environment variable is not set")
+    
+    return ChatOpenAI(
+        model="gpt-3.5-turbo",
+        temperature=0.2,
+        max_tokens=1000,
+        api_key=api_key
+    )
 
 
 class MathProblemInput(BaseModel):
@@ -17,25 +34,35 @@ class MathProblemInput(BaseModel):
     approach: Optional[str] = Field(default="auto", description="The approach to use for solving")
 
 
+@sync_to_async
+def get_openai_api_key_async():
+    """Get OpenAI API key from settings asynchronously"""
+    return getattr(settings, 'OPENAI_API_KEY', os.getenv('OPENAI_API_KEY'))
+
 
 class MathAgent:
-    def __init__(self):
-        self.llm = ChatOpenAI(
-            temperature=0.2,
-            model="gpt-4o",
-            max_tokens=1000,
-            api_key=os.getenv('OPENAI_API_KEY'),
-            top_p=0.9,
-            
-        )
-        self.chat_history = []
-        self.max_history = 100
-        self.tools = self._create_tools()
-        self.interaction_prompts = {
-            'explain': "Explain the concept in detail with examples.",
-            'solve': "Solve this problem step by step.",
-            'general': "Respond naturally to the query.",
-        }
+    async def __init__(self):
+        try:
+            api_key = await get_openai_api_key_async()
+            if not api_key:
+                raise ValueError("OPENAI_API_KEY is not set")
+                
+            self.llm = ChatOpenAI(
+                model="gpt-3.5-turbo",
+                temperature=0.2,
+                api_key=api_key
+            )
+            self.chat_history = []
+            self.max_history = 100
+            self.tools = self._create_tools()
+            self.interaction_prompts = {
+                'explain': "Explain the concept in detail with examples.",
+                'solve': "Solve this problem step by step.",
+                'general': "Respond naturally to the query.",
+            }
+        except Exception as e:
+            logger.error(f"Error initializing MathAgent: {str(e)}")
+            raise
 
     def _create_tools(self) -> Dict[str, str]:
         return {
@@ -170,42 +197,40 @@ class MathAgent:
 
     async def solve(self, question: str, context: Dict[Any, Any]) -> dict:
         try:
-            # Get user and session info
+            # Check for general query first
+            if self._is_general_query(question):
+                # Handle general queries without async operations
+                return self._get_general_response(question)
+
+            # Get context values safely without async operations
             user_id = context.get('user_id')
             session_id = context.get('session_id')
-            history_limit = context.get('history_limit', 100)
             subject = context.get('subject', '').lower()
             topic = context.get('topic', '')
+            chat_history = context.get('chat_history', [])
 
-            # Format chat history for context
+            # Format chat history
             formatted_history = []
-            if context.get('chat_history'):
-                for chat in context['chat_history']:
-                    formatted_history.append({
-                        'question': chat['question'],
-                        'response': chat['response'],
-                        'timestamp': chat['timestamp'],
-                        'subject': chat['context'].get('subject', ''),
-                        'topic': chat['context'].get('topic', '')
-                    })
+            for chat in chat_history:
+                formatted_history.append({
+                    'question': chat['question'],
+                    'response': chat['response'],
+                    'timestamp': chat.get('timestamp', ''),
+                    'subject': chat.get('context', {}).get('subject', ''),
+                    'topic': chat.get('context', {}).get('topic', '')
+                })
 
             # Create history context string
+            history_context = "No previous conversation context."
             if formatted_history:
                 history_context = "\n\n".join([
-                    f"Previous Question ({h['timestamp']}):\n"
+                    f"Previous Question:\n"
                     f"Subject: {h['subject']}\n"
                     f"Topic: {h['topic']}\n"
                     f"Q: {h['question']}\n"
                     f"A: {h['response']}"
                     for h in formatted_history
                 ])
-            else:
-                history_context = "No previous conversation context."
-
-            # Process image if present
-            image_context = ""
-            if context.get('image'):
-                image_context = "[Image provided for reference]"
 
             # Create system message with subject-specific instructions
             subject_prompts = {
@@ -217,7 +242,7 @@ class MathAgent:
             subject_instruction = subject_prompts.get(subject, "As a JEE expert, provide comprehensive guidance across Physics, Chemistry, and Mathematics.")
 
             messages = [
-                SystemMessage(content=fr"""You are an expert friendly JEE tutor specialized in Physics, Chemistry, and Mathematics.
+                SystemMessage(content=f"""You are an expert friendly JEE tutor specialized in Physics, Chemistry, and Mathematics.
                 {subject_instruction}
                 
                 Previous conversation context:
@@ -227,46 +252,13 @@ class MathAgent:
                 Subject: {subject}
                 Topic: {topic}
                 {context.get('pinnedText', '')}
-                {image_context}
-
-                Format your response following these rules:
-                1. Use plain text without LaTeX markers or special characters
-                2. For mathematical expressions:
-                    - Use simple text: x^2 for powers
-                    - Use / for fractions: a/b
-                    - Use * for multiplication
-                    - Write units in parentheses: (m/s), (kg), etc.
-                
-                3. Structure your response with:
-                    - Clear numbered sections
-                    - Bullet points using simple dashes (-)
-                    - Line breaks between sections
-                    - Simple indentation for sub-points
-                
-                4. For equations:
-                    - Write them on separate lines
-                    - Use = sign with spaces around it
-                    - Example: F = m * a
-                    - For complex equations, break into multiple lines
-                
-                5. For explanations:
-                    - Use step-by-step numbering
-                    - Include clear examples
-                    - Explain concepts without technical markup
-                
-                If the user asks about previous conversations or history, summarize the above context using this same formatting.
-                
-                Remember to keep all mathematical and scientific content accurate while using this simplified format.
-                Include specific details from previous questions and their solutions.
                 """),
                 HumanMessage(content=question)
             ]
 
-            # Call the LLM
-            response = await self.llm.agenerate([messages])
-            
-            # Extract the response
-            llm_response = response.generations[0][0].text
+            # Call the LLM with await
+            response = await self.llm.ainvoke(messages)
+            llm_response = response.content
             
             return {
                 'solution': llm_response,

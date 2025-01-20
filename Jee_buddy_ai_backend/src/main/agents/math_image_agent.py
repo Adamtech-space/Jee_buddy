@@ -1,3 +1,5 @@
+from django.conf import settings
+from asgiref.sync import sync_to_async
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.messages import HumanMessage, AIMessage
@@ -5,16 +7,26 @@ from typing import List, Dict, Any, Optional
 from pydantic import BaseModel, Field
 import base64
 from openai import OpenAI
+import os
+
+def get_openai_api_key():
+    """Get OpenAI API key from settings"""
+    return getattr(settings, 'OPENAI_API_KEY', os.getenv('OPENAI_API_KEY'))
 
 class MathAgent:
     def __init__(self):
+        api_key = get_openai_api_key()
+        if not api_key:
+            raise ValueError("OPENAI_API_KEY is not set")
+            
         self.llm = ChatOpenAI(
+            model="gpt-4",
             temperature=0.7,
-            model="gpt-4o"
+            api_key=api_key
         )
         self.chat_history = []
         self.tools = self._create_tools()
-        self.client = OpenAI()
+        self.client = OpenAI(api_key=api_key)
 
     def _create_tools(self) -> Dict[str, str]:
         return {
@@ -26,31 +38,30 @@ class MathAgent:
             # ... other tools remain the same ...
         }
 
-    # Fix: Changed method signature to match the call
     async def solve(self, question: str, approach_type: str, image_data: Optional[str] = None) -> Dict[str, Any]:
         """Solve math problem using specified approach"""
         try:
             # Handle image if provided
             image_content = None
             if image_data:
-                if image_data.startswith('data:image'):
-                    image_data = image_data.split(',')[1]
+                # Use sync_to_async for string operations
+                image_data_processed = await sync_to_async(lambda: image_data.split(',')[1] if image_data.startswith('data:image') else image_data)()
                 
                 image_content = {
                     "type": "image_url",
                     "image_url": {
-                        "url": f"data:image/jpeg;base64,{image_data}"
+                        "url": f"data:image/jpeg;base64,{image_data_processed}"
                     }
                 }
 
-            # Create messages list
-            messages = [
+            # Create messages list with async-safe operations
+            messages = await sync_to_async(lambda: [
                 {
                     "role": "system",
                     "content": f"""You are a JEE mathematics expert tutor.
                     Previous conversation context: {self._format_history()}"""
                 }
-            ]
+            ])()
 
             # Add user message with image if available
             user_content = []
@@ -72,8 +83,8 @@ class MathAgent:
 
             # Get response
             if image_content:
-                response = await self.client.chat.completions.acreate(
-                    model="gpt-4o",
+                response = await self.client.chat.completions.create(
+                    model="gpt-4",
                     messages=messages,
                     max_tokens=1000
                 )

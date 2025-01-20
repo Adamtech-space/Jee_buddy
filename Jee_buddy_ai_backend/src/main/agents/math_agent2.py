@@ -1,3 +1,5 @@
+from django.conf import settings
+from asgiref.sync import sync_to_async
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
@@ -11,28 +13,47 @@ from datetime import datetime
 import json
 import os
 
+def get_openai_api_key():
+    """Get OpenAI API key from settings"""
+    return getattr(settings, 'OPENAI_API_KEY', os.getenv('OPENAI_API_KEY'))
+
+def get_supabase_config():
+    """Get Supabase configuration from settings"""
+    return {
+        'url': getattr(settings, 'SUPABASE_URL', os.getenv('SUPABASE_URL')),
+        'key': getattr(settings, 'SUPABASE_KEY', os.getenv('SUPABASE_KEY'))
+    }
+
 class MathProblemInput(BaseModel):
     question: str = Field(description="The math problem to solve")
     approach: Optional[str] = Field(default="auto", description="The approach to use for solving")
 
 class MathAgent:
     def __init__(self):
+        # Get API keys and configuration
+        api_key = get_openai_api_key()
+        if not api_key:
+            raise ValueError("OPENAI_API_KEY is not set")
+            
+        supabase_config = get_supabase_config()
+        if not all(supabase_config.values()):
+            raise ValueError("Supabase configuration is incomplete")
+            
         # Initialize Supabase client
         self.supabase: Client = create_client(
-            supabase_url=os.getenv("SUPABASE_URL"),
-            supabase_key=os.getenv("SUPABASE_KEY")
+            supabase_url=supabase_config['url'],
+            supabase_key=supabase_config['key']
         )
         
         # Initialize OpenAI components
         self.llm = ChatOpenAI(
-            temperature=0.7,
             model="gpt-3.5-turbo-16k",
-            max_tokens=1000,
-            api_key=os.getenv("OPENAI_API_KEY")
+            temperature=0.7,
+            api_key=api_key
         )
         
         # Initialize embeddings and vector store
-        self.embeddings = OpenAIEmbeddings()
+        self.embeddings = OpenAIEmbeddings(openai_api_key=api_key)
         self.vector_store = SupabaseVectorStore(
             client=self.supabase,
             embedding=self.embeddings,

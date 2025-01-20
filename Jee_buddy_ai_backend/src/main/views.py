@@ -73,119 +73,69 @@ def get_current_profile(request):
             'error': str(e)
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-@api_view(['POST'])
-@parser_classes([JSONParser, MultiPartParser, FormParser])
-def solve_math_problem(request):
+@csrf_exempt
+async def solve_math_problem(request):
     try:
-        logger.info(f"Received request data: {request.data}")
-        
+        # Parse request data
+        if request.method != 'POST':
+            return JsonResponse({
+                'error': 'Method not allowed'
+            }, status=405)
+            
+        try:
+            data = json.loads(request.body)
+        except json.JSONDecodeError:
+            return JsonResponse({
+                'error': 'Invalid JSON data'
+            }, status=400)
+            
         # Extract data from request
-        question = request.data.get('question')
+        question = data.get('question')
         if not question:
-            return Response({
+            return JsonResponse({
                 'error': 'Question is required'
-            }, status=status.HTTP_400_BAD_REQUEST)
+            }, status=400)
         
-        # Handle context data which might be string or dict
-        context_data = request.data.get('context', {})
-        if isinstance(context_data, str):
-            try:
-                context_data = json.loads(context_data)
-            except json.JSONDecodeError:
-                context_data = {}
+        # Handle context data
+        context_data = data.get('context', {})
         
         # Get user and session info
         user_id = context_data.get('user_id')
         session_id = context_data.get('session_id')
         history_limit = context_data.get('history_limit', 100)
         
-        # Handle image if present
-        image = request.FILES.get('image')
-        image_content = None
-        if image:
-            image_content = base64.b64encode(image.read()).decode('utf-8')
-        
-        # Get chat history for the specific user and session
-        chat_history = []
-        if user_id and session_id:
-            chat_history = ChatHistory.get_recent_history(
-                user_id=user_id,
-                session_id=session_id,
-                limit=history_limit
-            )
-        
-        # Create the context dictionary with all provided fields
+        # Create the context dictionary
         context = {
             'user_id': user_id,
             'session_id': session_id,
-            'chat_history': chat_history,
+            'chat_history': [],  # We'll handle chat history separately
             'history_limit': history_limit,
-            'image': image_content,
+            'image': None,  # Handle image if needed
             'interaction_type': context_data.get('interaction_type', 'solve'),
             'pinnedText': context_data.get('pinnedText', ''),
             'selectedText': context_data.get('selectedText', ''),
             'subject': context_data.get('subject', ''),
             'topic': context_data.get('topic', '')
         }
+
+        # Initialize math agent asynchronously
+        agent = await MathAgent()
         
-        if not question and not context['pinnedText']:
-            return Response({
-                'error': 'Either question or pinned text is required'
-            }, status=status.HTTP_400_BAD_REQUEST)
-            
-        try:
-            agent = MathAgent()
-            result = asyncio.run(agent.solve(
-                question=question,
-                context=context
-            ))
-        except Exception as agent_error:
-            logger.error(f"Agent error: {str(agent_error)}", exc_info=True)
-            return Response({
-                'error': f"Failed to process question: {str(agent_error)}",
-                'details': 'The AI agent encountered an error while processing your request.'
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        # Call solve method directly since we're in an async view
+        solution = await agent.solve(question, context)
         
-        if not result.get('solution'):
-            return Response({
+        if not solution or not solution.get('solution'):
+            return JsonResponse({
                 'error': 'No solution generated',
                 'details': 'The AI agent failed to generate a response.'
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            }, status=500)
 
-        # Save the interaction to history if user_id and session_id are present
-        if user_id and session_id:
-            try:
-                ChatHistory.add_interaction(
-                    user_id=user_id,
-                    session_id=session_id,
-                    question=question,
-                    response=result['solution'],
-                    context={
-                        'subject': context.get('subject'),
-                        'topic': context.get('topic'),
-                        'interaction_type': context.get('interaction_type'),
-                        'pinned_text': context.get('pinnedText'),
-                        'has_image': bool(image_content)
-                    }
-                )
-            except Exception as db_error:
-                logger.error(f"Database error: {str(db_error)}", exc_info=True)
-        
-        # Get updated chat history
-        updated_chat_history = []
-        if user_id and session_id:
-            updated_chat_history = ChatHistory.get_recent_history(
-                user_id=user_id,
-                session_id=session_id,
-                limit=history_limit
-            )
-        
+        # Prepare response data
         response_data = {
-            'solution': result['solution'],
+            'solution': solution['solution'],
             'context': {
-                'history': updated_chat_history,
                 'current_question': question,
-                'response': result['solution'],
+                'response': solution['solution'],
                 'user_id': user_id,
                 'session_id': session_id,
                 'subject': context.get('subject'),
@@ -193,12 +143,12 @@ def solve_math_problem(request):
             }
         }
         
-        return Response(response_data)
+        return JsonResponse(response_data)
         
     except Exception as e:
-        logger.error(f"Error processing request: {str(e)}", exc_info=True)
-        return Response({
+        logger.error(f"Error in solve_math_problem: {str(e)}", exc_info=True)
+        return JsonResponse({
             'error': str(e),
             'details': 'An unexpected error occurred while processing your request.'
-        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        }, status=500)
 
