@@ -80,7 +80,6 @@ REST_FRAMEWORK = {
 # CORS settings
 CORS_ALLOW_ALL_ORIGINS = False
 CORS_ALLOW_CREDENTIALS = True
-CORS_ORIGIN_ALLOW_ALL = False
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
@@ -91,8 +90,6 @@ CORS_ALLOWED_ORIGINS = [
     "https://jee-buddy-yugandhar0609s-projects.vercel.app"
 ]
 
-# Additional CORS settings
-CORS_ORIGIN_WHITELIST = CORS_ALLOWED_ORIGINS
 CORS_ALLOW_METHODS = [
     'DELETE',
     'GET',
@@ -126,13 +123,11 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-# Additional security headers
+# Security headers
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-CORS_REPLACE_HTTPS_REFERER = True
 CORS_PREFLIGHT_MAX_AGE = 86400
 
-# Remove any conflicting settings
-CORS_ORIGIN_REGEX_WHITELIST = []
+# URL pattern for CORS
 CORS_URLS_REGEX = r'^/api/.*$'
 
 # Remove any duplicate INSTALLED_APPS
