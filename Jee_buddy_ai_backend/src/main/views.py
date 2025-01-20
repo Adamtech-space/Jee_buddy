@@ -19,9 +19,15 @@ from django.db.models.functions import Now, Trunc
 from asgiref.sync import sync_to_async
 from django.utils.decorators import method_decorator
 from django.views.decorators.http import require_http_methods
+from functools import wraps
 logger = logging.getLogger(__name__)
 
-
+def async_view(view_func):
+    """Decorator to handle async views properly"""
+    @wraps(view_func)
+    def wrapped_view(*args, **kwargs):
+        return asyncio.run(view_func(*args, **kwargs))
+    return wrapped_view
 
 @api_view(['GET'])
 def get_current_profile(request):
@@ -81,21 +87,32 @@ def get_current_profile(request):
 # Create async database operations
 @sync_to_async
 def get_chat_history(user_id, session_id, limit):
-    return ChatHistory.get_recent_history(user_id, session_id, limit)
+    try:
+        return ChatHistory.get_recent_history(user_id, session_id, limit)
+    except Exception as e:
+        logger.error(f"Error in get_chat_history: {str(e)}")
+        return []
 
 @sync_to_async
 def save_chat_interaction(user_id, session_id, question, response, context_data):
-    return ChatHistory.add_interaction(
-        user_id=user_id,
-        session_id=session_id,
-        question=question,
-        response=response,
-        context=context_data
-    )
+    try:
+        return ChatHistory.add_interaction(
+            user_id=user_id,
+            session_id=session_id,
+            question=question,
+            response=response,
+            context=context_data
+        )
+    except Exception as e:
+        logger.error(f"Error in save_chat_interaction: {str(e)}")
+        return None
 
-@require_http_methods(["POST"])
 @csrf_exempt
+@async_view
 async def solve_math_problem(request):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+        
     try:
         # Parse request data
         try:
@@ -123,10 +140,7 @@ async def solve_math_problem(request):
         # Get chat history for the specific user and session
         chat_history = []
         if user_id and session_id:
-            try:
-                chat_history = await get_chat_history(user_id, session_id, history_limit)
-            except Exception as e:
-                logger.error(f"Error fetching chat history: {str(e)}")
+            chat_history = await get_chat_history(user_id, session_id, history_limit)
         
         # Create the context dictionary
         context = {
@@ -156,29 +170,23 @@ async def solve_math_problem(request):
 
         # Save the interaction to chat history
         if user_id and session_id:
-            try:
-                await save_chat_interaction(
-                    user_id=user_id,
-                    session_id=session_id,
-                    question=question,
-                    response=solution['solution'],
-                    context_data={
-                        'subject': context.get('subject'),
-                        'topic': context.get('topic'),
-                        'interaction_type': context.get('interaction_type'),
-                        'pinned_text': context.get('pinnedText'),
-                    }
-                )
-            except Exception as e:
-                logger.error(f"Error saving chat history: {str(e)}")
+            await save_chat_interaction(
+                user_id=user_id,
+                session_id=session_id,
+                question=question,
+                response=solution['solution'],
+                context_data={
+                    'subject': context.get('subject'),
+                    'topic': context.get('topic'),
+                    'interaction_type': context.get('interaction_type'),
+                    'pinned_text': context.get('pinnedText'),
+                }
+            )
 
         # Get updated chat history
         updated_chat_history = []
         if user_id and session_id:
-            try:
-                updated_chat_history = await get_chat_history(user_id, session_id, history_limit)
-            except Exception as e:
-                logger.error(f"Error fetching updated chat history: {str(e)}")
+            updated_chat_history = await get_chat_history(user_id, session_id, history_limit)
 
         # Prepare response data
         response_data = {
