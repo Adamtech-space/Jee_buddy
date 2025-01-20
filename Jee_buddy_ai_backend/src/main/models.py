@@ -49,6 +49,7 @@ class ChatHistory(models.Model):
         if old_interactions.exists():
             old_interactions.delete()
             
+        # Create new interaction
         return cls.objects.create(
             user_id=user_id,
             session_id=session_id,
@@ -58,13 +59,15 @@ class ChatHistory(models.Model):
         )
 
     @classmethod
-    def get_recent_history(cls, user_id, session_id=None, limit=100):
-        query = cls.objects.filter(user_id=user_id)
-        if session_id:
-            query = query.filter(session_id=session_id)
-        history = list(query.order_by('-timestamp')[:limit])
-        return [item.to_dict() for item in history]
-    
+    def get_recent_history(cls, user_id, session_id, limit=100):
+        """Get recent chat history for a user and session"""
+        history = cls.objects.filter(
+            user_id=user_id,
+            session_id=session_id
+        ).order_by('-timestamp')[:limit]
+        
+        return [chat.to_dict() for chat in history]
+
     class Meta:
         ordering = ['-timestamp']
         indexes = [

@@ -17,6 +17,8 @@ from django.db.models import F, Q, Count
 from django.db.models.expressions import Case, When
 from django.db.models.functions import Now, Trunc
 from asgiref.sync import sync_to_async
+from django.utils.decorators import method_decorator
+from django.views.decorators.http import require_http_methods
 logger = logging.getLogger(__name__)
 
 
@@ -76,15 +78,11 @@ def get_current_profile(request):
             'error': str(e)
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+@require_http_methods(["POST"])
 @csrf_exempt
 async def solve_math_problem(request):
     try:
         # Parse request data
-        if request.method != 'POST':
-            return JsonResponse({
-                'error': 'Method not allowed'
-            }, status=405)
-            
         try:
             data = json.loads(request.body)
         except json.JSONDecodeError:
@@ -126,7 +124,7 @@ async def solve_math_problem(request):
             'session_id': session_id,
             'chat_history': chat_history,
             'history_limit': history_limit,
-            'image': None,  # Handle image if needed
+            'image': None,
             'interaction_type': context_data.get('interaction_type', 'solve'),
             'pinnedText': context_data.get('pinnedText', ''),
             'selectedText': context_data.get('selectedText', ''),
@@ -137,7 +135,7 @@ async def solve_math_problem(request):
         # Initialize math agent using the create() factory method
         agent = await MathAgent.create()
         
-        # Call solve method directly since we're in an async view
+        # Call solve method
         solution = await agent.solve(question, context)
         
         if not solution or not solution.get('solution'):
