@@ -111,102 +111,115 @@ def save_chat_interaction(user_id, session_id, question, response, context_data)
         logger.error(f"Error in save_chat_interaction: {str(e)}")
         return None
 
-@csrf_exempt
-@api_view(['POST'])
-async def solve_math_problem(request):
+async def process_math_problem(request_data):
     try:
-        # Parse request data
-        try:
-            data = json.loads(request.body)
-        except json.JSONDecodeError:
-            return JsonResponse({
-                'error': 'Invalid JSON data'
-            }, status=400)
-            
         # Extract data from request
-        question = data.get('question')
+        question = request_data.get('question')
         if not question:
-            return JsonResponse({
+            return {
                 'error': 'Question is required'
-            }, status=400)
+            }, 400
         
         # Handle context data
-        context_data = data.get('context', {})
+        context_data = request_data.get('context', {})
         
         # Get user and session info
         user_id = context_data.get('user_id')
         session_id = context_data.get('session_id')
         history_limit = context_data.get('history_limit', 100)
 
-        try:
-            # Get chat history
-            chat_history = []
-            if user_id and session_id:
-                chat_history = await get_chat_history(user_id, session_id, history_limit)
-            
-            # Create context
-            context = {
-                'user_id': user_id,
-                'session_id': session_id,
-                'chat_history': chat_history,
-                'history_limit': history_limit,
-                'image': None,
-                'interaction_type': context_data.get('interaction_type', 'solve'),
-                'pinnedText': context_data.get('pinnedText', ''),
-                'selectedText': context_data.get('selectedText', ''),
-                'subject': context_data.get('subject', ''),
-                'topic': context_data.get('topic', '')
-            }
+        # Get chat history
+        chat_history = []
+        if user_id and session_id:
+            chat_history = await get_chat_history(user_id, session_id, history_limit)
+        
+        # Create context
+        context = {
+            'user_id': user_id,
+            'session_id': session_id,
+            'chat_history': chat_history,
+            'history_limit': history_limit,
+            'image': None,
+            'interaction_type': context_data.get('interaction_type', 'solve'),
+            'pinnedText': context_data.get('pinnedText', ''),
+            'selectedText': context_data.get('selectedText', ''),
+            'subject': context_data.get('subject', ''),
+            'topic': context_data.get('topic', '')
+        }
 
-            # Initialize math agent and get solution
-            agent = await MathAgent.create()
-            solution = await agent.solve(question, context)
-            
-            if not solution or not solution.get('solution'):
-                raise ValueError('No solution generated')
+        # Initialize math agent and get solution
+        agent = await MathAgent.create()
+        solution = await agent.solve(question, context)
+        
+        if not solution or not solution.get('solution'):
+            return {
+                'error': 'No solution generated',
+                'details': 'The AI agent failed to generate a response.'
+            }, 500
 
-            # Save interaction
-            if user_id and session_id:
-                await save_chat_interaction(
-                    user_id=user_id,
-                    session_id=session_id,
-                    question=question,
-                    response=solution['solution'],
-                    context_data={
-                        'subject': context.get('subject'),
-                        'topic': context.get('topic'),
-                        'interaction_type': context.get('interaction_type'),
-                        'pinned_text': context.get('pinnedText'),
-                    }
-                )
-
-            # Get updated history
-            updated_chat_history = []
-            if user_id and session_id:
-                updated_chat_history = await get_chat_history(user_id, session_id, history_limit)
-
-            return JsonResponse({
-                'solution': solution['solution'],
-                'context': {
-                    'current_question': question,
-                    'response': solution['solution'],
-                    'user_id': user_id,
-                    'session_id': session_id,
+        # Save interaction
+        if user_id and session_id:
+            await save_chat_interaction(
+                user_id=user_id,
+                session_id=session_id,
+                question=question,
+                response=solution['solution'],
+                context_data={
                     'subject': context.get('subject'),
                     'topic': context.get('topic'),
-                    'chat_history': updated_chat_history
+                    'interaction_type': context.get('interaction_type'),
+                    'pinned_text': context.get('pinnedText'),
                 }
-            })
-            
-        except Exception as inner_e:
-            logger.error(f"Inner error in solve_math_problem: {str(inner_e)}", exc_info=True)
-            return JsonResponse({
-                'error': str(inner_e),
-                'details': 'An error occurred while processing your request.'
-            }, status=500)
+            )
+
+        # Get updated history
+        updated_chat_history = []
+        if user_id and session_id:
+            updated_chat_history = await get_chat_history(user_id, session_id, history_limit)
+
+        return {
+            'solution': solution['solution'],
+            'context': {
+                'current_question': question,
+                'response': solution['solution'],
+                'user_id': user_id,
+                'session_id': session_id,
+                'subject': context.get('subject'),
+                'topic': context.get('topic'),
+                'chat_history': updated_chat_history
+            }
+        }, 200
             
     except Exception as e:
-        logger.error(f"Outer error in solve_math_problem: {str(e)}", exc_info=True)
+        logger.error(f"Error in process_math_problem: {str(e)}", exc_info=True)
+        return {
+            'error': str(e),
+            'details': 'An unexpected error occurred while processing your request.'
+        }, 500
+
+@csrf_exempt
+@api_view(['POST'])
+def solve_math_problem(request):
+    try:
+        # Parse request data
+        try:
+            data = json.loads(request.body)
+            print(data)
+        except json.JSONDecodeError:
+            return JsonResponse({
+                'error': 'Invalid JSON data'
+            }, status=400)
+
+        # Run async process in sync context
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        response_data, status_code = loop.run_until_complete(process_math_problem(data))
+        loop.close()
+
+        return JsonResponse(response_data, status=status_code)
+            
+    except Exception as e:
+        logger.error(f"Error in solve_math_problem: {str(e)}", exc_info=True)
         return JsonResponse({
             'error': str(e),
             'details': 'An unexpected error occurred while processing your request.'
