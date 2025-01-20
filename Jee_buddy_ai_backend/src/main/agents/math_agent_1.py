@@ -34,15 +34,16 @@ class MathProblemInput(BaseModel):
     approach: Optional[str] = Field(default="auto", description="The approach to use for solving")
 
 
-def get_openai_api_key():
-    """Get OpenAI API key from settings"""
+@sync_to_async
+def get_openai_api_key_async():
+    """Get OpenAI API key from settings asynchronously"""
     return getattr(settings, 'OPENAI_API_KEY', os.getenv('OPENAI_API_KEY'))
 
 
 class MathAgent:
-    def __init__(self):
+    async def __init__(self):
         try:
-            api_key = get_openai_api_key()
+            api_key = await get_openai_api_key_async()
             if not api_key:
                 raise ValueError("OPENAI_API_KEY is not set")
                 
