@@ -10,8 +10,13 @@ from .models import ChatHistory, UserProfile
 import base64
 import uuid
 from django.db import connections
+import os
 
 logger = logging.getLogger(__name__)
+
+CORS_ALLOWED_ORIGINS = [
+    "https://your-frontend-domain.railway.app",
+]
 
 @api_view(['GET'])
 def get_current_profile(request):
