@@ -36,11 +36,7 @@ const StudyMaterials = () => {
   const [selectedFile, setSelectedFile] = useState(null);
   const [numPages, setNumPages] = useState(null); // for PDF viewer
 
-  // Fetch items when folder changes
-  useEffect(() => {
-    fetchItems();
-  }, [currentFolder.id, fetchItems]);
-
+  // Define fetchItems with useCallback before using it in useEffect
   const fetchItems = useCallback(async () => {
     try {
       setLoading(true);
@@ -52,6 +48,11 @@ const StudyMaterials = () => {
       setLoading(false);
     }
   }, [currentFolder.id]);
+
+  // Now we can use fetchItems in useEffect
+  useEffect(() => {
+    fetchItems();
+  }, [fetchItems]);
 
   // Get current folder's items
   const getCurrentFolderItems = () => {

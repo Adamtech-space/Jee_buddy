@@ -308,7 +308,7 @@ const loginUserWithEmailAndPassword = async (email, password) => {
         updated_at: new Date().toISOString()
       })
       .eq('id', authData.user.id)
-      .select('*')
+      .select()
       .single();
 
     if (updateError) {
@@ -336,99 +336,125 @@ const loginUserWithEmailAndPassword = async (email, password) => {
 
 /**
  * Create a user
- * @param {Object} userBody
+ * @param {Object} userInput
  * @returns {Promise<User>}
  */
-const createUser = async (userBody) => {
+const createUser = async (userInput) => {
   try {
-    console.log('Starting user creation for email:', userBody.email);
-
-    // Check if user already exists in profiles
-    const { data: existingUser, error: checkError } = await supabase
-      .from('profiles')
-      .select('id, email')
-      .eq('email', userBody.email)
-      .single();
-
-    if (existingUser) {
-      console.log('User already exists with email:', userBody.email);
-      throw new ApiError(httpStatus.BAD_REQUEST, 'Email already taken');
-    }
-
-    // First try to sign up with Supabase Auth
-    console.log('Creating auth user...');
-    const { data: authData, error: signUpError } = await authClient.auth.signUp({
-      email: userBody.email,
-      password: userBody.password,
-      options: {
-        data: {
-          name: userBody.name,
-        },
-      },
+    console.log('Starting user creation with data:', {
+      email: userInput.email,
+      name: userInput.name
     });
 
-    if (signUpError) {
-      console.error('Signup error details:', {
-        message: signUpError.message,
-        status: signUpError.status,
-        code: signUpError.code
-      });
-      throw new ApiError(httpStatus.INTERNAL_SERVER_ERROR, 'Failed to create user');
+    // First check if user exists in auth
+    const { data: existingAuthUser, error: authCheckError } = await supabase.auth.admin.listUsers();
+    const existingUser = existingAuthUser?.users?.find(u => u.email === userInput.email);
+
+    if (existingUser) {
+      console.log('Found existing user, attempting to delete...');
+      
+      // Delete from profiles first (due to foreign key constraint)
+      const { error: profileDeleteError } = await supabase
+        .from('profiles')
+        .delete()
+        .eq('id', existingUser.id);
+      
+      if (profileDeleteError) {
+        console.log('Profile deletion error:', profileDeleteError);
+      }
+
+      // Then delete from auth
+      const { error: authDeleteError } = await supabase.auth.admin.deleteUser(existingUser.id);
+      if (authDeleteError) {
+        console.log('Auth deletion error:', authDeleteError);
+      }
+
+      // Wait a moment for deletions to complete
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      console.log('Existing user deleted successfully');
     }
 
-    if (!authData?.user) {
-      console.error('Auth data missing user object after signup');
-      throw new ApiError(httpStatus.INTERNAL_SERVER_ERROR, 'Failed to create user');
+    // 1. Create auth user with auto-confirm enabled
+    const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
+      email: userInput.email,
+      password: userInput.password,
+      email_confirm: true,  // Auto-confirm the email
+      user_metadata: {
+        name: userInput.name
+      }
+    });
+    
+    if (authError) {
+      console.error('Auth user creation error:', authError);
+      throw new ApiError(400, `Failed to create auth user: ${authError.message}`);
     }
 
-    console.log('Auth user created with ID:', authData.user.id);
+    if (!authUser?.user?.id) {
+      console.error('No user ID received from auth signup');
+      throw new ApiError(500, 'Invalid auth response');
+    }
+
+    console.log('Auth user created successfully with ID:', authUser.user.id);
+
+    // Wait a moment for the auth user to be fully created
+    await new Promise(resolve => setTimeout(resolve, 1000));
 
     // Create profile record
-    console.log('Creating profile record...');
-    const { data: profile, error: insertError } = await supabase
+    const now = new Date().toISOString();
+    const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .insert([
-        {
-          id: authData.user.id,
-          name: userBody.name,
-          email: userBody.email,
-          phone_number: userBody.phonenumber,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        },
-      ])
+      .insert([{
+        id: authUser.user.id,
+        name: userInput.name,
+        email: userInput.email,
+        phone_number: userInput.phonenumber,
+        created_at: now,
+        updated_at: now,
+        current_session_id: null,
+        payment_status: null
+      }])
       .select()
       .single();
 
-    if (insertError) {
-      console.error('Profile creation error:', insertError);
-      // If profile creation fails, we should try to delete the auth user
-      await authClient.auth.admin.deleteUser(authData.user.id);
-      throw new ApiError(httpStatus.INTERNAL_SERVER_ERROR, 'Failed to create user profile');
+    if (profileError) {
+      console.error('Profile creation error details:', {
+        error: profileError,
+        code: profileError.code,
+        message: profileError.message,
+        details: profileError.details
+      });
+
+      // Delete the auth user if profile creation fails
+      try {
+        await supabase.auth.admin.deleteUser(authUser.user.id);
+      } catch (deleteError) {
+        console.error('Failed to cleanup auth user after profile creation failure:', deleteError);
+      }
+
+      throw new ApiError(500, `Failed to create user profile: ${profileError.message}`);
     }
 
     console.log('Profile created successfully');
-    console.log('Generating tokens...');
 
-    // Generate application tokens
+    // Generate tokens for the new user
     const tokens = await generateAuthTokens({
       id: profile.id,
       email: profile.email,
       name: profile.name
     });
 
-    console.log('User creation completed successfully');
-
     return {
       user: profile,
       tokens
     };
   } catch (error) {
-    console.error('Signup process error:', error);
-    if (error instanceof ApiError) {
-      throw error;
-    }
-    throw new ApiError(httpStatus.INTERNAL_SERVER_ERROR, 'Registration failed');
+    console.error('User creation error:', {
+      error,
+      message: error.message,
+      stack: error.stack
+    });
+    throw error instanceof ApiError ? error : new ApiError(500, error.message);
   }
 };
 
