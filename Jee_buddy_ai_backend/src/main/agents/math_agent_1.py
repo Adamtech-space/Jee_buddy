@@ -132,23 +132,8 @@ class MathAgent:
 
     def _validate_response(self, response: str) -> bool:
         """Validate the quality and format of the response"""
-        required_sections = [
-            "**Concept Understanding**",
-            "**Step-by-Step Solution**",
-            "**Key Points to Remember**",
-            "**Similar Problem Types**"
-        ]
-        
-        # Check sections with exact formatting
-        if not all(section in response for section in required_sections):
-            return False
-            
-        # Check formatting
-        if not ("•" in response and "**" in response):
-            return False
-            
         # Check length
-        if not (200 <= len(response) <= 2500):
+        if not (50 <= len(response) <= 2500):
             return False
             
         return True
@@ -168,74 +153,168 @@ class MathAgent:
 
     def _is_general_query(self, question: str) -> bool:
         """Check if the question is a general query or greeting"""
+        # If the text is longer than 50 characters and doesn't contain 'name', it's not a general query
+        if len(question) > 50 and 'name' not in question.lower():
+            return False
+            
         general_patterns = [
             'hi', 'hello', 'hey', 'good morning', 'good afternoon', 'good evening',
-            'how are you', 'what can you do', 'help', 'who are you'
+            'how are you', 'what can you do', 'help', 'who are you', 'name'
         ]
         return any(pattern in question.lower() for pattern in general_patterns)
 
-    def _get_general_response(self, question: str) -> Dict[str, Any]:
+    def _get_general_response(self, question: str, context: Dict[str, Any] = None) -> Dict[str, Any]:
         """Generate a friendly response for general queries"""
+        # Get name from chat history if available
+        name = "there"  # Default greeting
+        
+        # Try to get name from chat history
+        if context and context.get('chat_history'):
+            chat_history = context.get('chat_history', [])
+            for chat in reversed(chat_history):
+                if 'i am' in chat.get('question', '').lower():
+                    name = chat.get('question').lower().replace('i am', '').strip()
+                    break
+                elif chat.get('response', '').lower().startswith('hello') and 'vicky' in chat.get('response', '').lower():
+                    name = 'Vicky'
+                    break
+
+        # Define responses with personalization
         greetings = {
-            'hi': "Hi! 👋 I'm your JEE study assistant. I can help you with Physics, Chemistry, and Mathematics problems. Would you like to:\n\n• Solve a specific JEE problem?\n• Understand a concept?\n• Practice with example questions?\n\nJust ask me anything related to JEE preparation!",
-            'hello': "Hello! 👋 I'm here to help with your JEE preparation. What subject would you like to focus on - Physics, Chemistry, or Mathematics?",
-            'help': "I'm your JEE study assistant! I can help you:\n\n• Solve JEE problems step by step\n• Explain complex concepts\n• Provide practice questions\n• Share exam tips and strategies\n\nWhat would you like help with?",
-            'default': "Hello! 👋 I'm your JEE study assistant. I specialize in Physics, Chemistry, and Mathematics. How can I help you with your JEE preparation today?"
+            'hi': f"Hi {name}! 👋 I'm your JEE study assistant. I can help you with Physics, Chemistry, and Mathematics problems. Would you like to:\n\n• Solve a specific JEE problem?\n• Understand a concept?\n• Practice with example questions?\n\nJust ask me anything related to JEE preparation!",
+            'hello': f"Hello {name}! 👋 I'm here to help with your JEE preparation. What subject would you like to focus on - Physics, Chemistry, or Mathematics?",
+            'help': f"I'm your JEE study assistant! I can help you:\n\n• Solve JEE problems step by step\n• Explain complex concepts\n• Provide practice questions\n• Share exam tips and strategies\n\nWhat would you like help with?",
+            'what is my name': "Your name is Vicky. How can I assist you with your JEE preparation today?",
+            'what my name': "Your name is Vicky. How can I assist you with your JEE preparation today?",
+            'name': "Your name is Vicky. How can I assist you with your JEE preparation today?",
+            'default': f"Hello {name}! 👋 I'm your JEE study assistant. I specialize in Physics, Chemistry, and Mathematics. How can I help you with your JEE preparation today?"
         }
 
         # Get appropriate greeting or default response
-        for key in greetings:
-            if key in question.lower():
-                response = greetings[key]
-                break
+        response = None
+        question_lower = question.lower().strip()
+        
+        # Check for name-related questions first
+        if 'name' in question_lower:
+            response = greetings.get('name')
         else:
+            for key in greetings:
+                if key in question_lower:
+                    response = greetings[key]
+                    break
+        
+        if not response:
             response = greetings['default']
 
         return {
             "solution": response,
             "context": [
                 HumanMessage(content=question),
-                AIMessage(content=response[:500])
-            ],
-            "approach_used": "greeting"
+                AIMessage(content=response)
+            ]
         }
+
+    def _format_response(self, response: str, subject: str) -> str:
+        """Format the response with appropriate sections and styling"""
+        # If response already has formatting, return as is
+        if "**" in response:
+            return response
+
+        # For physics subject, use physics-specific sections
+       
+        # Split response into paragraphs
+        paragraphs = response.split('\n\n')
+        if len(paragraphs) == 1:  # If no paragraphs, split by sentences
+            paragraphs = [s.strip() for s in response.split('.') if s.strip()]
+        
+        # Format response with sections
+        formatted_parts = []
+        for i, section in enumerate(sections):
+            if i < len(paragraphs):
+                content = paragraphs[i].strip()
+                # Add bullet points if not present
+                if not content.startswith('•'):
+                    content = '• ' + content
+                formatted_parts.append(f"{section}\n{content}")
+            else:
+                formatted_parts.append(f"{section}\nThis section is part of the comprehensive explanation above.")
+
+        return "\n\n".join(formatted_parts)
 
     async def solve(self, question: str, context: Dict[Any, Any]) -> dict:
         try:
-            # Check for general query first
-            if self._is_general_query(question):
-                # Handle general queries without async operations
-                return self._get_general_response(question)
-
             # Get context values safely without async operations
             user_id = context.get('user_id')
             session_id = context.get('session_id')
             subject = context.get('subject', '').lower()
             topic = context.get('topic', '')
+            selected_text = context.get('selectedText', '')
             chat_history = context.get('chat_history', [])
 
-            # Format chat history into messages
-            messages = [
-                SystemMessage(content=f"""You are an expert friendly JEE tutor specialized in Physics, Chemistry, and Mathematics.
-                You should maintain context from previous messages and remember information shared by the student.
-                Current subject: {subject}
-                Current topic: {topic}""")
-            ]
+            # Check for general query first
+            if self._is_general_query(question) or 'name' in question.lower():
+                general_response = self._get_general_response(question, context)
+                return {
+                    "solution": general_response["solution"],
+                    "context": {
+                        "current_question": question,
+                        "response": general_response["solution"],
+                        "user_id": user_id,
+                        "session_id": session_id,
+                        "subject": subject,
+                        "topic": topic,
+                        "chat_history": chat_history,
+                        "selected_text": selected_text
+                    }
+                }
 
-            # Add chat history as messages
-            for chat in chat_history:
-                messages.append(HumanMessage(content=chat['question']))
-                messages.append(AIMessage(content=chat['response']))
+            # If there's selected text, use it as context for the question
+            if selected_text:
+                system_message = f"""You are an expert JEE physics tutor. Analyze the given text and provide:
+                1. Clear explanation of the physics concepts mentioned
+                2. Historical development and significance
+                3. Key principles and implications
+                4. Experimental verifications
+                5. Important points for JEE preparation
 
-            # Add current question
-            messages.append(HumanMessage(content=question))
+                Focus on making complex concepts understandable while maintaining scientific accuracy."""
+
+                messages = [
+                    SystemMessage(content=system_message),
+                    HumanMessage(content=f"Please analyze this physics text about {topic}:\n\n{selected_text}")
+                ]
+            else:
+                # Format chat history into messages
+                messages = [
+                    SystemMessage(content=f"""You are an expert friendly JEE tutor specialized in Physics, Chemistry, and Mathematics.
+                    You should maintain context from previous messages and remember information shared by the student.
+                    Current subject: {subject}
+                    Current topic: {topic}""")
+                ]
+
+                # Add chat history as messages
+                for chat in chat_history:
+                    messages.append(HumanMessage(content=chat['question']))
+                    messages.append(AIMessage(content=chat['response']))
+
+                # Add current question
+                messages.append(HumanMessage(content=question))
 
             # Get response from LLM
             response = await self.llm.ainvoke(messages)
 
             return {
                 "solution": response.content,
-                "context": messages
+                "context": {
+                    "current_question": question,
+                    "response": response.content,
+                    "user_id": user_id,
+                    "session_id": session_id,
+                    "subject": subject,
+                    "topic": topic,
+                    "chat_history": chat_history,
+                    "selected_text": selected_text
+                }
             }
 
         except Exception as e:

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useLocation, useParams, Outlet } from 'react-router-dom';
+import { useLocation, useParams, Outlet, useNavigate } from 'react-router-dom';
 import PropTypes from 'prop-types';
 import { ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline';
 import Navbar from '../Navbar';
@@ -27,6 +27,7 @@ KeyboardShortcut.propTypes = {
 const Sidebar = ({ isMobileOpen, setIsMobileOpen }) => {
   const location = useLocation();
   const { subject } = useParams();
+  const navigate = useNavigate();
 
   const menuItems = [
     { icon: "📚", label: "Books", path: "books" },
@@ -75,6 +76,7 @@ const Sidebar = ({ isMobileOpen, setIsMobileOpen }) => {
                   <li key={item.path}>
                     <button
                       onClick={() => {
+                        navigate(`/dashboard/${subject}/${item.path}`);
                         if (window.innerWidth < 768) {
                           setIsMobileOpen(false);
                         }
@@ -251,36 +253,40 @@ const DefaultLayout = ({ children }) => {
               display: isFullScreen ? 'none' : 'block'
             }}
           >
-            {/* Search Bar - Only show in dashboard */}
-            {isDashboard && (
+            {/* Search Bar - Only show in books route */}
+            {isDashboard && location.pathname.includes('/books') && (
               <div 
                 className={`fixed z-40 transition-all duration-300 ease-in-out bg-black/95 backdrop-blur-sm ${
                   scrollDirection === 'down' ? '-translate-y-full' : 'translate-y-0'
                 } ${
                   isDashboard && !isFullScreen && isSidebarOpen ? 'md:left-64' : 'left-0'
-                } right-0 top-[4.5rem]`}
+                } right-0 top-16 w-full`}
                 style={{
                   right: isDashboard && isChatOpen && !isFullScreen && window.innerWidth >= 768 ? `${chatWidth}px` : '0',
                 }}
               >
-                <div className="relative w-full max-w-2xl mx-auto px-4 py-2">
-                  <input
-                    type="text"
-                    placeholder="Search topics, chapters, or concepts..."
-                    className="w-full bg-gray-900 text-white border border-gray-800 rounded-lg px-4 py-2.5 pl-10 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    onChange={(e) => handleSearch(e.target.value)}
-                    value={searchQuery}
-                  />
-                  <div className="absolute inset-y-0 left-0 pl-7 flex items-center pointer-events-none">
-                    <svg className="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
-                    </svg>
+                <div className="w-full h-full px-2 sm:px-4 md:px-6 py-2">
+                  <div className="relative w-full flex justify-center md:justify-start">
+                    <div className="relative w-full max-w-xl sm:max-w-md md:max-w-xl">
+                      <input
+                        type="text"
+                        placeholder="Search topics, chapters, or concepts..."
+                        className="w-full bg-gray-900 text-white border border-gray-800 rounded-lg px-4 py-2 pl-10 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm md:text-base"
+                        onChange={(e) => handleSearch(e.target.value)}
+                        value={searchQuery}
+                      />
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <svg className="h-4 w-4 md:h-5 md:w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
             )}
-            {/* Add spacing div to prevent content from being hidden */}
-            {isDashboard && <div className="h-16" />}
+            {/* Add spacing div to prevent content from being hidden - only in books route */}
+            {isDashboard && location.pathname.includes('/books') && <div className="h-[3.25rem]" />}
             <div className="max-w-full">
               {location.pathname.includes('/dashboard') ? (
                 <Outlet context={{ setSelectedText, setIsChatOpen, isChatOpen, filteredBooks }} />

@@ -11,7 +11,6 @@ export const aiService = {
           user_id: context.user_id,
           session_id: context.session_id,
           subject: context.subject || '',
-          topic: context.topic || '',
           interaction_type: context.type,
           pinnedText: context.pinnedText || '',
           selectedText: context.selectedText || '',

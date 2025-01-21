@@ -74,7 +74,7 @@ const FlashCards = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen bg-gray-900">
+      <div className="flex items-center justify-center h-screen bg-black">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
       </div>
     );
@@ -82,7 +82,7 @@ const FlashCards = () => {
 
   if (!flashcards.length) {
     return (
-      <div className="flex items-center justify-center h-screen bg-gray-900">
+      <div className="flex items-center justify-center h-screen bg-black">
         <div className="text-center">
           <div className="text-gray-300 mb-4">No flash cards found for {subject}</div>
           <div className="text-gray-400 text-sm">Create some by selecting text from books!</div>
@@ -92,7 +92,7 @@ const FlashCards = () => {
   }
 
   return (
-    <div className="p-6 bg-gray-900 min-h-screen">
+    <div className="p-6 bg-black min-h-screen">
       {/* Notification */}
       {notification.show && (
         <div className={`fixed top-4 right-4 px-6 py-3 rounded-lg shadow-lg transform transition-all duration-500 ${

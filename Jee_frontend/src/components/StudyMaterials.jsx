@@ -393,7 +393,7 @@ const StudyMaterials = () => {
       <div
         onMouseUp={handleTextSelection}
         onTouchEnd={handleTextSelection}
-        className="h-full flex flex-col bg-gray-900 rounded-lg"
+        className="h-full flex flex-col bg-black rounded-lg"
       >
         <div className="p-4 border-b border-gray-800">
           <div className="flex justify-between items-center mb-4">

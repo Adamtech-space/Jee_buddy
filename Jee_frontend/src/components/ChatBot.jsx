@@ -294,7 +294,11 @@ const ChatBot = ({
     try {
       // Get user data from localStorage
       const userData = JSON.parse(localStorage.getItem('user')) || {};
-      const sessionId = localStorage.getItem('sessionId') || crypto.randomUUID();
+      const sessionId = userData.current_session_id;
+
+      if (!sessionId) {
+        throw new Error('No valid session ID found');
+      }
 
       const response = await aiService.askQuestion(questionText, {
         user_id: userData.id || 'anonymous',
@@ -348,7 +352,11 @@ const ChatBot = ({
 
       // Get user data from localStorage
       const userData = JSON.parse(localStorage.getItem('user')) || {};
-      const sessionId = localStorage.getItem('sessionId') || crypto.randomUUID();
+      const sessionId = userData.current_session_id;
+
+      if (!sessionId) {
+        throw new Error('No valid session ID found');
+      }
 
       const lastImageMessage = [...messages]
         .reverse()
