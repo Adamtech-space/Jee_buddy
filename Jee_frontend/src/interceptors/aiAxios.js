@@ -1,8 +1,8 @@
 import axios from 'axios';
 
 const aiInstance = axios.create({
-  baseURL: 'http://127.0.0.1:8000/',
-  // baseURL: 'https://jee-buddy-ai-ten.vercel.app/', 
+  // baseURL: 'http://127.0.0.1:8000/',
+  baseURL: 'https://jee-buddy-ai-ten.vercel.app/',
   headers: {
     'Content-Type': 'application/json',
   },

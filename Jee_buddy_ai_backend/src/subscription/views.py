@@ -38,8 +38,10 @@ def calculate_days_remaining(valid_till):
     now = timezone.now()
     if valid_till < now:
         return 0
-    remaining = (valid_till - now).days
-    return remaining if remaining >= 0 else 0
+    # Ensure both datetimes are timezone aware
+    if timezone.is_naive(valid_till):
+        valid_till = timezone.make_aware(valid_till)
+    return (valid_till - now).days
 
 @csrf_exempt
 def get_subscription_status(request):
@@ -58,44 +60,28 @@ def get_subscription_status(request):
         ).order_by('-created_at').first()
 
         if subscription:
-            days_remaining = calculate_days_remaining(subscription.valid_till)
+            # Ensure valid_till is timezone aware
+            valid_till = subscription.valid_till
+            if timezone.is_naive(valid_till):
+                valid_till = timezone.make_aware(valid_till)
+                
+            days_remaining = calculate_days_remaining(valid_till)
             is_active = days_remaining > 0
-            
-            # Calculate subscription period details
-            start_date = subscription.created_at
-            end_date = subscription.valid_till
-            total_days = 28  # Monthly cycle
-            used_days = total_days - days_remaining
 
-            # Prepare detailed subscription info
-            subscription_info = {
+            return JsonResponse({
                 'status': 'success',
                 'is_subscribed': is_active,
                 'subscription_id': subscription.subscription_id,
                 'plan_id': subscription.plan_id,
-                'subscription_details': {
-                    'start_date': start_date.isoformat(),
-                    'end_date': end_date.isoformat(),
-                    'total_days': total_days,
-                    'days_used': used_days,
-                    'days_remaining': days_remaining,
-                    'subscription_progress': f"{used_days}/{total_days} days",
-                    'expiry_status': 'active' if days_remaining > 3 else 'expiring_soon' if days_remaining > 0 else 'expired'
-                }
-            }
-
-            # Add reminder message based on remaining days
-            if 0 < days_remaining <= 3:
-                subscription_info['reminder_message'] = f"Your subscription expires in {days_remaining} days. Please renew to maintain uninterrupted access."
-            elif days_remaining == 0:
-                subscription_info['reminder_message'] = "Your subscription has expired. Please renew to continue accessing premium features."
-            
-            return JsonResponse(subscription_info)
+                'created_at': subscription.created_at.isoformat(),
+                'valid_till': valid_till.isoformat(),
+                'days_remaining': days_remaining,
+                'next_billing_date': valid_till.isoformat() if valid_till else None
+            })
         else:
             return JsonResponse({
                 'status': 'success',
-                'is_subscribed': False,
-                'subscription_details': None
+                'is_subscribed': False
             })
 
     except Exception as e:
@@ -139,7 +125,7 @@ def subscription_callback(request):
                     "message": "Payment not captured"
                 }, status=400)
 
-            # Calculate subscription validity
+            # Calculate subscription validity with timezone awareness
             start_date = timezone.now()
             valid_till = start_date + timedelta(days=28)  # 28-day cycle
 
@@ -159,8 +145,6 @@ def subscription_callback(request):
                     status='active',
                     amount=payment.get('amount', 0) / 100,
                     currency=payment.get('currency', 'INR'),
-                    created_at=start_date,
-                    updated_at=start_date,
                     valid_till=valid_till,
                     payment_status='completed',
                     metadata=json.dumps({
@@ -203,6 +187,8 @@ def create_subscription(request):
         data = json.loads(request.body)
         user_id = data.get('user_id')
         plan_id = data.get('plan_id')
+        email = data.get('email', '')
+        name = data.get('name', '')
 
         if not user_id or not plan_id:
             return JsonResponse({
@@ -211,45 +197,36 @@ def create_subscription(request):
             }, status=400)
 
         try:
-            user = User.objects.get(id=user_id)
-        except User.DoesNotExist:
-            return JsonResponse({
-                'status': 'error',
-                'message': 'User not found'
-            }, status=404)
-
-        try:
             # Create subscription in Razorpay
             subscription_data = {
                 "plan_id": plan_id,
                 "customer_notify": 1,
                 "quantity": 1,
-                "total_count": 1,  # Single month subscription
+                "total_count": 1,  # One-time payment
                 "notes": {
-                    "user_id": str(user_id)
+                    "user_id": str(user_id),
+                    "email": email,
+                    "name": name
                 }
             }
             
             subscription = razorpay_client.subscription.create(subscription_data)
             
-            # Create local subscription record
+            # Create local subscription record with timezone-aware datetime
             Subscription.objects.create(
-                user=user,
+                user_id=user_id,
                 subscription_id=subscription['id'],
                 plan_id=plan_id,
                 status='created',
                 amount=subscription.get('total_amount', 0) / 100,
                 currency=subscription.get('currency', 'INR'),
-                created_at=timezone.now(),
                 metadata=json.dumps(subscription)
             )
 
             return JsonResponse({
                 'status': 'success',
-                'subscription_id': subscription['id'],
-                'short_url': subscription.get('short_url'),
-                'plan_id': plan_id,
-                'message': 'Monthly subscription created successfully'
+                'razorpay_key': RAZORPAY_KEY_ID,
+                'order': subscription
             })
 
         except Exception as e:
@@ -272,35 +249,30 @@ def get_plans(request):
         plans_data = {
             'BASIC': {
                 'id': PLANS['BASIC'],
-                'name': 'Basic Monthly',
+                'name': 'Basic Plan',
                 'price': 499,
-                'interval': 'monthly',
                 'features': [
-                    'Basic AI assistance (100 messages/month)',
+                    'Basic AI assistance',
                     'Study materials access',
-                    'Basic flashcards',
-                    'Monthly subscription'
+                    'Basic flashcards'
                 ]
             },
             'PRO': {
                 'id': PLANS['PRO'],
-                'name': 'Pro Monthly',
+                'name': 'Pro Plan',
                 'price': 1499,
-                'interval': 'monthly',
                 'features': [
-                    'Extended AI assistance (500 messages/month)',
+                    'Extended AI assistance',
                     'Full study materials',
                     'Question bank access',
                     'Performance analytics',
-                    'Priority support',
-                    'Monthly subscription'
+                    'Priority support'
                 ]
             },
             'PREMIUM': {
                 'id': PLANS['PREMIUM'],
-                'name': 'Premium Monthly',
+                'name': 'Premium Plan',
                 'price': 4999,
-                'interval': 'monthly',
                 'features': [
                     'Unlimited AI assistance',
                     'Complete study materials',
@@ -308,8 +280,7 @@ def get_plans(request):
                     'Advanced analytics',
                     'Priority support',
                     'AI content generation',
-                    'Download access',
-                    'Monthly subscription'
+                    'Download access'
                 ]
             }
         }
@@ -324,4 +295,3 @@ def get_plans(request):
             'status': 'error',
             'message': str(e)
         }, status=500)
-        

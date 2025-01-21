@@ -78,16 +78,16 @@ REST_FRAMEWORK = {
 }
 
 # CORS settings
-CORS_ALLOW_ALL_ORIGINS = False
+CORS_ALLOW_ALL_ORIGINS = True  # Change this to False
 CORS_ALLOW_CREDENTIALS = True
 
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    "http://localhost:3000",
-    "https://jee-buddy-yugandhar0609s-projects.vercel.app",
-    "https://jee-buddy.vercel.app"
-]
+# CORS_ALLOWED_ORIGINS = [
+#     "http://localhost:5173",
+#     "http://127.0.0.1:5173",
+#     "http://localhost:3000",
+#     "https://jee-buddy-yugandhar0609s-projects.vercel.app",  # Add your Vercel frontend domain
+#     "https://jee-buddy.vercel.app"  # Add any other production domains
+# ]
 
 CORS_ALLOW_METHODS = [
     'DELETE',
@@ -108,7 +108,6 @@ CORS_ALLOW_HEADERS = [
     'user-agent',
     'x-csrftoken',
     'x-requested-with',
-    'x-user-id'
 ]
 
 # Remove any duplicate INSTALLED_APPS
