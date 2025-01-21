@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 
 const Hero = () => {
   const [isVisible, setIsVisible] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     setIsVisible(true);
@@ -15,15 +17,8 @@ const Hero = () => {
 
   const words = 'Master JEE with AI'.split(' ');
 
-  const scrollToDemo = (e) => {
-    e.preventDefault();
-    const demoSection = document.getElementById('demo');
-    if (demoSection) {
-      demoSection.scrollIntoView({
-        behavior: 'smooth',
-        block: 'start',
-      });
-    }
+  const handleTryNow = () => {
+    navigate('/login');
   };
 
   return (
@@ -84,10 +79,15 @@ const Hero = () => {
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <motion.button
-              onClick={scrollToDemo}
+              onClick={handleTryNow}
               className="px-8 py-3.5 bg-sky-800 hover:bg-blue-700 text-white 
-                       rounded-lg font-semibold transition-all duration-300"
-              whileHover={{ scale: 1.02 }}
+                       rounded-lg font-semibold transition-all duration-300
+                       hover:shadow-lg hover:shadow-sky-500/30 
+                       transform hover:-translate-y-0.5"
+              whileHover={{
+                scale: 1.05,
+                backgroundColor: '#1d4ed8', // bright blue color
+              }}
               whileTap={{ scale: 0.98 }}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}

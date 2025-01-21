@@ -60,7 +60,6 @@ const ChatBot = ({
   const [displayedResponse, setDisplayedResponse] = useState('');
   const [localSelectedText, setLocalSelectedText] = useState('');
   const [popoverVisible, setPopoverVisible] = useState(false);
-  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
 
   // Effect to handle selected text
   useEffect(() => {
@@ -81,20 +80,14 @@ const ChatBot = ({
     }
   }, []);
 
-  // Add text selection handler
+  // Simplify text selection handler
   useEffect(() => {
     const handleTextSelection = () => {
       const selection = window.getSelection();
       const text = selection.toString().trim();
-      
+
       if (text) {
         setLocalSelectedText(text);
-        const range = selection.getRangeAt(0);
-        const rect = range.getBoundingClientRect();
-        setMousePosition({
-          x: rect.left + rect.width / 2,
-          y: rect.top - 10
-        });
         setPopoverVisible(true);
       } else {
         setPopoverVisible(false);
@@ -117,17 +110,17 @@ const ChatBot = ({
         subject: subject || 'General',
         topic: 'AI Chat Bot',
         content: localSelectedText,
-        source: 'AI Chat Bot'
+        source: 'AI Chat Bot',
       };
 
       const response = await saveFlashCard(payload);
       hide();
-      
+
       if (response) {
         message.success({
           content: 'Successfully saved to flash cards!',
           icon: <SaveOutlined style={{ color: '#52c41a' }} />,
-          duration: 3
+          duration: 3,
         });
         setPopoverVisible(false);
         setLocalSelectedText('');
@@ -138,7 +131,7 @@ const ChatBot = ({
       hide();
       message.error({
         content: error?.message || 'Failed to save to flash cards',
-        duration: 3
+        duration: 3,
       });
     }
   };
@@ -153,20 +146,20 @@ const ChatBot = ({
   };
 
   const helpButtons = [
-    { type: "explain", icon: "📝", text: "Step-by-Step" },
-    { type: "basics", icon: "🧠", text: "Basics" },
-    { type: "test", icon: "🎯", text: "Test Me" },
-    { type: "similar", icon: "🔄", text: "Examples" },
-    { type: "solve", icon: "✨", text: "Solve" },
-    { type: "keypoints", icon: "🔍", text: "Key Points" }
+    { type: 'explain', icon: '📝', text: 'Step-by-Step' },
+    { type: 'basics', icon: '🧠', text: 'Basics' },
+    { type: 'test', icon: '🎯', text: 'Test Me' },
+    { type: 'similar', icon: '🔄', text: 'Examples' },
+    { type: 'solve', icon: '✨', text: 'Solve' },
+    { type: 'keypoints', icon: '🔍', text: 'Key Points' },
   ];
 
   // Scroll to bottom effect
   const scrollToBottom = () => {
     if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ 
+      messagesEndRef.current.scrollIntoView({
         behavior: 'smooth',
-        block: 'end'
+        block: 'end',
       });
     }
   };
@@ -178,10 +171,15 @@ const ChatBot = ({
 
   // Typing effect
   useEffect(() => {
-    if (isTyping && currentTypingIndex < messages[messages.length - 1]?.content.length) {
+    if (
+      isTyping &&
+      currentTypingIndex < messages[messages.length - 1]?.content.length
+    ) {
       const timer = setTimeout(() => {
-        setDisplayedResponse(messages[messages.length - 1].content.slice(0, currentTypingIndex + 1));
-        setCurrentTypingIndex(prev => prev + 1);
+        setDisplayedResponse(
+          messages[messages.length - 1].content.slice(0, currentTypingIndex + 1)
+        );
+        setCurrentTypingIndex((prev) => prev + 1);
         scrollToBottom();
       }, 10);
       return () => clearTimeout(timer);
@@ -195,9 +193,9 @@ const ChatBot = ({
     const handleMouseMove = (e) => {
       if (!isResizing) return;
       e.preventDefault();
-      
+
       const newWidth = window.innerWidth - e.clientX;
-      
+
       if (newWidth >= 350 && newWidth <= 800) {
         requestAnimationFrame(() => {
           setWidth(newWidth);
@@ -247,17 +245,20 @@ const ChatBot = ({
           const base64Image = reader.result;
           setPinnedImage({
             content: base64Image,
-            fileName: file.name
+            fileName: file.name,
           });
         };
         reader.readAsDataURL(file);
       } catch (error) {
         const errorMessage = `Image upload failed: ${error?.message || 'Please try again'}`;
-        setMessages(prev => [...prev, {
-          sender: 'assistant',
-          type: 'text',
-          content: errorMessage
-        }]);
+        setMessages((prev) => [
+          ...prev,
+          {
+            sender: 'assistant',
+            type: 'text',
+            content: errorMessage,CHAPTER
+          },
+        ]);
         setDisplayedResponse(errorMessage);
         setCurrentTypingIndex(errorMessage.length);
         // Reset file input to allow selecting the same file again
@@ -273,31 +274,37 @@ const ChatBot = ({
     let currentImage = null;
     if (pinnedImage) {
       currentImage = pinnedImage.content;
-      setMessages(prev => [...prev, {
-        sender: 'user',
-        type: 'image',
-        content: pinnedImage.content,
-        fileName: pinnedImage.fileName
-      }]);
+      setMessages((prev) => [
+        ...prev,
+        {
+          sender: 'user',
+          type: 'image',
+          content: pinnedImage.content,
+          fileName: pinnedImage.fileName,
+        },
+      ]);
       setPinnedImage(null);
     }
 
     if (pinnedText) {
-      setMessages(prev => [...prev, {
-        sender: 'user',
-        type: 'text',
-        content: `Selected text: "${pinnedText}"`
-      }]);
+      setMessages((prev) => [
+        ...prev,
+        {
+          sender: 'user',
+          type: 'text',
+          content: `Selected text: "${pinnedText}"`,
+        },
+      ]);
       setPinnedText(null);
     }
 
     if (chatMessage.trim()) {
-      const newMessage = { 
-        sender: 'user', 
+      const newMessage = {
+        sender: 'user',
         type: 'text',
-        content: chatMessage
+        content: chatMessage,
       };
-      setMessages(prev => [...prev, newMessage]);
+      setMessages((prev) => [...prev, newMessage]);
     }
     setChatMessage('');
     setIsLoading(true);
@@ -312,25 +319,28 @@ const ChatBot = ({
         image: currentImage?.split(',')[1],
         pinnedText: pinnedText,
         user_id: userData?.id,
-        session_id: userData?.current_session_id
+        session_id: userData?.current_session_id,
       });
 
       const aiMessage = {
         sender: 'assistant',
         type: 'text',
-        content: response.solution
+        content: response.solution,
       };
-      setMessages(prev => [...prev, aiMessage]);
+      setMessages((prev) => [...prev, aiMessage]);
       setDisplayedResponse('');
       setCurrentTypingIndex(0);
       setIsTyping(true);
     } catch (error) {
       const errorMessage = `Failed to process message: ${error?.message || 'Please try again'}`;
-      setMessages(prev => [...prev, {
-        sender: 'assistant',
-        type: 'text',
-        content: errorMessage
-      }]);
+      setMessages((prev) => [
+        ...prev,
+        {
+          sender: 'assistant',
+          type: 'text',
+          content: errorMessage,
+        },
+      ]);
       setDisplayedResponse(errorMessage);
       setCurrentTypingIndex(errorMessage.length);
     } finally {
@@ -343,13 +353,15 @@ const ChatBot = ({
       const helpMessage = {
         sender: 'user',
         type: 'text',
-        content: `Help me with: ${type}`
+        content: `Help me with: ${type}`,
       };
-      setMessages(prev => [...prev, helpMessage]);
+      setMessages((prev) => [...prev, helpMessage]);
       setIsLoading(true);
 
-      const lastImageMessage = [...messages].reverse().find(msg => msg.type === 'image');
-      
+      const lastImageMessage = [...messages]
+        .reverse()
+        .find((msg) => msg.type === 'image');
+
       // Get user data from localStorage
       const userData = JSON.parse(localStorage.getItem('user'));
       const response = await aiService.getHelpResponse(type, {
@@ -358,21 +370,27 @@ const ChatBot = ({
         type, // interaction_type from help button
         image: lastImageMessage?.content?.split(',')[1],
         user_id: userData?.id,
-        session_id: userData?.current_session_id
+        session_id: userData?.current_session_id,
       });
 
-      setMessages(prev => [...prev, {
-        sender: 'assistant',
-        type: 'text',
-        content: response.solution
-      }]);
+      setMessages((prev) => [
+        ...prev,
+        {
+          sender: 'assistant',
+          type: 'text',
+          content: response.solution,
+        },
+      ]);
     } catch (error) {
       const errorMessage = `Failed to process request: ${error?.message || 'Please try again'}`;
-      setMessages(prev => [...prev, {
-        sender: 'assistant',
-        type: 'text',
-        content: errorMessage
-      }]);
+      setMessages((prev) => [
+        ...prev,
+        {
+          sender: 'assistant',
+          type: 'text',
+          content: errorMessage,
+        },
+      ]);
       setDisplayedResponse(errorMessage);
       setCurrentTypingIndex(errorMessage.length);
     } finally {
@@ -382,46 +400,58 @@ const ChatBot = ({
 
   const renderMessage = (msg, index) => {
     const isLastMessage = index === messages.length - 1;
-    const content = isLastMessage && msg.sender === 'assistant' ? displayedResponse : msg.content;
+    const content =
+      isLastMessage && msg.sender === 'assistant'
+        ? displayedResponse
+        : msg.content;
 
     return (
-      <div 
-        key={index} 
+      <div
+        key={index}
         className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'} mb-4`}
       >
         {msg.sender === 'assistant' && (
           <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-r from-purple-500 to-indigo-500 flex items-center justify-center mr-2">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-white" viewBox="0 0 20 20" fill="currentColor">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-5 w-5 text-white"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+            >
               <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
-              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm0-2a6 6 0 100-12 6 6 0 000 12z" clipRule="evenodd" />
+              <path
+                fillRule="evenodd"
+                d="M10 18a8 8 0 100-16 8 8 0 000 16zm0-2a6 6 0 100-12 6 6 0 000 12z"
+                clipRule="evenodd"
+              />
             </svg>
           </div>
         )}
-        
-        <div 
+
+        <div
           className={`max-w-[80%] rounded-lg p-4 ${
-            msg.sender === 'user' 
-              ? 'bg-blue-500 text-white ml-2' 
+            msg.sender === 'user'
+              ? 'bg-blue-500 text-white ml-2'
               : 'bg-gradient-to-r from-gray-800 to-gray-900 text-white shadow-xl'
           }`}
         >
           {msg.type === 'image' ? (
             <div className="relative mb-2">
-              <img 
-                src={msg.content} 
-                alt="Uploaded content" 
+              <img
+                src={msg.content}
+                alt="Uploaded content"
                 className="max-w-full h-auto rounded-lg object-contain"
                 style={{ maxHeight: '300px' }}
               />
-              <div className="mt-2 text-sm text-gray-300">
-                {msg.fileName}
-              </div>
+              <div className="mt-2 text-sm text-gray-300">{msg.fileName}</div>
             </div>
           ) : (
             <pre className="whitespace-pre-wrap font-sans text-[15px] leading-relaxed">
               {content}
               {isLastMessage && msg.sender === 'assistant' && isTyping && (
-                <span className="inline-block w-2 h-5 bg-blue-400 animate-pulse ml-1">|</span>
+                <span className="inline-block w-2 h-5 bg-blue-400 animate-pulse ml-1">
+                  |
+                </span>
               )}
             </pre>
           )}
@@ -429,8 +459,8 @@ const ChatBot = ({
 
         {msg.sender === 'user' && userProfile?.picture && (
           <div className="flex-shrink-0 w-8 h-8 rounded-full overflow-hidden ml-2">
-            <img 
-              src={userProfile.picture} 
+            <img
+              src={userProfile.picture}
               alt={userProfile.name}
               className="w-full h-full object-cover"
             />
@@ -444,11 +474,14 @@ const ChatBot = ({
   useEffect(() => {
     const updateWidth = () => {
       const screenWidth = window.innerWidth;
-      if (screenWidth < 640) { // mobile
+      if (screenWidth < 640) {
+        // mobile
         setWidth(screenWidth);
-      } else if (screenWidth < 1024) { // tablet
+      } else if (screenWidth < 1024) {
+        // tablet
         setWidth(400);
-      } else { // desktop
+      } else {
+        // desktop
         setWidth(450);
       }
     };
@@ -462,15 +495,13 @@ const ChatBot = ({
     <div
       ref={resizeRef}
       className={`fixed flex flex-col bg-gray-900 text-white shadow-2xl transform transition-all duration-300 ease-in-out ${
-        isFullScreen 
-          ? 'inset-0 rounded-none' 
+        isFullScreen
+          ? 'inset-0 rounded-none'
           : 'top-0 bottom-0 right-0 rounded-tl-xl'
-      } ${
-        isOpen ? 'translate-x-0' : 'translate-x-full'
-      }`}
-      style={{ 
+      } ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}
+      style={{
         width: isFullScreen || window.innerWidth < 640 ? '100%' : `${width}px`,
-        zIndex: isFullScreen ? 60 : 50
+        zIndex: isFullScreen ? 60 : 50,
       }}
     >
       {/* Selection Popup */}
@@ -487,11 +518,13 @@ const ChatBot = ({
         trigger="click"
         destroyTooltipOnHide
         overlayStyle={{
-          position: 'fixed',
-          left: `${mousePosition.x}px`,
-          top: `${mousePosition.y}px`,
-          transform: 'translate(-50%, -100%)'
+          position: 'absolute',
+          left: '50%',
+          top: '40%',
+          // transform: 'translate(-50%, -50%)',
+          zIndex: 9999,
         }}
+        arrow={false}
       />
 
       {/* Resize Handle - Only show on desktop */}
@@ -520,10 +553,14 @@ const ChatBot = ({
       )}
 
       {/* Header */}
-      <div className={`flex items-center justify-between p-2 sm:p-3 md:p-4 border-b border-gray-800 ${isFullScreen ? 'px-3 sm:px-5 md:px-6' : ''} bg-gray-900`}>
+      <div
+        className={`flex items-center justify-between p-2 sm:p-3 md:p-4 border-b border-gray-800 ${isFullScreen ? 'px-3 sm:px-5 md:px-6' : ''} bg-gray-900`}
+      >
         <div className="flex items-center space-x-2">
           <div className="flex flex-col">
-            <h3 className="text-sm sm:text-lg md:text-xl font-bold text-white">AI Study Assistant</h3>
+            <h3 className="text-sm sm:text-lg md:text-xl font-bold text-white">
+              AI Study Assistant
+            </h3>
             <div className="hidden sm:block">
               <KeyboardShortcut shortcut="Ctrl+Shift+L" />
             </div>
@@ -533,7 +570,7 @@ const ChatBot = ({
           <button
             onClick={() => setIsFullScreen(!isFullScreen)}
             className="p-1.5 hover:bg-gray-800 rounded-lg transition-colors"
-            aria-label={isFullScreen ? "Exit full screen" : "Enter full screen"}
+            aria-label={isFullScreen ? 'Exit full screen' : 'Enter full screen'}
           >
             {isFullScreen ? (
               <ArrowsPointingInIcon className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
@@ -578,16 +615,34 @@ const ChatBot = ({
         {isLoading && (
           <div className="flex justify-start mb-2">
             <div className="flex-shrink-0 w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-gradient-to-r from-purple-500 to-indigo-500 flex items-center justify-center mr-2">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 sm:h-5 sm:w-5 text-white" viewBox="0 0 20 20" fill="currentColor">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-3 w-3 sm:h-5 sm:w-5 text-white"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+              >
                 <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm0-2a6 6 0 100-12 6 6 0 000 12z" clipRule="evenodd" />
+                <path
+                  fillRule="evenodd"
+                  d="M10 18a8 8 0 100-16 8 8 0 000 16zm0-2a6 6 0 100-12 6 6 0 000 12z"
+                  clipRule="evenodd"
+                />
               </svg>
             </div>
             <div className="bg-gradient-to-r from-gray-800 to-gray-900 rounded-lg p-2 shadow-xl">
               <div className="flex gap-1">
-                <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                <div
+                  className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce"
+                  style={{ animationDelay: '0ms' }}
+                ></div>
+                <div
+                  className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce"
+                  style={{ animationDelay: '150ms' }}
+                ></div>
+                <div
+                  className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce"
+                  style={{ animationDelay: '300ms' }}
+                ></div>
               </div>
             </div>
           </div>
@@ -601,7 +656,8 @@ const ChatBot = ({
         {pinnedText && (
           <div className="mb-2 flex items-center bg-gray-800 rounded-lg p-1.5">
             <div className="flex-1 text-xs text-gray-300 line-clamp-2">
-              <span className="text-blue-400 font-medium">Selected text:</span> {pinnedText}
+              <span className="text-blue-400 font-medium">Selected text:</span>{' '}
+              {pinnedText}
             </div>
             <button
               onClick={() => setPinnedText(null)}

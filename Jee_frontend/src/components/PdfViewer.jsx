@@ -19,12 +19,14 @@ const PdfViewer = () => {
   const [loading, setLoading] = useState(true);
   const [selectedText, setSelectedText] = useState('');
   const [popoverVisible, setPopoverVisible] = useState(false);
-  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
-  const { setSelectedText: setChatSelectedText, setIsChatOpen } = useOutletContext();
+  const { setSelectedText: setChatSelectedText, setIsChatOpen } =
+    useOutletContext();
 
   // Get the actual URL from either state or params
   const pdfUrl = location.state?.pdfUrl || decodeURIComponent(encodedUrl);
-  const pdfTitle = decodeURIComponent(pdfUrl.split('/').pop().replace('.pdf', ''));
+  const pdfTitle = decodeURIComponent(
+    pdfUrl.split('/').pop().replace('.pdf', '')
+  );
 
   // Initialize plugins
   const defaultLayoutPluginInstance = defaultLayoutPlugin();
@@ -38,45 +40,78 @@ const PdfViewer = () => {
       setLoading(true);
 
       // Check if the PDF URL is accessible
-      fetch(pdfUrl, { 
+      fetch(pdfUrl, {
         method: 'HEAD',
         headers: {
-          'Accept': 'application/pdf'
-        }
+          Accept: 'application/pdf',
+        },
       })
-      .then(response => {
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-        setLoading(false);
-      })
-      .catch(err => {
-        console.error('Error checking PDF URL:', err);
-        setError(`Failed to access PDF: ${err.message}`);
-        setLoading(false);
-      });
+        .then((response) => {
+          if (!response.ok)
+            throw new Error(`HTTP error! status: ${response.status}`);
+          setLoading(false);
+        })
+        .catch((err) => {
+          console.error('Error checking PDF URL:', err);
+          setError(`Failed to access PDF: ${err.message}`);
+          setLoading(false);
+        });
     }
   }, [pdfUrl, navigate, subject]);
 
   useEffect(() => {
-    const handleTextSelection = () => {
-      const selection = window.getSelection();
-      const text = selection.toString().trim();
-      
-      if (text) {
-        setSelectedText(text);
-        const range = selection.getRangeAt(0);
-        const rect = range.getBoundingClientRect();
-        setMousePosition({
-          x: rect.left + rect.width / 2,
-          y: rect.top - 10
-        });
-        setPopoverVisible(true);
-      } else {
+    let isSelecting = false;
+    // Get reference to the PDF viewer container
+    const pdfContainer = document.querySelector('.rpv-core__viewer');
+
+    const handleMouseDown = (event) => {
+      // Only handle selections within the PDF viewer
+      if (event.target.closest('.rpv-core__viewer')) {
+        isSelecting = true;
         setPopoverVisible(false);
       }
     };
 
-    document.addEventListener('mouseup', handleTextSelection);
-    return () => document.removeEventListener('mouseup', handleTextSelection);
+    const handleTextSelection = (event) => {
+      if (!isSelecting || !event.target.closest('.rpv-core__viewer')) return;
+
+      const selection = window.getSelection();
+      const text = selection.toString().trim();
+
+      if (text) {
+        try {
+          setSelectedText(text);
+          setPopoverVisible(true);
+        } catch (error) {
+          console.error('Selection error:', error);
+          setPopoverVisible(false);
+        }
+      }
+
+      isSelecting = false;
+    };
+
+    const handleClickOutside = (event) => {
+      // Don't close if clicking inside popover or if there's selected text in PDF viewer
+      if (
+        !event.target.closest('.ant-popover') &&
+        !event.target.closest('.rpv-core__viewer')
+      ) {
+        setPopoverVisible(false);
+      }
+    };
+
+    if (pdfContainer) {
+      pdfContainer.addEventListener('mousedown', handleMouseDown);
+      pdfContainer.addEventListener('mouseup', handleTextSelection);
+      document.addEventListener('click', handleClickOutside);
+
+      return () => {
+        pdfContainer.removeEventListener('mousedown', handleMouseDown);
+        pdfContainer.removeEventListener('mouseup', handleTextSelection);
+        document.removeEventListener('click', handleClickOutside);
+      };
+    }
   }, []);
 
   const handleSaveToFlashCard = async () => {
@@ -86,13 +121,13 @@ const PdfViewer = () => {
         subject,
         topic: pdfTitle,
         content: selectedText,
-        source: pdfTitle
+        source: pdfTitle,
       });
       hide();
       message.success({
         content: 'Successfully saved to flash cards!',
         icon: <SaveOutlined style={{ color: '#52c41a' }} />,
-        duration: 3
+        duration: 3,
       });
       setPopoverVisible(false);
     } catch (error) {
@@ -100,7 +135,7 @@ const PdfViewer = () => {
       console.error('Error saving flashcard:', error);
       message.error({
         content: 'Failed to save to flash cards',
-        duration: 3
+        duration: 3,
       });
     }
   };
@@ -162,13 +197,18 @@ const PdfViewer = () => {
           />
         }
         trigger="click"
-        destroyTooltipOnHide
-        overlayStyle={{
-          position: 'fixed',
-          left: `${mousePosition.x}px`,
-          top: `${mousePosition.y}px`,
-          transform: 'translate(-50%, -100%)'
+        // destroyTooltipOnHide
+        overlayInnerStyle={{
+          padding: '12px',
         }}
+        overlayStyle={{
+          position: 'absolute',
+          left: '50%',
+          top: '40%',
+          transform: 'translate(-50%, -50%)',
+          zIndex: 9999,
+        }}
+        arrow={false}
       />
 
       {/* PDF Viewer */}
@@ -187,7 +227,9 @@ const PdfViewer = () => {
                 <div className="flex items-center justify-center h-full">
                   <div className="text-center">
                     <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-500 mb-4"></div>
-                    <p className="text-gray-500">Loading PDF... {Math.round(percentages)}%</p>
+                    <p className="text-gray-500">
+                      Loading PDF... {Math.round(percentages)}%
+                    </p>
                   </div>
                 </div>
               )}
