@@ -282,11 +282,19 @@ const ChatBot = ({
     setIsLoading(true);
 
     try {
+      // Get user data from localStorage
+      const userData = JSON.parse(localStorage.getItem('user')) || {};
+      const sessionId = localStorage.getItem('sessionId') || crypto.randomUUID();
+
       const response = await aiService.askQuestion(questionText, {
-        subject,
-        topic,
+        user_id: userData.id || 'anonymous',
+        session_id: sessionId,
+        subject: subject || '',
+        topic: topic || '',
         type: 'solve',
-        image: pinnedImage?.content?.split(',')[1],
+        pinnedText: '',
+        selectedText: selectedTextPreview?.content || '',
+        image: pinnedImage?.content?.split(',')[1] || null,
       });
 
       const aiMessage = {
@@ -325,15 +333,23 @@ const ChatBot = ({
       setMessages((prev) => [...prev, helpMessage]);
       setIsLoading(true);
 
+      // Get user data from localStorage
+      const userData = JSON.parse(localStorage.getItem('user')) || {};
+      const sessionId = localStorage.getItem('sessionId') || crypto.randomUUID();
+
       const lastImageMessage = [...messages]
         .reverse()
         .find((msg) => msg.type === 'image');
 
       const response = await aiService.getHelpResponse(type, {
-        subject,
-        topic,
+        user_id: userData.id || 'anonymous',
+        session_id: sessionId,
+        subject: subject || '',
+        topic: topic || '',
         type,
-        image: lastImageMessage?.content?.split(',')[1],
+        pinnedText: '',
+        selectedText: '',
+        image: lastImageMessage?.content?.split(',')[1] || null,
       });
 
       setMessages((prev) => [
