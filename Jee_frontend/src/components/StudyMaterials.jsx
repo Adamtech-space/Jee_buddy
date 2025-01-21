@@ -1,15 +1,15 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { message } from 'antd';
-import { 
-  CloudArrowUpIcon, 
-  DocumentIcon, 
+import {
+  CloudArrowUpIcon,
+  DocumentIcon,
   TrashIcon,
   FolderIcon,
   PencilIcon,
   FolderPlusIcon,
   ChevronRightIcon,
-  HomeIcon
+  HomeIcon,
 } from '@heroicons/react/24/outline';
 import {
   createFolder,
@@ -17,8 +17,10 @@ import {
   getStudyMaterials,
   deleteStudyMaterial,
   renameStudyMaterial,
-  getFileDownloadUrl
+  getFileDownloadUrl,
 } from '../interceptors/services';
+import { Document, Page, pdfjs } from 'react-pdf';
+pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 
 const StudyMaterials = () => {
   const { subject } = useParams();
@@ -26,18 +28,20 @@ const StudyMaterials = () => {
   const [loading, setLoading] = useState(false);
   const [currentFolder, setCurrentFolder] = useState({
     id: null,
-    path: []
+    path: [],
   });
   const [isCreatingFolder, setIsCreatingFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
   const [editingItem, setEditingItem] = useState(null);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [numPages, setNumPages] = useState(null); // for PDF viewer
 
   // Fetch items when folder changes
   useEffect(() => {
     fetchItems();
-  }, [currentFolder.id]);
+  }, [currentFolder.id, fetchItems]);
 
-  const fetchItems = async () => {
+  const fetchItems = useCallback(async () => {
     try {
       setLoading(true);
       const response = await getStudyMaterials(currentFolder.id);
@@ -47,7 +51,7 @@ const StudyMaterials = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentFolder.id]);
 
   // Get current folder's items
   const getCurrentFolderItems = () => {
@@ -62,9 +66,9 @@ const StudyMaterials = () => {
     }
 
     const buildPath = (itemId) => {
-      const item = items.find(i => i.id === itemId);
+      const item = items.find((i) => i.id === itemId);
       if (!item) return [];
-      
+
       if (!item.parent_id) {
         return [{ id: item.id, name: item.name }];
       }
@@ -81,11 +85,11 @@ const StudyMaterials = () => {
     if (!newFolderName.trim()) return;
 
     try {
-      const response = await createFolder({
+      await createFolder({
         name: newFolderName,
-        parentId: currentFolder.id
+        parentId: currentFolder.id,
       });
-
+      
       message.success('Folder created successfully');
       await fetchItems();
       setNewFolderName('');
@@ -101,7 +105,7 @@ const StudyMaterials = () => {
     if (!files.length) return;
 
     try {
-      const response = await uploadFiles(files, currentFolder.id);
+      await uploadFiles(files, currentFolder.id);
       message.success('File uploaded successfully');
       await fetchItems();
     } catch (error) {
@@ -127,7 +131,7 @@ const StudyMaterials = () => {
   // Rename item
   const handleRename = async (itemId, newName) => {
     if (!newName.trim()) return;
-    
+
     try {
       await renameStudyMaterial(itemId, newName);
       message.success('Item renamed successfully');
@@ -138,16 +142,89 @@ const StudyMaterials = () => {
     }
   };
 
-  // Handle file download
-  const handleFileDownload = async (item) => {
-    if (item.type !== 'file') return;
+  // Function to render different file types
+  const renderFilePreview = (file) => {
+    const fileType = file.type?.toLowerCase() || '';
 
-    try {
-      const response = await getFileDownloadUrl(item.id);
-      window.open(response.data.signedUrl, '_blank');
-    } catch (error) {
-      message.error(error.message || 'Failed to download file');
+    // Image files
+    if (fileType.startsWith('image/')) {
+      return (
+        <img
+          src={file.url}
+          alt={file.name}
+          className="max-w-full h-auto rounded"
+        />
+      );
     }
+
+    // PDF files
+    if (fileType === 'application/pdf') {
+      return (
+        <Document
+          file={file.url}
+          onLoadSuccess={({ numPages }) => setNumPages(numPages)}
+          className="w-full"
+        >
+          {Array.from(new Array(numPages), (el, index) => (
+            <Page
+              key={`page_${index + 1}`}
+              pageNumber={index + 1}
+              className="mb-4"
+              width={window.innerWidth * 0.7}
+            />
+          ))}
+        </Document>
+      );
+    }
+
+    // Video files
+    if (fileType.startsWith('video/')) {
+      return (
+        <video controls className="w-full h-auto">
+          <source src={file.url} type={file.type} />
+          Your browser does not support the video tag.
+        </video>
+      );
+    }
+
+    // Audio files
+    if (fileType.startsWith('audio/')) {
+      return (
+        <audio controls className="w-full mt-4">
+          <source src={file.url} type={file.type} />
+          Your browser does not support the audio tag.
+        </audio>
+      );
+    }
+
+    // Text files
+    if (fileType === 'text/plain') {
+      return (
+        <iframe
+          src={file.url}
+          className="w-full h-full bg-white p-4"
+          title={file.name}
+        />
+      );
+    }
+
+    // Default viewer for other file types
+    return (
+      <div className="text-center p-4">
+        <p className="text-gray-300 mb-4">
+          This file type ({file.type || 'unknown'}) cannot be previewed
+          directly.
+        </p>
+        <a
+          href={file.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+        >
+          Download File
+        </a>
+      </div>
+    );
   };
 
   // Render breadcrumb navigation
@@ -165,8 +242,8 @@ const StudyMaterials = () => {
           <button
             onClick={() => navigateToFolder(item.id)}
             className={`px-2 py-1 rounded hover:bg-gray-800 ${
-              index === currentFolder.path.length - 1 
-                ? 'font-medium text-blue-400' 
+              index === currentFolder.path.length - 1
+                ? 'font-medium text-blue-400'
                 : 'text-gray-300'
             }`}
           >
@@ -186,42 +263,64 @@ const StudyMaterials = () => {
     }
 
     if (!currentItems.length) {
-      return <div className="text-gray-400 text-center py-4">No items found</div>;
+      return (
+        <div className="text-gray-400 text-center py-4">No items found</div>
+      );
     }
 
     return (
       <div className="space-y-1">
-        {currentItems.map(item => (
-          <div 
+        {currentItems.map((item) => (
+          <div
             key={item.id}
             className="flex items-center justify-between p-3 hover:bg-gray-800 rounded-lg group"
           >
-            <div 
+            <div
               className="flex items-center space-x-3 flex-1 text-white cursor-pointer"
-              onClick={() => item.type === 'folder' ? navigateToFolder(item.id) : handleFileDownload(item)}
+              onClick={async () => {
+                if (item.type === 'folder') {
+                  navigateToFolder(item.id);
+                } else {
+                  try {
+                    const response = await getFileDownloadUrl(item.id);
+                    setSelectedFile({
+                      url: response.data.signedUrl,
+                      name: item.name,
+                      type: item.mime_type || item.type, // Use mime_type if available
+                    });
+                  } catch (error) {
+                    message.error(error.message || 'Failed to load file');
+                  }
+                }
+              }}
             >
               {item.type === 'folder' ? (
                 <FolderIcon className="w-5 h-5 text-blue-400" />
               ) : (
                 <DocumentIcon className="w-5 h-5 text-gray-400" />
               )}
-              
+
               {editingItem?.id === item.id ? (
                 <input
                   type="text"
                   value={editingItem.name}
-                  onChange={(e) => setEditingItem({ ...editingItem, name: e.target.value })}
+                  onChange={(e) =>
+                    setEditingItem({ ...editingItem, name: e.target.value })
+                  }
                   onBlur={() => handleRename(item.id, editingItem.name)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleRename(item.id, editingItem.name)}
+                  onKeyDown={(e) =>
+                    e.key === 'Enter' && handleRename(item.id, editingItem.name)
+                  }
                   className="px-2 py-1 bg-gray-700 border border-gray-600 rounded text-white"
                   autoFocus
                 />
               ) : (
-              <div>
+                <div>
                   <p className="font-medium">{item.name}</p>
                   {item.type === 'file' && (
                     <p className="text-sm text-gray-400">
-                      {(item.file_size / (1024 * 1024)).toFixed(1)} MB • {new Date(item.created_at).toLocaleDateString()}
+                      {(item.file_size / (1024 * 1024)).toFixed(1)} MB •{' '}
+                      {new Date(item.created_at).toLocaleDateString()}
                     </p>
                   )}
                 </div>
@@ -229,14 +328,14 @@ const StudyMaterials = () => {
             </div>
 
             <div className="flex items-center space-x-2 opacity-0 group-hover:opacity-100">
-              <button 
+              <button
                 onClick={() => setEditingItem({ id: item.id, name: item.name })}
                 className="p-1 hover:bg-gray-700 rounded text-gray-300"
                 title="Rename"
               >
                 <PencilIcon className="w-4 h-4" />
               </button>
-              <button 
+              <button
                 onClick={() => handleDelete(item.id)}
                 className="p-1 hover:bg-gray-700 rounded text-gray-300"
                 title="Delete"
@@ -250,11 +349,31 @@ const StudyMaterials = () => {
     );
   };
 
+  // Add this helper function for downloading
+  const downloadFile = async (url, filename) => {
+    try {
+      const response = await fetch(url);
+      const blob = await response.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(downloadUrl);
+    } catch (error) {
+      message.error(error.message || 'Failed to download file');
+    }
+  };
+
   return (
     <div className="h-full flex flex-col bg-gray-900 rounded-lg">
       <div className="p-4 border-b border-gray-800">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold text-white capitalize">{subject} Study Materials</h2>
+          <h2 className="text-xl font-bold text-white capitalize">
+            {subject} Study Materials
+          </h2>
           <div className="flex items-center space-x-2">
             <button
               onClick={() => setIsCreatingFolder(true)}
@@ -271,7 +390,7 @@ const StudyMaterials = () => {
               multiple
               accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png"
             />
-            <label 
+            <label
               htmlFor="file-upload"
               className="p-2 hover:bg-gray-800 rounded cursor-pointer text-gray-300"
               title="Upload Files"
@@ -282,7 +401,7 @@ const StudyMaterials = () => {
         </div>
 
         {renderBreadcrumbs()}
-        
+
         {isCreatingFolder && (
           <div className="mt-2 flex items-center space-x-2">
             <input
@@ -312,9 +431,36 @@ const StudyMaterials = () => {
           </div>
         )}
       </div>
-      
+
       <div className="flex-1 overflow-y-auto p-4">
-        {renderItems()}
+        {selectedFile ? (
+          <div className="h-full flex flex-col">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-white">{selectedFile.name}</h3>
+              <div className="flex gap-2">
+                <button
+                  onClick={() =>
+                    downloadFile(selectedFile.url, selectedFile.name)
+                  }
+                  className="text-gray-300 hover:text-white px-3 py-1 rounded hover:bg-gray-800"
+                >
+                  Download
+                </button>
+                <button
+                  onClick={() => setSelectedFile(null)}
+                  className="text-gray-300 hover:text-white px-3 py-1 rounded hover:bg-gray-800"
+                >
+                  Back to Files
+                </button>
+              </div>
+            </div>
+            <div className="flex-1 bg-gray-800 rounded p-4">
+              {renderFilePreview(selectedFile)}
+            </div>
+          </div>
+        ) : (
+          renderItems()
+        )}
       </div>
     </div>
   );
