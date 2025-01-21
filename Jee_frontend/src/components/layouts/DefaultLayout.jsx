@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
-import { useLocation, useNavigate, useParams, Outlet } from 'react-router-dom';
+import { useLocation, useParams, Outlet } from 'react-router-dom';
 import PropTypes from 'prop-types';
 import { ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline';
 import Navbar from '../Navbar';
 import ChatBot from '../ChatBot';
 import { SelectionProvider } from '../../context/SelectionContext';
+import { useScrollDirection } from '../../hooks/useScrollDirection';
+import { getBooksList } from '../../interceptors/services';
 
 const KeyboardShortcut = ({ shortcut }) => (
   <span className="inline-flex items-center text-[9px] text-gray-500 mt-0.5">
@@ -25,8 +27,6 @@ KeyboardShortcut.propTypes = {
 const Sidebar = ({ isMobileOpen, setIsMobileOpen }) => {
   const location = useLocation();
   const { subject } = useParams();
-  const navigate = useNavigate();
-  const isDashboard = location.pathname.includes('/dashboard');
 
   const menuItems = [
     { icon: "📚", label: "Books", path: "books" },
@@ -38,7 +38,7 @@ const Sidebar = ({ isMobileOpen, setIsMobileOpen }) => {
     setIsMobileOpen(false);
   }, [location.pathname, setIsMobileOpen]);
 
-  if (!isDashboard) return null;
+  if (!location.pathname.includes('/dashboard')) return null;
 
   return (
     <div className="fixed inset-y-0 left-0 z-40 flex md:z-0 pt-16">
@@ -75,7 +75,6 @@ const Sidebar = ({ isMobileOpen, setIsMobileOpen }) => {
                   <li key={item.path}>
                     <button
                       onClick={() => {
-                        navigate(`/dashboard/${subject}/${item.path}`);
                         if (window.innerWidth < 768) {
                           setIsMobileOpen(false);
                         }
@@ -115,8 +114,54 @@ const DefaultLayout = ({ children }) => {
   const [isResizing, setIsResizing] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [selectedText, setSelectedText] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filteredBooks, setFilteredBooks] = useState({});
+  const [allBooks, setAllBooks] = useState({});
   const location = useLocation();
   const isDashboard = location.pathname.includes('/dashboard');
+  const scrollDirection = useScrollDirection();
+  const { subject } = useParams();
+
+  // Fetch books when component mounts or subject changes
+  useEffect(() => {
+    const fetchBooks = async () => {
+      if (!subject) return;
+      
+      try {
+        const response = await getBooksList(subject);
+        const booksData = response.data;
+
+        // Group books by class (XI or XII)
+        const groupedBooks = booksData.reduce((acc, book) => {
+          const isClass12 = book.topic.toLowerCase().includes('xii') || 
+                          book.file_name.toLowerCase().includes('xii');
+          const className = isClass12 ? 'Class XII' : 'Class XI';
+          
+          if (!acc[className]) {
+            acc[className] = [];
+          }
+          
+          acc[className].push({
+            ...book,
+            displayName: book.file_name.replace('.pdf', '')
+                                     .replace('Unit', 'Unit:')
+                                     .split('Unit:')
+                                     .map(part => part.trim())
+                                     .filter(Boolean)
+          });
+          
+          return acc;
+        }, {});
+
+        setAllBooks(groupedBooks);
+        setFilteredBooks(groupedBooks);
+      } catch (error) {
+        console.error('Error fetching books:', error);
+      }
+    };
+
+    fetchBooks();
+  }, [subject]);
 
   // Handle keyboard shortcuts
   useEffect(() => {
@@ -140,6 +185,31 @@ const DefaultLayout = ({ children }) => {
   // Handle chat width changes
   const handleChatResize = (newWidth) => {
     setChatWidth(newWidth);
+  };
+
+  const handleSearch = (query) => {
+    setSearchQuery(query);
+    
+    if (!query.trim()) {
+      setFilteredBooks(allBooks);
+      return;
+    }
+
+    // Filter books based on search query
+    const filtered = Object.entries(allBooks).reduce((acc, [className, classBooks]) => {
+      const filteredClassBooks = classBooks.filter(book => 
+        book.topic.toLowerCase().includes(query.toLowerCase()) ||
+        book.file_name.toLowerCase().includes(query.toLowerCase())
+      );
+
+      if (filteredClassBooks.length > 0) {
+        acc[className] = filteredClassBooks;
+      }
+
+      return acc;
+    }, {});
+
+    setFilteredBooks(filtered);
   };
 
   return (
@@ -181,9 +251,39 @@ const DefaultLayout = ({ children }) => {
               display: isFullScreen ? 'none' : 'block'
             }}
           >
-            <div className="h-full max-w-full">
+            {/* Search Bar - Only show in dashboard */}
+            {isDashboard && (
+              <div 
+                className={`fixed z-40 transition-all duration-300 ease-in-out bg-black/95 backdrop-blur-sm ${
+                  scrollDirection === 'down' ? '-translate-y-full' : 'translate-y-0'
+                } ${
+                  isDashboard && !isFullScreen && isSidebarOpen ? 'md:left-64' : 'left-0'
+                } right-0 top-[4.5rem]`}
+                style={{
+                  right: isDashboard && isChatOpen && !isFullScreen && window.innerWidth >= 768 ? `${chatWidth}px` : '0',
+                }}
+              >
+                <div className="relative w-full max-w-2xl mx-auto px-4 py-2">
+                  <input
+                    type="text"
+                    placeholder="Search topics, chapters, or concepts..."
+                    className="w-full bg-gray-900 text-white border border-gray-800 rounded-lg px-4 py-2.5 pl-10 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    onChange={(e) => handleSearch(e.target.value)}
+                    value={searchQuery}
+                  />
+                  <div className="absolute inset-y-0 left-0 pl-7 flex items-center pointer-events-none">
+                    <svg className="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                </div>
+              </div>
+            )}
+            {/* Add spacing div to prevent content from being hidden */}
+            {isDashboard && <div className="h-16" />}
+            <div className="max-w-full">
               {location.pathname.includes('/dashboard') ? (
-                <Outlet context={{ setSelectedText, setIsChatOpen, isChatOpen }} />
+                <Outlet context={{ setSelectedText, setIsChatOpen, isChatOpen, filteredBooks }} />
               ) : (
                 children
               )}

@@ -270,6 +270,16 @@ const ChatBot = ({
       setSelectedTextPreview(null);
     }
 
+    // Add image message if there's a pinned image
+    if (pinnedImage) {
+      setMessages(prev => [...prev, {
+        sender: 'user',
+        type: 'image',
+        content: pinnedImage.content,
+        fileName: pinnedImage.fileName
+      }]);
+    }
+
     if (chatMessage.trim()) {
       setMessages(prev => [...prev, {
         sender: 'user',
@@ -306,6 +316,9 @@ const ChatBot = ({
       setDisplayedResponse('');
       setCurrentTypingIndex(0);
       setIsTyping(true);
+      
+      // Clear pinned image after sending
+      setPinnedImage(null);
     } catch (error) {
       const errorMessage = `Failed to process message: ${error?.message || 'Please try again'}`;
       setMessages((prev) => [
@@ -415,14 +428,31 @@ const ChatBot = ({
           }`}
         >
           {msg.type === 'image' ? (
-            <div className="relative mb-2">
-              <img
-                src={msg.content}
-                alt="Uploaded content"
-                className="max-w-full h-auto rounded-lg object-contain"
-                style={{ maxHeight: '300px' }}
-              />
-              <div className="mt-2 text-sm text-gray-300">{msg.fileName}</div>
+            <div className="space-y-2">
+              <div className="relative">
+                <img
+                  src={msg.content}
+                  alt="Uploaded content"
+                  className="max-w-full h-auto rounded-lg object-contain"
+                  style={{ maxHeight: '300px' }}
+                />
+                {msg.fileName && (
+                  <div className="mt-2 text-sm text-gray-300 flex items-center gap-2">
+                    <PaperClipIcon className="h-4 w-4" />
+                    <span>{msg.fileName}</span>
+                  </div>
+                )}
+              </div>
+              {msg.caption && (
+                <p className="text-sm text-gray-300 mt-1">{msg.caption}</p>
+              )}
+            </div>
+          ) : msg.type === 'selected-text' ? (
+            <div className="space-y-1">
+              <div className="text-xs text-gray-300">{msg.source}</div>
+              <pre className="whitespace-pre-wrap font-sans text-[15px] leading-relaxed">
+                {content}
+              </pre>
             </div>
           ) : (
             <pre className="whitespace-pre-wrap font-sans text-[15px] leading-relaxed">

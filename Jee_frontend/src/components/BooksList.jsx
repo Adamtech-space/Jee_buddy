@@ -1,9 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { useNavigate, useParams } from 'react-router-dom';
-import { message, Modal } from 'antd';
-import { getBooksList } from '../interceptors/services';
-import { Document, Page, pdfjs } from 'react-pdf';
+import { useNavigate, useParams, useOutletContext } from 'react-router-dom';
+import { pdfjs } from 'react-pdf';
 
 // Set up PDF.js worker
 pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
@@ -12,63 +10,15 @@ const BooksList = () => {
   const navigate = useNavigate();
   const { subject } = useParams();
   const [selectedBook, setSelectedBook] = useState(null);
-  const [books, setBooks] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchBooks = async () => {
-      try {
-        setLoading(true);
-        const response = await getBooksList(subject);
-        const booksData = response.data;
-
-        // Group books by class (XI or XII)
-        const groupedBooks = booksData.reduce((acc, book) => {
-          const isClass12 = book.topic.toLowerCase().includes('xii') || 
-                          book.file_name.toLowerCase().includes('xii');
-          const className = isClass12 ? 'Class XII' : 'Class XI';
-          
-          if (!acc[className]) {
-            acc[className] = [];
-          }
-          
-          acc[className].push({
-            ...book,
-            displayName: book.file_name.replace('.pdf', '')
-                                     .replace('Unit', 'Unit:')
-                                     .split('Unit:')
-                                     .map(part => part.trim())
-                                     .filter(Boolean)
-          });
-          
-          return acc;
-        }, {});
-
-        setBooks(groupedBooks);
-      } catch (error) {
-        message.error(error.message || 'Failed to fetch books');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (subject) {
-      fetchBooks();
-    }
-  }, [subject]);
+  const { filteredBooks } = useOutletContext();
 
   const handleBookClick = (book) => {
     setSelectedBook(selectedBook?.id === book.id ? null : book);
   };
 
   const handlePdfClick = (url) => {
-    // Navigate to the PDF viewer page with the URL
     const encodedUrl = encodeURIComponent(url);
     navigate(`/dashboard/${subject}/pdf/${encodedUrl}`, { state: { pdfUrl: url } });
-  };
-
-  const onDocumentLoadSuccess = ({ numPages }) => {
-    setNumPages(numPages);
   };
 
   const getRandomColor = () => {
@@ -107,10 +57,10 @@ const BooksList = () => {
     }
   };
 
-  if (loading) {
+  if (!filteredBooks || Object.keys(filteredBooks).length === 0) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-blue-500"></div>
+      <div className="text-center py-8">
+        <p className="text-gray-400">No books available for this subject.</p>
       </div>
     );
   }
@@ -125,7 +75,7 @@ const BooksList = () => {
         animate="visible"
         className="grid grid-cols-1 gap-8"
       >
-        {Object.entries(books).map(([className, classBooks]) => (
+        {Object.entries(filteredBooks).map(([className, classBooks]) => (
           <div key={className} className="space-y-6">
             <h3 className="text-2xl font-semibold text-white">{className}</h3>
             <div className="grid grid-cols-1 gap-6">
@@ -194,12 +144,6 @@ const BooksList = () => {
           </div>
         ))}
       </motion.div>
-
-      {Object.keys(books).length === 0 && (
-        <div className="text-center py-8">
-          <p className="text-gray-400">No books available for this subject.</p>
-        </div>
-      )}
     </div>
   );
 };
