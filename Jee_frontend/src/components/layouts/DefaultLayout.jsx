@@ -4,6 +4,7 @@ import PropTypes from 'prop-types';
 import { ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline';
 import Navbar from '../Navbar';
 import ChatBot from '../ChatBot';
+import { SelectionProvider } from '../../context/SelectionContext';
 
 const KeyboardShortcut = ({ shortcut }) => (
   <span className="inline-flex items-center text-[9px] text-gray-500 mt-0.5">
@@ -142,112 +143,114 @@ const DefaultLayout = ({ children }) => {
   };
 
   return (
-    <div className="min-h-screen bg-black overflow-x-hidden">
-      {/* Fixed navbar at top */}
-      <div className="fixed top-0 left-0 right-0 z-50">
-        <Navbar 
-          isMobileOpen={isMobileOpen} 
-          setIsMobileOpen={setIsMobileOpen}
-          isChatOpen={isChatOpen}
-          setIsChatOpen={setIsChatOpen}
-          isSidebarOpen={isSidebarOpen}
-          setIsSidebarOpen={setIsSidebarOpen}
-        />
-      </div>
+    <SelectionProvider>
+      <div className="min-h-screen bg-black overflow-x-hidden">
+        {/* Fixed navbar at top */}
+        <div className="fixed top-0 left-0 right-0 z-50">
+          <Navbar 
+            isMobileOpen={isMobileOpen} 
+            setIsMobileOpen={setIsMobileOpen}
+            isChatOpen={isChatOpen}
+            setIsChatOpen={setIsChatOpen}
+            isSidebarOpen={isSidebarOpen}
+            setIsSidebarOpen={setIsSidebarOpen}
+          />
+        </div>
 
-      <div className="flex min-h-screen pt-16 relative">
-        {/* Sidebar */}
-        {isDashboard && !isFullScreen && (
-          <div className={`fixed inset-y-0 left-0 transform transition-transform duration-300 ease-in-out ${
-            !isSidebarOpen ? '-translate-x-64' : 'translate-x-0'
-          } ${isMobileOpen ? 'z-40' : 'z-0'}`}>
-            <Sidebar 
-              isMobileOpen={isMobileOpen}
-              setIsMobileOpen={setIsMobileOpen}
-            />
-          </div>
-        )}
-        
-        {/* Main content */}
-        <main 
-          className={`flex-1 w-full transition-all duration-300 ease-in-out ${
-            isDashboard && !isFullScreen && isSidebarOpen ? 'md:pl-64' : ''
-          } px-2 sm:px-4 md:px-6`}
-          style={{
-            paddingRight: isDashboard && isChatOpen && !isFullScreen && window.innerWidth >= 768 ? `${chatWidth}px` : '0',
-            transition: isResizing ? 'none' : 'all 0.3s ease-out',
-            display: isFullScreen ? 'none' : 'block'
-          }}
-        >
-          <div className="h-full max-w-full">
-            {location.pathname.includes('/dashboard') ? (
-              <Outlet context={{ setSelectedText, setIsChatOpen, isChatOpen }} />
-            ) : (
-              children
-            )}
-          </div>
-        </main>
-
-        {/* Chat toggle button - Only show on tablet and larger screens when chat is closed */}
-        {isDashboard && !isChatOpen && !isFullScreen && window.innerWidth >= 768 && (
-          <button
-            onClick={() => setIsChatOpen(true)}
-            className="fixed bottom-6 right-6 w-14 h-14 bg-blue-500 rounded-full flex items-center justify-center shadow-lg z-50 hover:bg-blue-600 transition-colors"
-            aria-label="Open AI Chat"
-          >
-            <ChatBubbleLeftRightIcon className="w-6 h-6 text-white" />
-          </button>
-        )}
-
-        {/* Mobile chat toggle button - Only show on mobile when chat is closed */}
-        {isDashboard && !isChatOpen && !isFullScreen && window.innerWidth < 768 && (
-          <button
-            onClick={() => {
-              setIsChatOpen(true);
-              setIsFullScreen(true);
-            }}
-            className="fixed bottom-4 right-4 w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center shadow-lg z-50 hover:bg-blue-600 transition-colors"
-            aria-label="Open AI Chat"
-          >
-            <ChatBubbleLeftRightIcon className="w-5 h-5 text-white" />
-          </button>
-        )}
-
-        {/* ChatBot */}
-        {isDashboard && (
-          <div 
-            className={`fixed transform transition-transform duration-300 ease-in-out ${
-              isFullScreen ? 'inset-0' : 'top-16 bottom-0 right-0'
-            } ${isChatOpen ? 'translate-x-0' : 'translate-x-full'}`}
-            style={{ 
-              width: isFullScreen || window.innerWidth < 768 ? '100%' : `${chatWidth}px`,
-              zIndex: isFullScreen ? 60 : 50
+        <div className="flex min-h-screen pt-16 relative">
+          {/* Sidebar */}
+          {isDashboard && !isFullScreen && (
+            <div className={`fixed inset-y-0 left-0 transform transition-transform duration-300 ease-in-out ${
+              !isSidebarOpen ? '-translate-x-64' : 'translate-x-0'
+            } ${isMobileOpen ? 'z-40' : 'z-0'}`}>
+              <Sidebar 
+                isMobileOpen={isMobileOpen}
+                setIsMobileOpen={setIsMobileOpen}
+              />
+            </div>
+          )}
+          
+          {/* Main content */}
+          <main 
+            className={`flex-1 w-full transition-all duration-300 ease-in-out ${
+              isDashboard && !isFullScreen && isSidebarOpen ? 'md:pl-64' : ''
+            } px-2 sm:px-4 md:px-6`}
+            style={{
+              paddingRight: isDashboard && isChatOpen && !isFullScreen && window.innerWidth >= 768 ? `${chatWidth}px` : '0',
+              transition: isResizing ? 'none' : 'all 0.3s ease-out',
+              display: isFullScreen ? 'none' : 'block'
             }}
           >
-            <ChatBot 
-              isOpen={isChatOpen}
-              setIsOpen={setIsChatOpen}
-              isFullScreen={isFullScreen}
-              setIsFullScreen={setIsFullScreen}
-              subject={location.pathname.split('/')[2]}
-              topic={location.pathname.split('/')[4]}
-              selectedText={selectedText}
-              setSelectedText={setSelectedText}
-              onResize={(width) => {
-                if (window.innerWidth >= 768) {
-                  setIsResizing(true);
-                  handleChatResize(width);
-                  clearTimeout(window.resizeTimer);
-                  window.resizeTimer = setTimeout(() => {
-                    setIsResizing(false);
-                  }, 100);
-                }
+            <div className="h-full max-w-full">
+              {location.pathname.includes('/dashboard') ? (
+                <Outlet context={{ setSelectedText, setIsChatOpen, isChatOpen }} />
+              ) : (
+                children
+              )}
+            </div>
+          </main>
+
+          {/* Chat toggle button - Only show on tablet and larger screens when chat is closed */}
+          {isDashboard && !isChatOpen && !isFullScreen && window.innerWidth >= 768 && (
+            <button
+              onClick={() => setIsChatOpen(true)}
+              className="fixed bottom-6 right-6 w-14 h-14 bg-blue-500 rounded-full flex items-center justify-center shadow-lg z-50 hover:bg-blue-600 transition-colors"
+              aria-label="Open AI Chat"
+            >
+              <ChatBubbleLeftRightIcon className="w-6 h-6 text-white" />
+            </button>
+          )}
+
+          {/* Mobile chat toggle button - Only show on mobile when chat is closed */}
+          {isDashboard && !isChatOpen && !isFullScreen && window.innerWidth < 768 && (
+            <button
+              onClick={() => {
+                setIsChatOpen(true);
+                setIsFullScreen(true);
               }}
-            />
-          </div>
-        )}
+              className="fixed bottom-4 right-4 w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center shadow-lg z-50 hover:bg-blue-600 transition-colors"
+              aria-label="Open AI Chat"
+            >
+              <ChatBubbleLeftRightIcon className="w-5 h-5 text-white" />
+            </button>
+          )}
+
+          {/* ChatBot */}
+          {isDashboard && (
+            <div 
+              className={`fixed transform transition-transform duration-300 ease-in-out ${
+                isFullScreen ? 'inset-0' : 'top-16 bottom-0 right-0'
+              } ${isChatOpen ? 'translate-x-0' : 'translate-x-full'}`}
+              style={{ 
+                width: isFullScreen || window.innerWidth < 768 ? '100%' : `${chatWidth}px`,
+                zIndex: isFullScreen ? 60 : 50
+              }}
+            >
+              <ChatBot 
+                isOpen={isChatOpen}
+                setIsOpen={setIsChatOpen}
+                isFullScreen={isFullScreen}
+                setIsFullScreen={setIsFullScreen}
+                subject={location.pathname.split('/')[2]}
+                topic={location.pathname.split('/')[4]}
+                selectedText={selectedText}
+                setSelectedText={setSelectedText}
+                onResize={(width) => {
+                  if (window.innerWidth >= 768) {
+                    setIsResizing(true);
+                    handleChatResize(width);
+                    clearTimeout(window.resizeTimer);
+                    window.resizeTimer = setTimeout(() => {
+                      setIsResizing(false);
+                    }, 100);
+                  }
+                }}
+              />
+            </div>
+          )}
+        </div>
       </div>
-    </div>
+    </SelectionProvider>
   );
 };
 

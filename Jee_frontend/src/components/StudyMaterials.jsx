@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useOutletContext } from 'react-router-dom';
 import { message } from 'antd';
 import {
   CloudArrowUpIcon,
@@ -20,10 +20,13 @@ import {
   getFileDownloadUrl,
 } from '../interceptors/services';
 import { Document, Page, pdfjs } from 'react-pdf';
+import { useSelection } from '../context/SelectionContext';
+import SelectionPopup from './SelectionPopup';
 pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 
 const StudyMaterials = () => {
   const { subject } = useParams();
+  const { setIsChatOpen } = useOutletContext();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [currentFolder, setCurrentFolder] = useState({
@@ -35,6 +38,7 @@ const StudyMaterials = () => {
   const [editingItem, setEditingItem] = useState(null);
   const [selectedFile, setSelectedFile] = useState(null);
   const [numPages, setNumPages] = useState(null); // for PDF viewer
+  const { handleTextSelection } = useSelection();
 
   // Define fetchItems with useCallback before using it in useEffect
   const fetchItems = useCallback(async () => {
@@ -368,102 +372,128 @@ const StudyMaterials = () => {
     }
   };
 
+  const handleSaveToFlashCard = (text) => {
+    // Implement flash card saving logic
+    console.log('Save to flash card:', text);
+  };
+
+  const handleAskAI = (text) => {
+    setIsChatOpen(true);
+    // Add a small delay to ensure chat is open before setting message
+    setTimeout(() => {
+      // You'll need to implement a way to communicate with ChatBot
+      window.dispatchEvent(new CustomEvent('setAIQuestion', { 
+        detail: { question: text }
+      }));
+    }, 100);
+  };
+
   return (
-    <div className="h-full flex flex-col bg-gray-900 rounded-lg">
-      <div className="p-4 border-b border-gray-800">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold text-white capitalize">
-            {subject} Study Materials
-          </h2>
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={() => setIsCreatingFolder(true)}
-              className="p-2 hover:bg-gray-800 rounded text-gray-300"
-              title="Create Folder"
-            >
-              <FolderPlusIcon className="w-5 h-5" />
-            </button>
-            <input
-              type="file"
-              id="file-upload"
-              className="hidden"
-              onChange={handleFileUpload}
-              multiple
-              accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png"
-            />
-            <label
-              htmlFor="file-upload"
-              className="p-2 hover:bg-gray-800 rounded cursor-pointer text-gray-300"
-              title="Upload Files"
-            >
-              <CloudArrowUpIcon className="w-5 h-5" />
-            </label>
+    <>
+      <div
+        onMouseUp={handleTextSelection}
+        onTouchEnd={handleTextSelection}
+        className="h-full flex flex-col bg-gray-900 rounded-lg"
+      >
+        <div className="p-4 border-b border-gray-800">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-bold text-white capitalize">
+              {subject} Study Materials
+            </h2>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => setIsCreatingFolder(true)}
+                className="p-2 hover:bg-gray-800 rounded text-gray-300"
+                title="Create Folder"
+              >
+                <FolderPlusIcon className="w-5 h-5" />
+              </button>
+              <input
+                type="file"
+                id="file-upload"
+                className="hidden"
+                onChange={handleFileUpload}
+                multiple
+                accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png"
+              />
+              <label
+                htmlFor="file-upload"
+                className="p-2 hover:bg-gray-800 rounded cursor-pointer text-gray-300"
+                title="Upload Files"
+              >
+                <CloudArrowUpIcon className="w-5 h-5" />
+              </label>
+            </div>
           </div>
+
+          {renderBreadcrumbs()}
+
+          {isCreatingFolder && (
+            <div className="mt-2 flex items-center space-x-2">
+              <input
+                type="text"
+                value={newFolderName}
+                onChange={(e) => setNewFolderName(e.target.value)}
+                placeholder="New Folder"
+                className="px-2 py-1 bg-gray-800 border border-gray-700 rounded text-white"
+                autoFocus
+                onKeyDown={(e) => e.key === 'Enter' && handleCreateFolder()}
+              />
+              <button
+                onClick={handleCreateFolder}
+                className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
+              >
+                Create
+              </button>
+              <button
+                onClick={() => {
+                  setIsCreatingFolder(false);
+                  setNewFolderName('');
+                }}
+                className="px-3 py-1 border border-gray-700 rounded hover:bg-gray-800 text-gray-300"
+              >
+                Cancel
+              </button>
+            </div>
+          )}
         </div>
 
-        {renderBreadcrumbs()}
-
-        {isCreatingFolder && (
-          <div className="mt-2 flex items-center space-x-2">
-            <input
-              type="text"
-              value={newFolderName}
-              onChange={(e) => setNewFolderName(e.target.value)}
-              placeholder="New Folder"
-              className="px-2 py-1 bg-gray-800 border border-gray-700 rounded text-white"
-              autoFocus
-              onKeyDown={(e) => e.key === 'Enter' && handleCreateFolder()}
-            />
-            <button
-              onClick={handleCreateFolder}
-              className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
-            >
-              Create
-            </button>
-            <button
-              onClick={() => {
-                setIsCreatingFolder(false);
-                setNewFolderName('');
-              }}
-              className="px-3 py-1 border border-gray-700 rounded hover:bg-gray-800 text-gray-300"
-            >
-              Cancel
-            </button>
-          </div>
-        )}
-      </div>
-
-      <div className="flex-1 overflow-y-auto p-4">
-        {selectedFile ? (
-          <div className="h-full flex flex-col">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-white">{selectedFile.name}</h3>
-              <div className="flex gap-2">
-                <button
-                  onClick={() =>
-                    downloadFile(selectedFile.url, selectedFile.name)
-                  }
-                  className="text-gray-300 hover:text-white px-3 py-1 rounded hover:bg-gray-800"
-                >
-                  Download
-                </button>
-                <button
-                  onClick={() => setSelectedFile(null)}
-                  className="text-gray-300 hover:text-white px-3 py-1 rounded hover:bg-gray-800"
-                >
-                  Back to Files
-                </button>
+        <div className="flex-1 overflow-y-auto p-4">
+          {selectedFile ? (
+            <div className="h-full flex flex-col">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-white">{selectedFile.name}</h3>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() =>
+                      downloadFile(selectedFile.url, selectedFile.name)
+                    }
+                    className="text-gray-300 hover:text-white px-3 py-1 rounded hover:bg-gray-800"
+                  >
+                    Download
+                  </button>
+                  <button
+                    onClick={() => setSelectedFile(null)}
+                    className="text-gray-300 hover:text-white px-3 py-1 rounded hover:bg-gray-800"
+                  >
+                    Back to Files
+                  </button>
+                </div>
+              </div>
+              <div className="flex-1 bg-gray-800 rounded p-4">
+                {renderFilePreview(selectedFile)}
               </div>
             </div>
-            <div className="flex-1 bg-gray-800 rounded p-4">
-              {renderFilePreview(selectedFile)}
-            </div>
-          </div>
-        ) : (
-          renderItems()
-        )}
+          ) : (
+            renderItems()
+          )}
+        </div>
       </div>
-    </div>
+      <SelectionPopup
+        onSaveToFlashCard={handleSaveToFlashCard}
+        onAskAI={handleAskAI}
+      />
+    </>
   );
 };
 
