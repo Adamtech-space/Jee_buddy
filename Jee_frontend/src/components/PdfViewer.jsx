@@ -70,7 +70,10 @@ const PdfViewer = () => {
     setIsChatOpen(true);
     setTimeout(() => {
       window.dispatchEvent(new CustomEvent('setAIQuestion', { 
-        detail: { question: text }
+        detail: { 
+          question: text,
+          source: pdfTitle
+        }
       }));
     }, 100);
   };
@@ -108,7 +111,7 @@ const PdfViewer = () => {
       {/* PDF Viewer */}
       {!loading && !error && (
         <div 
-          className="w-full h-[calc(100vh-64px)] bg-white"
+          className="w-full h-[calc(100vh-64px)] bg-white relative"
           onMouseUp={handleTextSelection}
           onTouchEnd={handleTextSelection}
         >

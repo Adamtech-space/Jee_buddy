@@ -1,4 +1,4 @@
-import { createContext, useContext, useState } from 'react';
+import { createContext, useContext, useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 
 const SelectionContext = createContext();
@@ -9,22 +9,66 @@ export const SelectionProvider = ({ children }) => {
   const [showPopup, setShowPopup] = useState(false);
 
   const handleTextSelection = (e) => {
-    const selection = window.getSelection();
-    const text = selection.toString().trim();
-
-    if (text) {
-      const range = selection.getRangeAt(0);
-      const rect = range.getBoundingClientRect();
-      
-      setSelectedText(text);
-      setSelectionPosition({
-        x: rect.x + rect.width / 2,
-        y: rect.y + window.scrollY
-      });
-      setShowPopup(true);
-    } else {
-      setShowPopup(false);
+    // Don't handle selection if it's in an input or contenteditable element
+    if (
+      e.target instanceof HTMLInputElement ||
+      e.target instanceof HTMLTextAreaElement ||
+      e.target.isContentEditable
+    ) {
+      return;
     }
+
+    // Use requestAnimationFrame to wait for the selection to be complete
+    requestAnimationFrame(() => {
+      const selection = window.getSelection();
+      const text = selection.toString().trim();
+
+      if (text) {
+        const range = selection.getRangeAt(0);
+        const rect = range.getBoundingClientRect();
+        
+        // For mobile, position the popup above the selection
+        const isMobile = window.innerWidth < 768;
+        const y = isMobile ? 
+          rect.top + window.scrollY - 10 : // Position above selection on mobile
+          rect.bottom + window.scrollY;    // Position below selection on desktop
+        
+        setSelectedText(text);
+        setSelectionPosition({
+          x: rect.x + rect.width / 2,
+          y: y
+        });
+        setShowPopup(true);
+
+        // On mobile, prevent the default selection menu
+        if (isMobile && e.type === 'touchend') {
+          e.preventDefault();
+        }
+      } else {
+        setShowPopup(false);
+      }
+    });
+  };
+
+  // Handle touch selection specifically
+  const handleTouchSelection = (e) => {
+    // Wait a bit for the selection to be complete
+    setTimeout(() => {
+      const selection = window.getSelection();
+      const text = selection.toString().trim();
+
+      if (text) {
+        const range = selection.getRangeAt(0);
+        const rect = range.getBoundingClientRect();
+        
+        setSelectedText(text);
+        setSelectionPosition({
+          x: rect.x + rect.width / 2,
+          y: rect.top + window.scrollY - 10 // Position above selection
+        });
+        setShowPopup(true);
+      }
+    }, 100);
   };
 
   const clearSelection = () => {
@@ -33,6 +77,22 @@ export const SelectionProvider = ({ children }) => {
     setShowPopup(false);
     window.getSelection()?.removeAllRanges();
   };
+
+  // Add click/touch outside handler to close popup
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (showPopup && !e.target.closest('.selection-popup')) {
+        clearSelection();
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, [showPopup]);
 
   return (
     <SelectionContext.Provider value={{
@@ -43,6 +103,7 @@ export const SelectionProvider = ({ children }) => {
       showPopup,
       setShowPopup,
       handleTextSelection,
+      handleTouchSelection,
       clearSelection
     }}>
       {children}
