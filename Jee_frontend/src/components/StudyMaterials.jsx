@@ -44,14 +44,14 @@ const StudyMaterials = () => {
   const fetchItems = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await getStudyMaterials(currentFolder.id);
+      const response = await getStudyMaterials(currentFolder.id, subject);
       setItems(response.data);
     } catch (error) {
       message.error(error.message || 'Failed to fetch items');
     } finally {
       setLoading(false);
     }
-  }, [currentFolder.id]);
+  }, [currentFolder.id, subject]);
 
   // Now we can use fetchItems in useEffect
   useEffect(() => {
@@ -93,8 +93,9 @@ const StudyMaterials = () => {
       await createFolder({
         name: newFolderName,
         parentId: currentFolder.id,
+        subject: subject,
       });
-      
+
       message.success('Folder created successfully');
       await fetchItems();
       setNewFolderName('');
@@ -110,7 +111,7 @@ const StudyMaterials = () => {
     if (!files.length) return;
 
     try {
-      await uploadFiles(files, currentFolder.id);
+      await uploadFiles(files, currentFolder.id, subject);
       message.success('File uploaded successfully');
       await fetchItems();
     } catch (error) {
