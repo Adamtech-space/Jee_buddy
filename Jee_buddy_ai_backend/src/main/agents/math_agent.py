@@ -231,9 +231,156 @@ class MathAgent:
             logger.error(f"Error formatting response: {str(e)}")
             return text  # Return original text if formatting fails
 
+    # async def solve(self, question: str, context: Dict[Any, Any]) -> dict:
+    #     try:
+    #         # Log the incoming request
+    #         logger.info(f"Processing question: {question}")
+    #         logger.info(f"Context received: {context}")
+
+    #         if self._is_general_query(question):
+    #             logger.info("Detected general query, returning greeting response")
+    #             return self._get_general_response(question)
+
+    #         user_id = context.get('user_id')
+    #         session_id = context.get('session_id')
+    #         selected_text = context.get('selectedText', '')
+    #         subject = context.get('subject', '').lower()
+    #         topic = context.get('topic', '')
+    #         chat_history = context.get('chat_history', [])
+
+    #         # Prepare messages for the API call
+    #         messages = [
+    #             {
+    #                 "role": "system",
+    #                 "content": f"""You are an advanced AI JEE preparation assistant & JEE tutor with comprehensive knowledge of Physics, Chemistry, and Mathematics. You help students with:
+
+    #     1. Academic Support:
+    #     • Solving JEE-level problems step by step
+    #     • Explaining complex concepts with real-world examples
+    #     • Providing practice questions and mock tests
+    #     • Identifying and correcting conceptual mistakes
+    #     • Breaking down difficult topics into simpler parts
+
+    #     2. Exam Strategy:
+    #     • Time management techniques for JEE Main and Advanced
+    #     • Question paper analysis and patterns
+    #     • Marking scheme optimization
+    #     • Quick solving methods and shortcuts
+    #     • Common pitfalls to avoid during exams
+
+    #     3. Study Planning:
+    #     • Creating personalized study schedules
+    #     • Suggesting revision strategies
+    #     • Recommending best books and resources
+    #     • Prioritizing topics based on importance
+    #     • Managing study-life balance
+
+    #     4. Previous Years' Analysis:
+    #     • Explaining past year questions
+    #     • Identifying important topics and trends
+    #     • Providing difficulty level insights
+    #     • Suggesting focus areas based on frequency
+
+    #     5. Mental Preparation:
+    #     • Stress management techniques
+    #     • Concentration improvement tips
+    #     • Memory enhancement methods
+    #     • Motivation and confidence building
+    #     • Exam day preparation tips
+
+    #     Current context:
+    #     Subject: {subject}
+    #     Topic: {topic}
+
+    #     Response Guidelines:
+    #     1. Be clear, concise, and accurate
+    #     2. Use examples to explain difficult concepts
+    #     3. Provide step-by-step solutions when solving problems
+    #     4. Include relevant formulas and equations using proper notation
+    #     5. Suggest practice problems for better understanding
+    #     6. Give practical tips and strategies when relevant
+
+    #     Formatting Instructions:
+    #     1. Use LaTeX notation for mathematical expressions
+    #     2. Wrap equations in $$ delimiters
+    #     3. Use \\frac{{a}}{{b}} for fractions
+    #     4. Use \\sqrt{{x}} for square roots
+    #     5. Use ^{{n}} for exponents
+    #     6. For chemical equations, use proper notation (e.g., H₂O)
+    #     7. For physics vectors, use arrow notation (→)
+    #     8. Keep explanations structured with bullet points and numbering"""
+    #                     }
+    #         ]
+
+    #         if selected_text:
+    #             system_context = f"\n\nSelected Text Context:\n{selected_text}\n\nPlease explain the concepts in the selected text and answer the student's question about it."
+            
+    #         messages = [{"role": "system", "content": system_context}]
+
+    #         # Add chat history to messages
+    #         for chat in chat_history:
+    #             messages.append({"role": "user", "content": chat['question']})
+    #             messages.append({"role": "assistant", "content": chat['response']})
+            
+    #         if selected_text:
+    #             full_question = f"Regarding this text: {selected_text}\n\nMy question is: {question}"
+    #             messages.append({"role": "user", "content": full_question})
+    #         else:
+    #             messages.append({"role": "user", "content": question})
+
+    #         logger.info(f"Sending request to DeepSeek API with {len(messages)} messages")
+
+    #         # Make API call
+    #         response = await self.llm.chat.completions.create(
+    #             model="deepseek-reasoner",
+    #             messages=messages,
+    #             temperature=0.7,
+    #             max_tokens=2000,
+    #             stream=False
+    #         )
+
+    #         logger.info("Received response from DeepSeek API")
+
+    #         # Extract and format response content
+    #         solution = self._format_response(response.choices[0].message.content)
+
+    #         # Prepare return data
+    #         result = {
+    #             "solution": solution,
+    #             "context": {
+    #                 "current_question": question,
+    #                 "response": solution,
+    #                 "user_id": user_id,
+    #                 "session_id": session_id,
+    #                 "subject": subject,
+    #                 "selected_text": selected_text,
+    #                 "topic": topic,
+    #                 "chat_history": chat_history
+    #             }
+    #         }
+
+    #         logger.info("Successfully processed request")
+    #         return result
+
+    #     except Exception as e:
+    #         logger.error(f"Error in solve method: {str(e)}", exc_info=True)
+    #         error_response = {
+    #             "solution": "I apologize, but I encountered an error processing your request. Please try again.",
+    #             "context": {
+    #                 "current_question": question,
+    #                 "response": f"Error occurred: {str(e)}",
+    #                 "user_id": context.get('user_id'),
+    #                 "session_id": context.get('session_id'),
+    #                 "subject": context.get('subject', ''),
+    #                 "topic": context.get('topic', ''),
+    #                 "selected_text": context.get('selected_text', ''),
+    #                 "chat_history": context.get('chat_history', [])
+    #             }
+    #         }
+    #         return error_response
+
     async def solve(self, question: str, context: Dict[Any, Any]) -> dict:
         try:
-            # Log the incoming request
             logger.info(f"Processing question: {question}")
             logger.info(f"Context received: {context}")
 
@@ -241,104 +388,106 @@ class MathAgent:
                 logger.info("Detected general query, returning greeting response")
                 return self._get_general_response(question)
 
+            # Extract context information
             user_id = context.get('user_id')
             session_id = context.get('session_id')
+            selected_text = context.get('selectedText', '')
             subject = context.get('subject', '').lower()
             topic = context.get('topic', '')
-            selected_text = context.get('selectedText', '')
-            pinned_text = context.get('pinnedText', '')
+            interaction_type = context.get('interaction_type', '')
             chat_history = context.get('chat_history', [])
 
-            # Create context message based on selected text
-            context_message = ""
+            # Create system message based on context
             if selected_text:
-                context_message = f"""
-The user is asking about this selected text:
-{selected_text}
+                system_message = f"""You are an expert JEE mentor and subject matter expert with years of experience in teaching Physics, Chemistry, and Mathematics. 
+                A student has selected the following text for clarification:
 
-Please provide a detailed explanation about this topic, focusing on:
-1. The main concept being discussed
-2. Historical context if mentioned
-3. Key principles and laws involved
-4. Applications and significance
-5. Related JEE concepts and questions
+                Selected Text:
+                {selected_text}
 
-If the user's question is specific, address it in the context of this selected text.
-"""
+                As their dedicated JEE mentor, please provide:
+                1. Conceptual Understanding:
+                • Break down complex concepts into simple terms
+                • Explain underlying principles and theories
+                • Connect with previously learned concepts
+                • Highlight common misconceptions to avoid
 
-            # Prepare messages for the API call
-            messages = [
-                {
-                    "role": "system",
-                    "content": f"""You are an advanced AI JEE preparation assistant with comprehensive knowledge of Physics, Chemistry, and Mathematics. You help students with:
+                2. JEE-Specific Analysis:
+                • Identify important topics for JEE Main/Advanced
+                • Explain typical question patterns
+                • Share proven problem-solving techniques
+                • Provide shortcuts and quick solving methods
 
-1. Academic Support:
-• Solving JEE-level problems step by step
-• Explaining complex concepts with real-world examples
-• Providing practice questions and mock tests
-• Identifying and correcting conceptual mistakes
-• Breaking down difficult topics into simpler parts
+                3. Practice and Application:
+                • Give similar JEE questions for practice
+                • Show multiple approaches to solve
+                • Explain which approach is best for exams
+                • Include relevant formulas and their applications
 
-2. Exam Strategy:
-• Time management techniques for JEE Main and Advanced
-• Question paper analysis and patterns
-• Marking scheme optimization
-• Quick solving methods and shortcuts
-• Common pitfalls to avoid during exams
+                4. Exam Strategy:
+                • Time-saving techniques
+                • Common traps to avoid
+                • Important points to remember
+                • Quick verification methods
 
-3. Study Planning:
-• Creating personalized study schedules
-• Suggesting revision strategies
-• Recommending best books and resources
-• Prioritizing topics based on importance
-• Managing study-life balance
+                Subject: {subject}
+                Topic: {topic}
+                Interaction Type: {interaction_type}
 
-4. Previous Years' Analysis:
-• Explaining past year questions
-• Identifying important topics and trends
-• Providing difficulty level insights
-• Suggesting focus areas based on frequency
+                Remember to be encouraging and supportive while maintaining academic rigor."""
+            else:
+                system_message = f"""You are an experienced JEE mentor specializing in {subject.capitalize()}, dedicated to helping students excel in JEE Main and Advanced.
 
-5. Mental Preparation:
-• Stress management techniques
-• Concentration improvement tips
-• Memory enhancement methods
-• Motivation and confidence building
-• Exam day preparation tips
+                Current Topic: {topic}
+                Interaction Type: {interaction_type}
 
-Current context:
-Subject: {subject}
-Topic: {topic}
+                Please provide comprehensive guidance with:
 
-{context_message if selected_text else ""}
+                1. Conceptual Clarity:
+                • Clear, step-by-step explanations
+                • Visual representations when helpful
+                • Real-world applications
+                • Connection to other related topics
 
-Response Guidelines:
-1. Keep responses simple and easy to read
-2. Use plain language and clear explanations
-3. Write mathematical expressions in a simple format
-4. Break down complex solutions into clear steps
-5. Use examples that are easy to understand
-6. Include practical tips when relevant
+                2. Problem-Solving Strategy:
+                • Systematic approach to solving
+                • Multiple solution methods
+                • Time-saving techniques
+                • Common pitfalls to avoid
 
-Formatting Instructions:
-1. Write equations in simple text format (e.g., x^2 for squared)
-2. Use simple fractions (e.g., 1/2, 3/4)
-3. Write chemical formulas with numbers (e.g., H2O, CO2)
-4. Use -> for reactions and vectors
-5. Keep explanations structured with bullet points
-6. Avoid complex formatting or special characters"""
-                }
-            ]
+                3. Practice Framework:
+                • Similar JEE questions
+                • Difficulty level progression
+                • Quick solving tips
+                • Self-assessment points
 
-            # Add chat history to messages
+                4. Exam Perspective:
+                • Topic weightage in JEE
+                • Previous year patterns
+                • Important formulas and concepts
+                • Strategic time management
+
+                5. Memory Aids:
+                • Key points to remember
+                • Mnemonics if applicable
+                • Important equations
+                • Quick revision notes
+
+                Maintain a friendly, encouraging tone while ensuring accuracy and depth in explanations. Guide the student towards both understanding and exam success."""
+
+
+            # Build messages array
+            messages = [{"role": "system", "content": system_message}]
+
+            # Add chat history
             for chat in chat_history:
                 messages.append({"role": "user", "content": chat['question']})
                 messages.append({"role": "assistant", "content": chat['response']})
 
             # Add current question with context if there's selected text
             if selected_text:
-                question_with_context = f"Question: {question}\nRegarding this text: {selected_text}"
-                messages.append({"role": "user", "content": question_with_context})
+                full_question = f"Please explain this text: '{selected_text}'\n\nSpecific question: {question}"
+                messages.append({"role": "user", "content": full_question})
             else:
                 messages.append({"role": "user", "content": question})
 
@@ -354,11 +503,31 @@ Formatting Instructions:
             )
 
             logger.info("Received response from DeepSeek API")
+            solution = response.choices[0].message.content
 
-            # Extract and format response content
-            solution = self._format_response(response.choices[0].message.content)
+            # Save to chat history if user_id and session_id are provided
+            if user_id and session_id:
+                await sync_to_async(ChatHistory.add_interaction)(
+                    user_id=user_id,
+                    session_id=session_id,
+                    question=question,
+                    response=solution,
+                    context={
+                        'subject': subject,
+                        'topic': topic,
+                        'interaction_type': interaction_type,
+                        'selected_text': selected_text,
+                    }
+                )
 
-            # Prepare return data
+            # Get updated chat history
+            updated_history = []
+            if user_id and session_id:
+                updated_history = await sync_to_async(ChatHistory.get_recent_history)(
+                    user_id=user_id,
+                    session_id=session_id
+                )
+
             result = {
                 "solution": solution,
                 "context": {
@@ -368,7 +537,9 @@ Formatting Instructions:
                     "session_id": session_id,
                     "subject": subject,
                     "topic": topic,
-                    "chat_history": chat_history
+                    "chat_history": updated_history,
+                    "selected_text": selected_text,
+                    "interaction_type": interaction_type
                 }
             }
 
@@ -386,7 +557,9 @@ Formatting Instructions:
                     "session_id": context.get('session_id'),
                     "subject": context.get('subject', ''),
                     "topic": context.get('topic', ''),
-                    "chat_history": context.get('chat_history', [])
+                    "chat_history": context.get('chat_history', []),
+                    "selected_text": context.get('selectedText', ''),
+                    "interaction_type": context.get('interaction_type', 'solve')
                 }
             }
             return error_response
