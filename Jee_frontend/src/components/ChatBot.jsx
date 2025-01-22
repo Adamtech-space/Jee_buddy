@@ -53,6 +53,7 @@ const ChatBot = ({
   const [selectedTextPreview, setSelectedTextPreview] = useState(null);
   const [isPinnedText, setIsPinnedText] = useState(false);
   const [isPinnedImage, setIsPinnedImage] = useState(false);
+  const [isDeepThinkEnabled, setIsDeepThinkEnabled] = useState(false);
 
   // Define handleSubmit with useCallback before using it in useEffect
   const handleSubmit = useCallback(async (e) => {
@@ -60,7 +61,8 @@ const ChatBot = ({
     console.log('ChatBot - handleSubmit called with:', {
       chatMessage,
       selectedTextPreview,
-      pinnedImage
+      pinnedImage,
+      deepThink: isDeepThinkEnabled
     });
 
     if (!chatMessage.trim() && !pinnedImage && !selectedTextPreview) {
@@ -115,6 +117,7 @@ const ChatBot = ({
         selectedText: questionContext?.content || '',
         source: questionContext?.source || 'Chat',
         image: imageToSend?.content?.split(',')[1] || null,
+        Deep_think: isDeepThinkEnabled,
       });
 
       const aiMessage = {
@@ -126,6 +129,7 @@ const ChatBot = ({
       setDisplayedResponse('');
       setCurrentTypingIndex(0);
       setIsTyping(true);
+      setIsDeepThinkEnabled(false);
       
     } catch (error) {
       console.error('ChatBot - Error processing message:', error);
@@ -143,7 +147,7 @@ const ChatBot = ({
     } finally {
       setIsLoading(false);
     }
-  }, [chatMessage, selectedTextPreview, pinnedImage, isPinnedText, isPinnedImage, subject, topic, setMessages, setIsTyping, setDisplayedResponse, setCurrentTypingIndex]);
+  }, [chatMessage, selectedTextPreview, pinnedImage, isPinnedText, isPinnedImage, subject, topic, setMessages, setIsTyping, setDisplayedResponse, setCurrentTypingIndex, isDeepThinkEnabled]);
 
   // Get user profile from localStorage
   useEffect(() => {
@@ -303,12 +307,31 @@ const ChatBot = ({
 
   const handleHelpClick = async (type) => {
     try {
-      const helpMessage = {
-        sender: 'user',
-        type: 'text',
-        content: `Help me with: ${type}`,
-      };
-      setMessages((prev) => [...prev, helpMessage]);
+      const userQuestion = chatMessage.trim();
+      const displayText = `Help me with ${type}${userQuestion ? ': ' + userQuestion : ''}`;
+
+      // Add message with image if present
+      if (pinnedImage) {
+        setMessages(prev => [...prev, {
+          sender: 'user',
+          type: 'image',
+          content: pinnedImage.content,
+          fileName: pinnedImage.fileName,
+          question: displayText,
+          helpType: type
+        }]);
+      } else {
+        // Add text message
+        setMessages(prev => [...prev, {
+          sender: 'user',
+          type: selectedTextPreview ? 'selected-text' : 'text',
+          content: displayText,
+          source: selectedTextPreview?.source,
+          selectedText: selectedTextPreview?.content,
+          helpType: type
+        }]);
+      }
+
       setIsLoading(true);
 
       // Get user data from localStorage
@@ -319,20 +342,28 @@ const ChatBot = ({
         throw new Error('No valid session ID found');
       }
 
-      const lastImageMessage = [...messages]
-        .reverse()
-        .find((msg) => msg.type === 'image');
-
-      const response = await aiService.getHelpResponse(type, {
+      const payload = {
         user_id: userData.id || 'anonymous',
         session_id: sessionId,
         subject: subject || '',
         topic: topic || '',
         type,
+        question: userQuestion,
         pinnedText: '',
-        selectedText: '',
-        image: lastImageMessage?.content?.split(',')[1] || null,
-      });
+        selectedText: selectedTextPreview?.content || '',
+        source: selectedTextPreview?.source || 'Chat',
+        image: pinnedImage?.content?.split(',')[1] || null,
+        Deep_think: isDeepThinkEnabled,
+        interaction_type: type
+      };
+
+      console.log('Sending help request with payload:', payload);
+      const response = await aiService.getHelpResponse(type, payload);
+
+      // Clear states if not pinned
+      if (!isPinnedText) setSelectedTextPreview(null);
+      if (!isPinnedImage) setPinnedImage(null);
+      setMessage('');
 
       setMessages((prev) => [
         ...prev,
@@ -342,6 +373,7 @@ const ChatBot = ({
           content: response.solution,
         },
       ]);
+      setIsDeepThinkEnabled(false);
     } catch (error) {
       const errorMessage = `Failed to process request: ${error?.message || 'Please try again'}`;
       setMessages((prev) => [
@@ -705,13 +737,32 @@ const ChatBot = ({
             value={chatMessage}
             onChange={(e) => setMessage(e.target.value)}
             placeholder="Ask a question..."
-            className="w-full bg-gray-800 text-white text-sm rounded-lg pl-3 pr-20 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="w-full bg-gray-800 text-white text-sm rounded-lg pl-3 pr-24 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
           />
           <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-0.5">
             <button
               type="button"
+              onClick={() => setIsDeepThinkEnabled(!isDeepThinkEnabled)}
+              className={`p-1.5 rounded-full transition-all duration-200 ${
+                isDeepThinkEnabled 
+                  ? 'bg-blue-500/20 hover:bg-blue-500/30 animate-pulse' 
+                  : 'hover:bg-gray-700'
+              }`}
+              title={isDeepThinkEnabled ? "Deep Think: ON" : "Deep Think: OFF"}
+            >
+              <span className={`text-lg inline-block transition-all duration-200 ${
+                isDeepThinkEnabled 
+                  ? 'text-blue-400 animate-bounce' 
+                  : 'text-gray-400 hover:text-white'
+              }`}>
+                🧠
+              </span>
+            </button>
+            <button
+              type="button"
               onClick={() => fileInputRef.current?.click()}
               className="p-1.5 hover:bg-gray-700 rounded-full transition-colors"
+              title="Upload Image"
             >
               <PaperClipIcon className="h-4 w-4 text-gray-400 hover:text-white" />
             </button>
@@ -719,6 +770,7 @@ const ChatBot = ({
               type="submit"
               disabled={!chatMessage.trim() && !pinnedImage && !selectedTextPreview}
               className="p-1.5 hover:bg-gray-700 rounded-full transition-colors disabled:opacity-50"
+              title="Send Message"
             >
               <PaperAirplaneIcon className="h-4 w-4 text-gray-400 hover:text-white" />
             </button>
@@ -747,3 +799,17 @@ ChatBot.propTypes = {
 };
 
 export default ChatBot;
+
+// Add this at the end of the file, before the export
+const wave = `
+@keyframes wave {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(-10deg); }
+  75% { transform: rotate(10deg); }
+}
+`;
+
+// Add the style tag to inject the animation
+const styleTag = document.createElement('style');
+styleTag.textContent = wave;
+document.head.appendChild(styleTag);
