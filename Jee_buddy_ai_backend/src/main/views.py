@@ -3,7 +3,8 @@ from rest_framework.decorators import api_view, parser_classes
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.response import Response
 from rest_framework import status
-from .agents.math_agent_1 import MathAgent
+# from .agents.math_agent_1 import MathAgent
+from .agents.math_agent import MathAgent
 import asyncio
 import logging
 import json
@@ -249,12 +250,8 @@ def solve_math_problem(request):
             if 'image' in context and context['image'] == 'null':
                 context['image'] = None
 
-        # Run async process in sync context
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        response_data, status_code = loop.run_until_complete(process_math_problem(data))
-        loop.close()
-
+        # Use async_to_sync to properly handle the event loop
+        response_data, status_code = async_to_sync(process_math_problem)(data)
         return JsonResponse(response_data, status=status_code)
             
     except Exception as e:
