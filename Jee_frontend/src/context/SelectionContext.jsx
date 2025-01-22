@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 
-const SelectionContext = createContext();
+export const SelectionContext = createContext();
 
 export const SelectionProvider = ({ children }) => {
   const [selectedText, setSelectedText] = useState('');
@@ -51,7 +51,7 @@ export const SelectionProvider = ({ children }) => {
   };
 
   // Handle touch selection specifically
-  const handleTouchSelection = (e) => {
+  const handleTouchSelection = () => {
     // Wait a bit for the selection to be complete
     setTimeout(() => {
       const selection = window.getSelection();

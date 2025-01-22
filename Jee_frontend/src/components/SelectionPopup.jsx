@@ -1,43 +1,72 @@
 import PropTypes from 'prop-types';
-import { SaveOutlined, RobotOutlined } from '@ant-design/icons';
-import { useSelection } from '../context/SelectionContext';
+import { useSelection } from '../hooks/useSelection';
 
 const SelectionPopup = ({ onSaveToFlashCard, onAskAI }) => {
   const { selectedText, selectionPosition, showPopup, clearSelection } = useSelection();
 
   if (!showPopup || !selectionPosition) return null;
 
-  const handleAction = (action, text) => {
-    action(text);
+  const handleAction = (action) => {
+    if (!selectedText) {
+      console.log('SelectionPopup - No text selected');
+      return;
+    }
+
+    // Get the source element's information
+    const selection = window.getSelection();
+    const sourceElement = selection?.focusNode?.parentElement;
+    let source = 'Selected Text';
+    
+    console.log('SelectionPopup - Selected text:', selectedText);
+    console.log('SelectionPopup - Source element:', sourceElement);
+    
+    // Try to get a meaningful source description
+    if (sourceElement) {
+      // Check for headings
+      const nearestHeading = sourceElement.closest('h1, h2, h3, h4, h5, h6');
+      if (nearestHeading) {
+        source = `${nearestHeading.tagName}: ${nearestHeading.textContent}`;
+      }
+      // Check for specific elements with data attributes
+      else if (sourceElement.dataset.source) {
+        source = sourceElement.dataset.source;
+      }
+      // Check for parent elements that might indicate context
+      else {
+        const article = sourceElement.closest('article');
+        const section = sourceElement.closest('section');
+        if (article?.dataset.title) {
+          source = article.dataset.title;
+        } else if (section?.dataset.title) {
+          source = section.dataset.title;
+        }
+      }
+    }
+
+    console.log('SelectionPopup - Calling action with:', { text: selectedText, source });
+    action(selectedText, source);
     clearSelection();
   };
 
   const getPopupStyle = () => {
-    const margin = 20;
-    const popupWidth = Math.min(300, window.innerWidth - 40); // Responsive width
-    const popupHeight = 150;
+    const margin = 8;
+    const popupHeight = 40;
     
     let x = selectionPosition.x;
-    let y = selectionPosition.y;
+    let y = selectionPosition.y - popupHeight - margin;
 
-    // Adjust horizontal position
-    if (x + popupWidth/2 > window.innerWidth - margin) {
-      x = window.innerWidth - popupWidth/2 - margin;
-    }
-    if (x - popupWidth/2 < margin) {
-      x = popupWidth/2 + margin;
-    }
-    
-    // Adjust vertical position
-    if (y + popupHeight > window.innerHeight - margin) {
-      y = y - popupHeight - 40; // Move above selection
+    // Ensure popup stays within screen bounds
+    if (x < margin) x = margin;
+    if (x > window.innerWidth - margin) x = window.innerWidth - margin;
+    if (y < margin) y = margin;
+    if (y > window.innerHeight - margin - popupHeight) {
+      y = selectionPosition.y + margin; // Show below if not enough space above
     }
 
     return {
       top: `${y}px`,
       left: `${x}px`,
       transform: 'translateX(-50%)',
-      width: `${popupWidth}px`,
       position: 'fixed',
       zIndex: 1000
     };
@@ -45,31 +74,23 @@ const SelectionPopup = ({ onSaveToFlashCard, onAskAI }) => {
 
   return (
     <div 
-      className="fixed bg-gray-900/95 backdrop-blur-sm rounded-lg shadow-xl border border-gray-800 selection-popup"
+      className="selection-popup fixed flex items-center gap-1 bg-gray-800/95 backdrop-blur-md rounded-lg shadow-lg px-1.5 py-1.5"
       style={getPopupStyle()}
       onClick={(e) => e.stopPropagation()}
     >
-      <div className="flex flex-col space-y-2 p-2">
-        <div className="text-sm text-gray-400 mb-1 max-w-xs overflow-hidden text-ellipsis">
-          {selectedText.length > 100 ? `${selectedText.substring(0, 100)}...` : selectedText}
-        </div>
-        <div className="flex gap-2">
-          <button
-            onClick={() => handleAction(onSaveToFlashCard, selectedText)}
-            className="flex-1 flex items-center justify-center px-3 py-1.5 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors text-sm"
-          >
-            <SaveOutlined className="mr-2 text-xs" />
-            Save
-          </button>
-          <button
-            onClick={() => handleAction(onAskAI, selectedText)}
-            className="flex-1 flex items-center justify-center px-3 py-1.5 bg-green-500 text-white rounded hover:bg-green-600 transition-colors text-sm"
-          >
-            <RobotOutlined className="mr-2 text-xs" />
-            Ask AI
-          </button>
-        </div>
-      </div>
+      <button
+        onClick={() => handleAction(onAskAI)}
+        className="text-sm text-white hover:bg-gray-700/50 px-3 py-1 rounded-md transition-colors"
+      >
+        Ask AI
+      </button>
+      <div className="w-px h-4 bg-gray-600"></div>
+      <button
+        onClick={() => handleAction(onSaveToFlashCard)}
+        className="text-sm text-white hover:bg-gray-700/50 px-3 py-1 rounded-md transition-colors"
+      >
+        Save
+      </button>
     </div>
   );
 };

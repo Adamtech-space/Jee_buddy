@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { 
   XMarkIcon, 
   ArrowsPointingOutIcon, 
@@ -8,11 +8,7 @@ import {
 } from '@heroicons/react/24/outline';
 import PropTypes from 'prop-types';
 import { aiService } from '../interceptors/ai.service';
-import { saveFlashCard } from '../interceptors/services';
-import SelectionPopup from './SelectionPopup';
-import { SaveOutlined } from '@ant-design/icons';
-import { useSelection } from '../context/SelectionContext';
-import { message } from 'antd';
+import { useSelection } from '../hooks/useSelection';
 
 const KeyboardShortcut = ({ shortcut }) => (
   <span className="inline-flex items-center text-[9px] text-gray-500 mt-0.5">
@@ -39,7 +35,7 @@ const ChatBot = ({
   topic, 
   onResize 
 }) => {
-  const [chatMessage, setChatMessage] = useState('');
+  const [chatMessage, setMessage] = useState('');
   const [messages, setMessages] = useState([]);
   const [width, setWidth] = useState(450);
   const [isResizing, setIsResizing] = useState(false);
@@ -56,6 +52,96 @@ const ChatBot = ({
   const { handleTextSelection } = useSelection();
   const [selectedTextPreview, setSelectedTextPreview] = useState(null);
 
+  // Define handleSubmit with useCallback before using it in useEffect
+  const handleSubmit = useCallback(async (e) => {
+    e.preventDefault();
+    console.log('ChatBot - handleSubmit called with:', {
+      chatMessage,
+      selectedTextPreview,
+      pinnedImage
+    });
+
+    if (!chatMessage.trim() && !pinnedImage && !selectedTextPreview) {
+      console.log('ChatBot - No content to submit');
+      return;
+    }
+
+    let questionText = selectedTextPreview?.content || chatMessage;
+    let source = selectedTextPreview?.source || 'Chat';
+
+    // Add user message to chat
+    setMessages(prev => [...prev, {
+      sender: 'user',
+      type: selectedTextPreview ? 'selected-text' : 'text',
+      content: questionText,
+      source: source
+    }]);
+
+    // Clear states
+    setSelectedTextPreview(null);
+    setMessage('');
+    setIsLoading(true);
+
+    try {
+      // Get user data from localStorage
+      const userData = JSON.parse(localStorage.getItem('user')) || {};
+      const sessionId = userData.current_session_id;
+
+      if (!sessionId) {
+        throw new Error('No valid session ID found');
+      }
+
+      console.log('ChatBot - Sending request to AI service:', {
+        questionText,
+        source,
+        subject,
+        topic
+      });
+
+      const response = await aiService.askQuestion(questionText, {
+        user_id: userData.id || 'anonymous',
+        session_id: sessionId,
+        subject: subject || '',
+        topic: topic || '',
+        type: 'solve',
+        pinnedText: '',
+        selectedText: questionText,
+        source: source,
+        image: pinnedImage?.content?.split(',')[1] || null,
+      });
+
+      console.log('ChatBot - Received AI response:', response);
+
+      const aiMessage = {
+        sender: 'assistant',
+        type: 'text',
+        content: response.solution,
+      };
+      setMessages((prev) => [...prev, aiMessage]);
+      setDisplayedResponse('');
+      setCurrentTypingIndex(0);
+      setIsTyping(true);
+      
+      // Clear pinned image after sending
+      setPinnedImage(null);
+    } catch (error) {
+      console.error('ChatBot - Error processing message:', error);
+      const errorMessage = `Failed to process message: ${error?.message || 'Please try again'}`;
+      setMessages((prev) => [
+        ...prev,
+        {
+          sender: 'assistant',
+          type: 'text',
+          content: errorMessage,
+        },
+      ]);
+      setDisplayedResponse(errorMessage);
+      setCurrentTypingIndex(errorMessage.length);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [chatMessage, selectedTextPreview, pinnedImage, subject, topic, setMessages, setIsTyping, setDisplayedResponse, setCurrentTypingIndex]);
+
   // Get user profile from localStorage
   useEffect(() => {
     const userData = localStorage.getItem('user');
@@ -67,68 +153,28 @@ const ChatBot = ({
   // Listen for AI questions from other components
   useEffect(() => {
     const handleAIQuestion = (event) => {
+      console.log('ChatBot - Received setAIQuestion event:', event);
       if (event.detail?.question) {
+        const text = event.detail.question;
+        const source = event.detail.source || 'Selected Text';
+        
+        console.log('ChatBot - Setting selected text preview:', { text, source });
+        
+        // Only set the preview, don't auto-submit
         setSelectedTextPreview({
-          content: event.detail.question,
-          source: event.detail.source || 'Selected Text'
+          content: text,
+          source: source
         });
       }
     };
 
+    console.log('ChatBot - Adding setAIQuestion event listener');
     window.addEventListener('setAIQuestion', handleAIQuestion);
-    return () => window.removeEventListener('setAIQuestion', handleAIQuestion);
+    return () => {
+      console.log('ChatBot - Removing setAIQuestion event listener');
+      window.removeEventListener('setAIQuestion', handleAIQuestion);
+    };
   }, []);
-
-  const handleSaveToFlashCard = async (text) => {
-    if (!text) {
-      message.error('Please select some text to save');
-      return;
-    }
-
-    const hide = message.loading('Saving to flash cards...', 0);
-    try {
-      const payload = {
-        subject: subject || 'General',
-        topic: 'AI Chat Bot',
-        content: text,
-        source: 'AI Chat Bot',
-      };
-
-      const response = await saveFlashCard(payload);
-      hide();
-
-      if (response) {
-        message.success({
-          content: 'Successfully saved to flash cards!',
-          icon: <SaveOutlined style={{ color: '#52c41a' }} />,
-          duration: 3,
-        });
-        // Clear the selection after handling
-        window.getSelection()?.removeAllRanges();
-      } else {
-        throw new Error('Failed to save flash card');
-      }
-    } catch (error) {
-      hide();
-      message.error({
-        content: error?.message || 'Failed to save to flash cards',
-        duration: 3,
-      });
-    }
-  };
-
-  const handleAskAI = (text) => {
-    if (!text) return;
-    
-    // Set the selected text preview
-    setSelectedTextPreview({
-      content: text,
-      source: 'Selected Text'
-    });
-
-    // Clear the selection
-    window.getSelection()?.removeAllRanges();
-  };
 
   const helpButtons = [
     { type: 'explain', icon: '📝', text: 'Step-by-Step' },
@@ -249,94 +295,6 @@ const ChatBot = ({
         // Reset file input to allow selecting the same file again
         e.target.value = '';
       }
-    }
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!chatMessage.trim() && !pinnedImage && !selectedTextPreview) return;
-
-    let questionText = chatMessage;
-
-    // If there's selected text, use it as the question
-    if (selectedTextPreview) {
-      questionText = selectedTextPreview.content;
-      setMessages(prev => [...prev, {
-        sender: 'user',
-        type: 'selected-text',
-        content: selectedTextPreview.content,
-        source: selectedTextPreview.source
-      }]);
-      setSelectedTextPreview(null);
-    }
-
-    // Add image message if there's a pinned image
-    if (pinnedImage) {
-      setMessages(prev => [...prev, {
-        sender: 'user',
-        type: 'image',
-        content: pinnedImage.content,
-        fileName: pinnedImage.fileName
-      }]);
-    }
-
-    if (chatMessage.trim()) {
-      setMessages(prev => [...prev, {
-        sender: 'user',
-        type: 'text',
-        content: chatMessage
-      }]);
-    }
-
-    setChatMessage('');
-    setIsLoading(true);
-
-    try {
-      // Get user data from localStorage
-      const userData = JSON.parse(localStorage.getItem('user')) || {};
-      const sessionId = userData.current_session_id;
-
-      if (!sessionId) {
-        throw new Error('No valid session ID found');
-      }
-
-      const response = await aiService.askQuestion(questionText, {
-        user_id: userData.id || 'anonymous',
-        session_id: sessionId,
-        subject: subject || '',
-        topic: topic || '',
-        type: 'solve',
-        pinnedText: '',
-        selectedText: selectedTextPreview?.content || '',
-        image: pinnedImage?.content?.split(',')[1] || null,
-      });
-
-      const aiMessage = {
-        sender: 'assistant',
-        type: 'text',
-        content: response.solution,
-      };
-      setMessages((prev) => [...prev, aiMessage]);
-      setDisplayedResponse('');
-      setCurrentTypingIndex(0);
-      setIsTyping(true);
-      
-      // Clear pinned image after sending
-      setPinnedImage(null);
-    } catch (error) {
-      const errorMessage = `Failed to process message: ${error?.message || 'Please try again'}`;
-      setMessages((prev) => [
-        ...prev,
-        {
-          sender: 'assistant',
-          type: 'text',
-          content: errorMessage,
-        },
-      ]);
-      setDisplayedResponse(errorMessage);
-      setCurrentTypingIndex(errorMessage.length);
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -521,22 +479,20 @@ const ChatBot = ({
         zIndex: isFullScreen ? 60 : 50,
       }}
       onMouseUp={(e) => {
-        if (!(e.target instanceof HTMLInputElement)) {
+        // Only handle selection if not clicking on buttons or inputs
+        if (!(e.target instanceof HTMLButtonElement) && 
+            !(e.target instanceof HTMLInputElement)) {
           handleTextSelection(e);
         }
       }}
       onTouchEnd={(e) => {
-        if (!(e.target instanceof HTMLInputElement)) {
+        // Only handle selection if not touching buttons or inputs
+        if (!(e.target instanceof HTMLButtonElement) && 
+            !(e.target instanceof HTMLInputElement)) {
           handleTextSelection(e);
         }
       }}
     >
-      {/* Selection Popup */}
-      <SelectionPopup
-        onSaveToFlashCard={handleSaveToFlashCard}
-        onAskAI={handleAskAI}
-      />
-
       {/* Resize Handle - Only show on desktop */}
       {!isFullScreen && window.innerWidth >= 1024 && (
         <>
@@ -716,7 +672,7 @@ const ChatBot = ({
             ref={inputRef}
             type="text"
             value={chatMessage}
-            onChange={(e) => setChatMessage(e.target.value)}
+            onChange={(e) => setMessage(e.target.value)}
             placeholder="Ask a question..."
             className="w-full bg-gray-800 text-white text-sm rounded-lg pl-3 pr-20 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
           />
