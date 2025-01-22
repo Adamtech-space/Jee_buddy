@@ -117,7 +117,7 @@ const ChatBot = ({
         selectedText: questionContext?.content || '',
         source: questionContext?.source || 'Chat',
         image: imageToSend?.content?.split(',')[1] || null,
-        deepThink: isDeepThinkEnabled,
+        Deep_think: isDeepThinkEnabled,
       });
 
       const aiMessage = {
@@ -353,7 +353,7 @@ const ChatBot = ({
         selectedText: selectedTextPreview?.content || '',
         source: selectedTextPreview?.source || 'Chat',
         image: pinnedImage?.content?.split(',')[1] || null,
-        deepThink: isDeepThinkEnabled,
+        Deep_think: isDeepThinkEnabled,
         interaction_type: type
       };
 
