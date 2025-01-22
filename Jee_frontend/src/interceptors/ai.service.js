@@ -15,6 +15,7 @@ export const aiService = {
           pinnedText: context.pinnedText || '',
           selectedText: context.selectedText || '',
           image: context.image || null,
+          deepThink: context.deepThink || false,
           history_limit: 100,
           chat_history: [] // The backend will fetch history based on user_id
         }
@@ -41,7 +42,7 @@ export const aiService = {
       console.log('Sending help request with data:', { type, context });
       
       const requestData = {
-        question: `Help me with: ${type}`,
+        question: context.question ? `${context.question} (${type})` : `Help me with: ${type}`,
         context: {
           user_id: context.user_id,
           session_id: context.session_id,
@@ -51,6 +52,7 @@ export const aiService = {
           pinnedText: context.pinnedText || '',
           selectedText: context.selectedText || '',
           image: context.image || null,
+          deepThink: context.deepThink || false,
           history_limit: 100,
           chat_history: []
         }
