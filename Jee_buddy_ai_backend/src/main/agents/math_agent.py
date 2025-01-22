@@ -45,11 +45,13 @@ class MathAgent:
             # Initialize two clients for different models
             self.chat_llm = AsyncOpenAI(
                 api_key=chat_api_key,
-                base_url="https://api.deepseek.com"
+                base_url="https://api.deepseek.com",
+                temperature=0.7
             )
             self.reasoner_llm = AsyncOpenAI(
                 api_key=reasoner_api_key,
-                base_url="https://api.deepseek.com"
+                base_url="https://api.deepseek.com",
+                temperature=0.7
             )
             
             self.chat_history = []
