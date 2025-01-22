@@ -146,43 +146,57 @@ export const deleteFlashCard = async (cardId) => {
 };
 
 // Study Materials services
-export const createFolder = async (data) => {
+export const createFolder = async ({ name, parentId, subject }) => {
   try {
-    const response = await apiInstance.post('/study-materials/folders', data);
+    const response = await apiInstance.post('/study-materials/folders', {
+      name,
+      parentId,
+      subject,
+    });
     return response.data;
   } catch (error) {
     throw error.response?.data || { message: 'Failed to create folder' };
   }
 };
 
-export const uploadFiles = async (files, parentId = null) => {
+export const uploadFiles = async (files, parentId, subject) => {
   try {
     const formData = new FormData();
     formData.append('file', files[0]); // Currently handling single file
     if (parentId) {
       formData.append('parentId', parentId);
     }
+    formData.append('subject', subject); // Add subject to form data
 
-    const response = await apiInstance.post('/study-materials/files', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
+    const response = await apiInstance.post(
+      '/study-materials/files',
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      }
+    );
     return response.data;
   } catch (error) {
     throw error.response?.data || { message: 'Failed to upload file' };
   }
 };
 
-export const getStudyMaterials = async (parentId = null) => {
+export const getStudyMaterials = async (parentId, subject) => {
   try {
     const params = new URLSearchParams();
     if (parentId) params.append('parentId', parentId);
-    
-    const response = await apiInstance.get(`/study-materials?${params.toString()}`);
+    params.append('subject', subject); // Always include subject
+
+    const response = await apiInstance.get(
+      `/study-materials?${params.toString()}`
+    );
     return response.data;
   } catch (error) {
-    throw error.response?.data || { message: 'Failed to fetch study materials' };
+    throw (
+      error.response?.data || { message: 'Failed to fetch study materials' }
+    );
   }
 };
 
