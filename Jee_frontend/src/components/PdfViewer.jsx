@@ -6,7 +6,8 @@ import { Viewer, Worker } from '@react-pdf-viewer/core';
 import { zoomPlugin } from '@react-pdf-viewer/zoom';
 import { saveFlashCard } from '../interceptors/services';
 import SelectionPopup from './SelectionPopup';
-import { useSelection } from '../context/SelectionContext';
+import { useSelection } from '../hooks/useSelection';
+import PropTypes from 'prop-types';
 
 // Import styles
 import '@react-pdf-viewer/core/lib/styles/index.css';
@@ -210,6 +211,11 @@ const PdfViewer = () => {
       />
     </div>
   );
+};
+
+PdfViewer.propTypes = {
+  onClick: PropTypes.func,
+  scale: PropTypes.number,
 };
 
 export default PdfViewer; 

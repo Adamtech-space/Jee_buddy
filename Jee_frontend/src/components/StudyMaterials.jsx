@@ -20,7 +20,7 @@ import {
   getFileDownloadUrl,
 } from '../interceptors/services';
 import { Document, Page, pdfjs } from 'react-pdf';
-import { useSelection } from '../context/SelectionContext';
+import { useSelection } from '../hooks/useSelection';
 import SelectionPopup from './SelectionPopup';
 pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 
