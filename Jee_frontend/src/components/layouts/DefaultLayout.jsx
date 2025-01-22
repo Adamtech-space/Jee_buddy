@@ -60,9 +60,23 @@ const Sidebar = ({ isMobileOpen, setIsMobileOpen }) => {
         <div className="flex flex-col h-full">
           <div className="p-4">
             <div className="flex flex-col">
-              <h2 className="text-lg md:text-xl font-bold text-white capitalize">{subject}</h2>
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg md:text-xl font-bold text-white capitalize">
+                  {subject}
+                </h2>
+                <button
+                  className="px-3 py-1 text-xs md:text-sm text-gray-200 hover:text-white 
+                  bg-gray-800 hover:bg-gray-700 rounded-md border border-gray-700 
+                  transition-colors duration-200 cursor-pointer"
+                  onClick={() => navigate('/subject-selection')}
+                >
+                  Change Subject
+                </button>
+              </div>
               <div className="flex items-center space-x-2">
-                <p className="text-xs md:text-sm text-gray-400">JEE Preparation</p>
+                <p className="text-xs md:text-sm text-gray-400">
+                  JEE Preparation
+                </p>
                 <KeyboardShortcut shortcut="Ctrl+Shift+B" />
               </div>
             </div>
@@ -84,10 +98,10 @@ const Sidebar = ({ isMobileOpen, setIsMobileOpen }) => {
                       className={`w-full flex items-center justify-start
                                 px-3 md:px-4 py-2 md:py-3 rounded-lg transition-all duration-200 
                                 text-sm md:text-base ${
-                        isActive
-                          ? 'bg-blue-500 text-white'
-                          : 'text-gray-300 hover:bg-gray-800'
-                      }`}
+                                  isActive
+                                    ? 'bg-blue-500 text-white'
+                                    : 'text-gray-300 hover:bg-gray-800'
+                                }`}
                     >
                       <span className="text-base md:text-xl">{item.icon}</span>
                       <span className="ml-2 md:ml-3">{item.label}</span>
