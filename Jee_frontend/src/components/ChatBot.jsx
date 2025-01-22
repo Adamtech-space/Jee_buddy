@@ -66,18 +66,17 @@ const ChatBot = ({
       return;
     }
 
-    let questionText = selectedTextPreview?.content || chatMessage;
-    let source = selectedTextPreview?.source || 'Chat';
-
-    // Add user message to chat
+    // Add combined message with both selected text and question
     setMessages(prev => [...prev, {
       sender: 'user',
       type: selectedTextPreview ? 'selected-text' : 'text',
-      content: questionText,
-      source: source
+      content: chatMessage,
+      source: selectedTextPreview?.source,
+      selectedText: selectedTextPreview?.content
     }]);
 
     // Clear states
+    const questionContext = selectedTextPreview;
     setSelectedTextPreview(null);
     setMessage('');
     setIsLoading(true);
@@ -92,21 +91,22 @@ const ChatBot = ({
       }
 
       console.log('ChatBot - Sending request to AI service:', {
-        questionText,
-        source,
+        question: chatMessage,
+        selectedText: questionContext?.content,
+        source: questionContext?.source,
         subject,
         topic
       });
 
-      const response = await aiService.askQuestion(questionText, {
+      const response = await aiService.askQuestion(chatMessage, {
         user_id: userData.id || 'anonymous',
         session_id: sessionId,
         subject: subject || '',
         topic: topic || '',
         type: 'solve',
         pinnedText: '',
-        selectedText: questionText,
-        source: source,
+        selectedText: questionContext?.content || '',
+        source: questionContext?.source || 'Chat',
         image: pinnedImage?.content?.split(',')[1] || null,
       });
 
@@ -358,10 +358,7 @@ const ChatBot = ({
 
   const renderMessage = (msg, index) => {
     const isLastMessage = index === messages.length - 1;
-    const content =
-      isLastMessage && msg.sender === 'assistant'
-        ? displayedResponse
-        : msg.content;
+    const content = isLastMessage && msg.sender === 'assistant' ? displayedResponse : msg.content;
 
     return (
       <div
@@ -395,30 +392,36 @@ const ChatBot = ({
         >
           {msg.type === 'image' ? (
             <div className="space-y-2">
-              <div className="relative">
+              <div className="relative bg-gray-800/50 rounded p-2">
                 <img
                   src={msg.content}
                   alt="Uploaded content"
-                  className="max-w-full h-auto rounded-lg object-contain"
-                  style={{ maxHeight: '300px' }}
+                  className="max-w-full h-auto rounded object-contain"
+                  style={{ maxHeight: '150px' }}
                 />
-                {msg.fileName && (
-                  <div className="mt-2 text-sm text-gray-300 flex items-center gap-2">
-                    <PaperClipIcon className="h-4 w-4" />
-                    <span>{msg.fileName}</span>
-                  </div>
-                )}
               </div>
-              {msg.caption && (
-                <p className="text-sm text-gray-300 mt-1">{msg.caption}</p>
+              {msg.fileName && (
+                <div className="flex items-center gap-1 text-xs text-gray-300">
+                  <span className="inline-block w-1 h-1 bg-gray-400 rounded-full"></span>
+                  <span>{msg.fileName}</span>
+                </div>
               )}
+              <div className="text-[15px]">
+                {msg.caption || content}
+              </div>
             </div>
           ) : msg.type === 'selected-text' ? (
-            <div className="space-y-1">
-              <div className="text-xs text-gray-300">{msg.source}</div>
-              <pre className="whitespace-pre-wrap font-sans text-[15px] leading-relaxed">
+            <div className="space-y-2">
+              <div className="text-xs bg-gray-800/50 rounded p-2 truncate">
+                {msg.selectedText}
+              </div>
+              <div className="flex items-center gap-1 text-xs text-gray-300">
+                <span className="inline-block w-1 h-1 bg-gray-400 rounded-full"></span>
+                <span>{msg.source}</span>
+              </div>
+              <div className="text-[15px]">
                 {content}
-              </pre>
+              </div>
             </div>
           ) : (
             <pre className="whitespace-pre-wrap font-sans text-[15px] leading-relaxed">
