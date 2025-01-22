@@ -1,32 +1,47 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useParams, useLocation, useOutletContext } from 'react-router-dom';
+import { useParams, useLocation, useNavigate, useOutletContext } from 'react-router-dom';
 import { message } from 'antd';
-import { ArrowLeftOutlined } from '@ant-design/icons';
+import { ArrowLeftOutlined, ZoomInOutlined, ZoomOutOutlined } from '@ant-design/icons';
 import { Viewer, Worker } from '@react-pdf-viewer/core';
-import { defaultLayoutPlugin } from '@react-pdf-viewer/default-layout';
+import { zoomPlugin } from '@react-pdf-viewer/zoom';
 import { saveFlashCard } from '../interceptors/services';
-import { useSelection } from '../context/SelectionContext';
 import SelectionPopup from './SelectionPopup';
+import { useSelection } from '../hooks/useSelection';
+import PropTypes from 'prop-types';
 
 // Import styles
 import '@react-pdf-viewer/core/lib/styles/index.css';
-import '@react-pdf-viewer/default-layout/lib/styles/index.css';
+import '@react-pdf-viewer/zoom/lib/styles/index.css';
 
 const PdfViewer = () => {
-  const { subject, pdfUrl: encodedUrl } = useParams();
+  const { pdfUrl: encodedUrl, subject } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
-  const { setIsChatOpen } = useOutletContext();
+  const { isChatOpen, isSidebarOpen, setIsChatOpen } = useOutletContext();
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const { handleTextSelection } = useSelection();
+
+  // Initialize zoom plugin with custom levels
+  const zoomPluginInstance = zoomPlugin({
+    levels: [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 2.5, 3],
+  });
+  const { ZoomInButton, ZoomOutButton, ZoomPopover } = zoomPluginInstance;
 
   // Get the actual URL from either state or params
   const pdfUrl = location.state?.pdfUrl || decodeURIComponent(encodedUrl);
   const pdfTitle = decodeURIComponent(pdfUrl.split('/').pop().replace('.pdf', ''));
 
-  // Initialize plugins
-  const defaultLayoutPluginInstance = defaultLayoutPlugin();
+  // Handle window resize
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     if (!pdfUrl) {
@@ -67,30 +82,90 @@ const PdfViewer = () => {
   };
 
   const handleAskAI = (text) => {
+    console.log('PdfViewer - handleAskAI called with text:', text);
+    console.log('PdfViewer - PDF Title:', pdfTitle);
+    
     setIsChatOpen(true);
     setTimeout(() => {
-      window.dispatchEvent(new CustomEvent('setAIQuestion', { 
+      const eventData = {
         detail: { 
           question: text,
-          source: pdfTitle
+          source: `PDF: ${pdfTitle}`
         }
-      }));
-    }, 100);
+      };
+      console.log('PdfViewer - Dispatching event with data:', eventData);
+      window.dispatchEvent(new CustomEvent('setAIQuestion', eventData));
+    }, 500); // Increased timeout to ensure chat is open
   };
 
   if (!pdfUrl) return null;
 
   return (
-    <div className="min-h-screen bg-gray-900">
-      {/* Header */}
-      <div className="flex items-center p-4 bg-gray-800">
+    <div 
+      className="fixed bg-gray-900 transition-all duration-300 ease-in-out"
+      style={{
+        top: isMobile ? '0' : '64px',
+        left: isMobile ? '0' : (isSidebarOpen ? '256px' : '0'),
+        right: isMobile ? '0' : (isChatOpen ? '450px' : '0'),
+        bottom: '0',
+      }}
+      onMouseUp={(e) => {
+        // Only handle selection if not clicking on buttons or inputs
+        if (!(e.target instanceof HTMLButtonElement) && 
+            !(e.target instanceof HTMLInputElement)) {
+          handleTextSelection(e);
+        }
+      }}
+      onTouchEnd={(e) => {
+        // Only handle selection if not touching buttons or inputs
+        if (!(e.target instanceof HTMLButtonElement) && 
+            !(e.target instanceof HTMLInputElement)) {
+          handleTextSelection(e);
+        }
+      }}
+    >
+      {/* Back button - Left side */}
+      <div className="absolute top-4 left-4 z-10">
         <button
           onClick={() => navigate(`/dashboard/${subject}/books`)}
-          className="flex items-center text-white hover:text-blue-500 transition-colors"
+          className="flex items-center gap-1 px-3 py-1.5 text-white hover:text-blue-500 transition-colors bg-gray-800/80 backdrop-blur rounded-lg"
         >
-          <ArrowLeftOutlined className="mr-2" />
-          Back to Books
+          <ArrowLeftOutlined />
+          <span className={isMobile ? 'text-sm' : ''}>Back</span>
         </button>
+      </div>
+
+      {/* Zoom controls - Right side */}
+      <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
+        <ZoomOutButton>
+          {(props) => (
+            <button
+              className="p-1.5 text-white hover:text-blue-500 transition-colors bg-gray-800/80 backdrop-blur rounded-lg"
+              onClick={props.onClick}
+            >
+              <ZoomOutOutlined className={isMobile ? 'text-sm' : ''} />
+            </button>
+          )}
+        </ZoomOutButton>
+        
+        <ZoomPopover>
+          {(props) => (
+            <button className="px-3 py-1.5 text-white bg-gray-800/80 backdrop-blur rounded-lg hover:text-blue-500 transition-colors">
+              <span className={isMobile ? 'text-sm' : ''}>{Math.round(props.scale * 100)}%</span>
+            </button>
+          )}
+        </ZoomPopover>
+        
+        <ZoomInButton>
+          {(props) => (
+            <button
+              className="p-1.5 text-white hover:text-blue-500 transition-colors bg-gray-800/80 backdrop-blur rounded-lg"
+              onClick={props.onClick}
+            >
+              <ZoomInOutlined className={isMobile ? 'text-sm' : ''} />
+            </button>
+          )}
+        </ZoomInButton>
       </div>
 
       {/* Error Display */}
@@ -109,35 +184,25 @@ const PdfViewer = () => {
       )}
 
       {/* PDF Viewer */}
-      {!loading && !error && (
-        <div 
-          className="w-full h-[calc(100vh-64px)] bg-white relative"
-          onMouseUp={handleTextSelection}
-          onTouchEnd={handleTextSelection}
-        >
-          <Worker workerUrl="https://unpkg.com/pdfjs-dist@2.16.105/build/pdf.worker.min.js">
-            <Viewer
-              fileUrl={pdfUrl}
-              plugins={[defaultLayoutPluginInstance]}
-              onError={(e) => {
-                console.error('Error loading PDF:', e);
-                setError(`Failed to load PDF: ${e.message}`);
-                setLoading(false);
-              }}
-              defaultScale={1}
-              theme={{ theme: 'dark' }}
-              renderLoader={(percentages) => (
-                <div className="flex items-center justify-center h-full">
-                  <div className="text-center">
-                    <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-500 mb-4"></div>
-                    <p className="text-gray-500">Loading PDF... {Math.round(percentages)}%</p>
-                  </div>
+      <div className="absolute inset-0 bg-gray-900" style={{ top: isMobile ? '56px' : 0 }}>
+        <Worker workerUrl="https://unpkg.com/pdfjs-dist@3.4.120/build/pdf.worker.min.js">
+          <Viewer
+            fileUrl={pdfUrl}
+            defaultScale={isMobile ? 1 : "PageWidth"}
+            theme="dark"
+            plugins={[zoomPluginInstance]}
+            className="h-full"
+            renderLoader={(percentages) => (
+              <div className="flex items-center justify-center h-full">
+                <div className="text-center text-white">
+                  <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-500 mb-4"></div>
+                  <p>Loading PDF... {Math.round(percentages)}%</p>
                 </div>
-              )}
-            />
-          </Worker>
-        </div>
-      )}
+              </div>
+            )}
+          />
+        </Worker>
+      </div>
 
       {/* Selection Popup */}
       <SelectionPopup
@@ -146,6 +211,11 @@ const PdfViewer = () => {
       />
     </div>
   );
+};
+
+PdfViewer.propTypes = {
+  onClick: PropTypes.func,
+  scale: PropTypes.number,
 };
 
 export default PdfViewer; 

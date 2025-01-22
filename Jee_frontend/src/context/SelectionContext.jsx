@@ -1,7 +1,6 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
-
-const SelectionContext = createContext();
+import { SelectionContext } from './SelectionContextValue';
 
 export const SelectionProvider = ({ children }) => {
   const [selectedText, setSelectedText] = useState('');
@@ -51,7 +50,7 @@ export const SelectionProvider = ({ children }) => {
   };
 
   // Handle touch selection specifically
-  const handleTouchSelection = (e) => {
+  const handleTouchSelection = () => {
     // Wait a bit for the selection to be complete
     setTimeout(() => {
       const selection = window.getSelection();
@@ -113,12 +112,4 @@ export const SelectionProvider = ({ children }) => {
 
 SelectionProvider.propTypes = {
   children: PropTypes.node.isRequired
-};
-
-export const useSelection = () => {
-  const context = useContext(SelectionContext);
-  if (!context) {
-    throw new Error('useSelection must be used within a SelectionProvider');
-  }
-  return context;
 }; 

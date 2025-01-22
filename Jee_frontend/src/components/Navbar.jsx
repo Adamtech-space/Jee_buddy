@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation} from 'react-router-dom';
 import PropTypes from 'prop-types';
 import { motion } from 'framer-motion';
 import { useSubscription } from '../context/SubscriptionContext';
@@ -8,10 +8,9 @@ const Navbar = ({ isMobileOpen, setIsMobileOpen }) => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [user, setUser] = useState(null);
   const location = useLocation();
-  const navigate = useNavigate();
   const isDashboard = location.pathname.includes('/dashboard') || location.pathname.includes('/subject-selection');
   const profileRef = useRef(null);
-  const { isSubscribed, currentPlan } = useSubscription();
+  const { currentPlan } = useSubscription();
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -230,7 +229,7 @@ const Navbar = ({ isMobileOpen, setIsMobileOpen }) => {
                 </button>
 
                 {isProfileOpen && (
-                  <div className="absolute right-0 mt-2 w-48 bg-gray-800 rounded-lg shadow-lg py-1 z-50">
+                  <div className="absolute right-0 mt-2 w-48 bg-gray-800 rounded-lg shadow-lg py-1 z-80">
                     <div className="md:hidden px-4 py-2 border-b border-gray-700">
                       <span className="text-sm font-medium text-white">
                         {user.name}

@@ -285,7 +285,7 @@ const Subscription = () => {
           }
         },
         theme: {
-          color: "#3B82F6"
+          color: "#000000"
         }
       };
 
