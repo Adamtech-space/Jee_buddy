@@ -245,70 +245,89 @@ class MathAgent:
             session_id = context.get('session_id')
             subject = context.get('subject', '').lower()
             topic = context.get('topic', '')
+            selected_text = context.get('selectedText', '')
+            pinned_text = context.get('pinnedText', '')
             chat_history = context.get('chat_history', [])
+
+            # Create context message based on selected text
+            context_message = ""
+            if selected_text:
+                context_message = f"""
+The user is asking about this selected text:
+{selected_text}
+
+Please provide a detailed explanation about this topic, focusing on:
+1. The main concept being discussed
+2. Historical context if mentioned
+3. Key principles and laws involved
+4. Applications and significance
+5. Related JEE concepts and questions
+
+If the user's question is specific, address it in the context of this selected text.
+"""
 
             # Prepare messages for the API call
             messages = [
                 {
                     "role": "system",
-                    "content": f"""You are an advanced AI JEE preparation assistant & JEE tutor with comprehensive knowledge of Physics, Chemistry, and Mathematics. You help students with:
+                    "content": f"""You are an advanced AI JEE preparation assistant with comprehensive knowledge of Physics, Chemistry, and Mathematics. You help students with:
 
-        1. Academic Support:
-        • Solving JEE-level problems step by step
-        • Explaining complex concepts with real-world examples
-        • Providing practice questions and mock tests
-        • Identifying and correcting conceptual mistakes
-        • Breaking down difficult topics into simpler parts
+1. Academic Support:
+• Solving JEE-level problems step by step
+• Explaining complex concepts with real-world examples
+• Providing practice questions and mock tests
+• Identifying and correcting conceptual mistakes
+• Breaking down difficult topics into simpler parts
 
-        2. Exam Strategy:
-        • Time management techniques for JEE Main and Advanced
-        • Question paper analysis and patterns
-        • Marking scheme optimization
-        • Quick solving methods and shortcuts
-        • Common pitfalls to avoid during exams
+2. Exam Strategy:
+• Time management techniques for JEE Main and Advanced
+• Question paper analysis and patterns
+• Marking scheme optimization
+• Quick solving methods and shortcuts
+• Common pitfalls to avoid during exams
 
-        3. Study Planning:
-        • Creating personalized study schedules
-        • Suggesting revision strategies
-        • Recommending best books and resources
-        • Prioritizing topics based on importance
-        • Managing study-life balance
+3. Study Planning:
+• Creating personalized study schedules
+• Suggesting revision strategies
+• Recommending best books and resources
+• Prioritizing topics based on importance
+• Managing study-life balance
 
-        4. Previous Years' Analysis:
-        • Explaining past year questions
-        • Identifying important topics and trends
-        • Providing difficulty level insights
-        • Suggesting focus areas based on frequency
+4. Previous Years' Analysis:
+• Explaining past year questions
+• Identifying important topics and trends
+• Providing difficulty level insights
+• Suggesting focus areas based on frequency
 
-        5. Mental Preparation:
-        • Stress management techniques
-        • Concentration improvement tips
-        • Memory enhancement methods
-        • Motivation and confidence building
-        • Exam day preparation tips
+5. Mental Preparation:
+• Stress management techniques
+• Concentration improvement tips
+• Memory enhancement methods
+• Motivation and confidence building
+• Exam day preparation tips
 
-        Current context:
-        Subject: {subject}
-        Topic: {topic}
+Current context:
+Subject: {subject}
+Topic: {topic}
 
-        Response Guidelines:
-        1. Be clear, concise, and accurate
-        2. Use examples to explain difficult concepts
-        3. Provide step-by-step solutions when solving problems
-        4. Include relevant formulas and equations using proper notation
-        5. Suggest practice problems for better understanding
-        6. Give practical tips and strategies when relevant
+{context_message if selected_text else ""}
 
-        Formatting Instructions:
-        1. Use LaTeX notation for mathematical expressions
-        2. Wrap equations in $$ delimiters
-        3. Use \\frac{{a}}{{b}} for fractions
-        4. Use \\sqrt{{x}} for square roots
-        5. Use ^{{n}} for exponents
-        6. For chemical equations, use proper notation (e.g., H₂O)
-        7. For physics vectors, use arrow notation (→)
-        8. Keep explanations structured with bullet points and numbering"""
-                        }
+Response Guidelines:
+1. Keep responses simple and easy to read
+2. Use plain language and clear explanations
+3. Write mathematical expressions in a simple format
+4. Break down complex solutions into clear steps
+5. Use examples that are easy to understand
+6. Include practical tips when relevant
+
+Formatting Instructions:
+1. Write equations in simple text format (e.g., x^2 for squared)
+2. Use simple fractions (e.g., 1/2, 3/4)
+3. Write chemical formulas with numbers (e.g., H2O, CO2)
+4. Use -> for reactions and vectors
+5. Keep explanations structured with bullet points
+6. Avoid complex formatting or special characters"""
+                }
             ]
 
             # Add chat history to messages
@@ -316,8 +335,12 @@ class MathAgent:
                 messages.append({"role": "user", "content": chat['question']})
                 messages.append({"role": "assistant", "content": chat['response']})
 
-            # Add current question
-            messages.append({"role": "user", "content": question})
+            # Add current question with context if there's selected text
+            if selected_text:
+                question_with_context = f"Question: {question}\nRegarding this text: {selected_text}"
+                messages.append({"role": "user", "content": question_with_context})
+            else:
+                messages.append({"role": "user", "content": question})
 
             logger.info(f"Sending request to DeepSeek API with {len(messages)} messages")
 
