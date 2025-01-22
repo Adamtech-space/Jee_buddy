@@ -51,6 +51,8 @@ const ChatBot = ({
   const [displayedResponse, setDisplayedResponse] = useState('');
   const { handleTextSelection } = useSelection();
   const [selectedTextPreview, setSelectedTextPreview] = useState(null);
+  const [isPinnedText, setIsPinnedText] = useState(false);
+  const [isPinnedImage, setIsPinnedImage] = useState(false);
 
   // Define handleSubmit with useCallback before using it in useEffect
   const handleSubmit = useCallback(async (e) => {
@@ -66,18 +68,31 @@ const ChatBot = ({
       return;
     }
 
-    // Add combined message with both selected text and question
-    setMessages(prev => [...prev, {
-      sender: 'user',
-      type: selectedTextPreview ? 'selected-text' : 'text',
-      content: chatMessage,
-      source: selectedTextPreview?.source,
-      selectedText: selectedTextPreview?.content
-    }]);
+    // Add message with image if present
+    if (pinnedImage) {
+      setMessages(prev => [...prev, {
+        sender: 'user',
+        type: 'image',
+        content: pinnedImage.content,
+        fileName: pinnedImage.fileName,
+        question: chatMessage
+      }]);
+    } else {
+      // Add text message
+      setMessages(prev => [...prev, {
+        sender: 'user',
+        type: selectedTextPreview ? 'selected-text' : 'text',
+        content: chatMessage,
+        source: selectedTextPreview?.source,
+        selectedText: selectedTextPreview?.content
+      }]);
+    }
 
-    // Clear states
+    // Clear states if not pinned
     const questionContext = selectedTextPreview;
-    setSelectedTextPreview(null);
+    const imageToSend = pinnedImage;
+    if (!isPinnedText) setSelectedTextPreview(null);
+    if (!isPinnedImage) setPinnedImage(null);
     setMessage('');
     setIsLoading(true);
 
@@ -90,14 +105,6 @@ const ChatBot = ({
         throw new Error('No valid session ID found');
       }
 
-      console.log('ChatBot - Sending request to AI service:', {
-        question: chatMessage,
-        selectedText: questionContext?.content,
-        source: questionContext?.source,
-        subject,
-        topic
-      });
-
       const response = await aiService.askQuestion(chatMessage, {
         user_id: userData.id || 'anonymous',
         session_id: sessionId,
@@ -107,10 +114,8 @@ const ChatBot = ({
         pinnedText: '',
         selectedText: questionContext?.content || '',
         source: questionContext?.source || 'Chat',
-        image: pinnedImage?.content?.split(',')[1] || null,
+        image: imageToSend?.content?.split(',')[1] || null,
       });
-
-      console.log('ChatBot - Received AI response:', response);
 
       const aiMessage = {
         sender: 'assistant',
@@ -122,8 +127,6 @@ const ChatBot = ({
       setCurrentTypingIndex(0);
       setIsTyping(true);
       
-      // Clear pinned image after sending
-      setPinnedImage(null);
     } catch (error) {
       console.error('ChatBot - Error processing message:', error);
       const errorMessage = `Failed to process message: ${error?.message || 'Please try again'}`;
@@ -140,7 +143,7 @@ const ChatBot = ({
     } finally {
       setIsLoading(false);
     }
-  }, [chatMessage, selectedTextPreview, pinnedImage, subject, topic, setMessages, setIsTyping, setDisplayedResponse, setCurrentTypingIndex]);
+  }, [chatMessage, selectedTextPreview, pinnedImage, isPinnedText, isPinnedImage, subject, topic, setMessages, setIsTyping, setDisplayedResponse, setCurrentTypingIndex]);
 
   // Get user profile from localStorage
   useEffect(() => {
@@ -396,19 +399,20 @@ const ChatBot = ({
                 <img
                   src={msg.content}
                   alt="Uploaded content"
-                  className="max-w-full h-auto rounded object-contain"
-                  style={{ maxHeight: '150px' }}
+                  className="w-32 h-32 object-cover rounded"
                 />
+                {msg.fileName && (
+                  <div className="flex items-center gap-1 text-xs text-gray-300 mt-1">
+                    <span className="inline-block w-1 h-1 bg-gray-400 rounded-full"></span>
+                    <span>{msg.fileName}</span>
+                  </div>
+                )}
               </div>
-              {msg.fileName && (
-                <div className="flex items-center gap-1 text-xs text-gray-300">
-                  <span className="inline-block w-1 h-1 bg-gray-400 rounded-full"></span>
-                  <span>{msg.fileName}</span>
+              {msg.question && (
+                <div className="text-[15px]">
+                  {msg.question}
                 </div>
               )}
-              <div className="text-[15px]">
-                {msg.caption || content}
-              </div>
             </div>
           ) : msg.type === 'selected-text' ? (
             <div className="space-y-2">
@@ -623,7 +627,7 @@ const ChatBot = ({
 
       {/* Input with Pinned Content */}
       <div className="p-2 border-t border-gray-800 bg-gray-900">
-        {/* Selected Text Preview - Show this before pinned image */}
+        {/* Selected Text Preview */}
         {selectedTextPreview && (
           <div className="mb-2 flex items-start bg-gray-800/50 rounded-lg p-1.5">
             <div className="flex-1 min-w-0">
@@ -638,12 +642,24 @@ const ChatBot = ({
                 {selectedTextPreview.content}
               </div>
             </div>
-            <button
-              onClick={() => setSelectedTextPreview(null)}
-              className="ml-1.5 p-1 hover:bg-gray-700/50 rounded-full transition-colors flex-shrink-0"
-            >
-              <XMarkIcon className="h-4 w-4 text-gray-400 hover:text-white" />
-            </button>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setIsPinnedText(!isPinnedText)}
+                className="p-1 hover:bg-gray-700/50 rounded-full transition-colors flex-shrink-0"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" 
+                     className={`h-4 w-4 ${isPinnedText ? 'text-blue-400' : 'text-gray-400 hover:text-white'}`} 
+                     viewBox="0 0 20 20" fill="currentColor">
+                  <path d="M9.293 1.293a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 4.414V15a1 1 0 11-2 0V4.414L7.707 5.707a1 1 0 01-1.414-1.414l3-3z" />
+                </svg>
+              </button>
+              <button
+                onClick={() => setSelectedTextPreview(null)}
+                className="p-1 hover:bg-gray-700/50 rounded-full transition-colors flex-shrink-0"
+              >
+                <XMarkIcon className="h-4 w-4 text-gray-400 hover:text-white" />
+              </button>
+            </div>
           </div>
         )}
 
@@ -660,12 +676,24 @@ const ChatBot = ({
             <div className="ml-2 flex-1 text-sm text-gray-300 truncate">
               {pinnedImage.fileName}
             </div>
-            <button
-              onClick={() => setPinnedImage(null)}
-              className="ml-2 p-1 hover:bg-gray-700/50 rounded-full transition-colors"
-            >
-              <XMarkIcon className="h-4 w-4 text-gray-400 hover:text-white" />
-            </button>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setIsPinnedImage(!isPinnedImage)}
+                className="p-1 hover:bg-gray-700/50 rounded-full transition-colors"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" 
+                     className={`h-4 w-4 ${isPinnedImage ? 'text-blue-400' : 'text-gray-400 hover:text-white'}`} 
+                     viewBox="0 0 20 20" fill="currentColor">
+                  <path d="M9.293 1.293a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 4.414V15a1 1 0 11-2 0V4.414L7.707 5.707a1 1 0 01-1.414-1.414l3-3z" />
+                </svg>
+              </button>
+              <button
+                onClick={() => setPinnedImage(null)}
+                className="p-1 hover:bg-gray-700/50 rounded-full transition-colors"
+              >
+                <XMarkIcon className="h-4 w-4 text-gray-400 hover:text-white" />
+              </button>
+            </div>
           </div>
         )}
 
