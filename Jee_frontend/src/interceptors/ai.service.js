@@ -15,7 +15,7 @@ export const aiService = {
           pinnedText: context.pinnedText || '',
           selectedText: context.selectedText || '',
           image: context.image || null,
-          deepThink: context.deepThink || false,
+          Deep_think: context.Deep_think || false,
           history_limit: 100,
           chat_history: [] // The backend will fetch history based on user_id
         }
@@ -52,7 +52,7 @@ export const aiService = {
           pinnedText: context.pinnedText || '',
           selectedText: context.selectedText || '',
           image: context.image || null,
-          deepThink: context.deepThink || false,
+          Deep_think: context.Deep_think || false,
           history_limit: 100,
           chat_history: []
         }
