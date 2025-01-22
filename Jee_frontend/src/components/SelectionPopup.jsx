@@ -1,8 +1,56 @@
 import PropTypes from 'prop-types';
 import { useSelection } from '../hooks/useSelection';
+import { useRef, useEffect } from 'react';
 
 const SelectionPopup = ({ onSaveToFlashCard, onAskAI }) => {
   const { selectedText, selectionPosition, showPopup, clearSelection } = useSelection();
+  const popupRef = useRef(null);
+
+  useEffect(() => {
+    // Prevent default selection behavior on mobile
+    const preventDefaultSelection = (e) => {
+      if (window.innerWidth <= 768) {  // mobile breakpoint
+        e.preventDefault();
+      }
+    };
+
+    document.addEventListener('selectionchange', preventDefaultSelection);
+    return () => {
+      document.removeEventListener('selectionchange', preventDefaultSelection);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!popupRef.current || !selectionPosition) return;
+
+    const popup = popupRef.current;
+    const rect = popup.getBoundingClientRect();
+    const viewportHeight = window.innerHeight;
+    const viewportWidth = window.innerWidth;
+
+    // Calculate position for mobile
+    let top = selectionPosition.y - rect.height - 10;
+    let left = selectionPosition.x - (rect.width / 2);
+
+    // Handle mobile viewport constraints
+    if (window.innerWidth <= 768) {
+      // Center horizontally on mobile
+      left = (viewportWidth - rect.width) / 2;
+      
+      // Position from bottom on mobile
+      top = viewportHeight - rect.height - 20;
+    } else {
+      // Desktop position adjustments
+      if (top < 0) top = selectionPosition.y + 10;
+      if (left < 0) left = 0;
+      if (left + rect.width > viewportWidth) {
+        left = viewportWidth - rect.width - 10;
+      }
+    }
+
+    popup.style.top = `${top}px`;
+    popup.style.left = `${left}px`;
+  }, [selectionPosition]);
 
   if (!showPopup || !selectionPosition) return null;
 
@@ -48,48 +96,30 @@ const SelectionPopup = ({ onSaveToFlashCard, onAskAI }) => {
     clearSelection();
   };
 
-  const getPopupStyle = () => {
-    const margin = 8;
-    const popupHeight = 40;
-    
-    let x = selectionPosition.x;
-    let y = selectionPosition.y - popupHeight - margin;
-
-    // Ensure popup stays within screen bounds
-    if (x < margin) x = margin;
-    if (x > window.innerWidth - margin) x = window.innerWidth - margin;
-    if (y < margin) y = margin;
-    if (y > window.innerHeight - margin - popupHeight) {
-      y = selectionPosition.y + margin; // Show below if not enough space above
-    }
-
-    return {
-      top: `${y}px`,
-      left: `${x}px`,
-      transform: 'translateX(-50%)',
-      position: 'fixed',
-      zIndex: 1000
-    };
-  };
-
   return (
-    <div 
-      className="selection-popup fixed flex items-center gap-1 bg-gray-800/95 backdrop-blur-md rounded-lg shadow-lg px-1.5 py-1.5"
-      style={getPopupStyle()}
-      onClick={(e) => e.stopPropagation()}
+    <div
+      ref={popupRef}
+      className={`
+        fixed flex gap-2 p-2 rounded-lg shadow-lg bg-gray-900 border border-gray-700
+        transition-all duration-200 ease-in-out
+        ${window.innerWidth <= 768 ? 'w-[95%] mx-auto bottom-4 left-0 right-0' : ''}
+      `}
+      style={{
+        zIndex: 99999, // Ensure it's above everything
+      }}
     >
       <button
         onClick={() => handleAction(onAskAI)}
-        className="text-sm text-white hover:bg-gray-700/50 px-3 py-1 rounded-md transition-colors"
+        className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-800 hover:bg-gray-700 rounded-md text-sm text-white transition-colors"
       >
         Ask AI
       </button>
       <div className="w-px h-4 bg-gray-600"></div>
       <button
         onClick={() => handleAction(onSaveToFlashCard)}
-        className="text-sm text-white hover:bg-gray-700/50 px-3 py-1 rounded-md transition-colors"
+        className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-800 hover:bg-gray-700 rounded-md text-sm text-white transition-colors"
       >
-        Save
+        Save to Flash Cards
       </button>
     </div>
   );
