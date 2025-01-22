@@ -57,11 +57,11 @@ export const SubscriptionProvider = ({ children }) => {
   };
 
   const setupSubscriptionTimer = () => {
-    // After 30 seconds, force subscription for non-subscribed users
+    // After 3 days (259200000 ms), force subscription for non-subscribed users
     setTimeout(() => {
       setForceSubscribe(true);
       navigate('/settings');
-    }, 30000);
+    }, 259200000); // 3 days = 3 * 24 * 60 * 60 * 1000 milliseconds
   };
 
   // Check if current route is public
