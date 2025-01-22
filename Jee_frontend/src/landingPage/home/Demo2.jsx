@@ -101,92 +101,118 @@ const Demo2 = () => {
 
   // Optimize scroll handling
   const scrollToBottom = useCallback(() => {
-    messagesEndRef.current?.scrollIntoView({ 
-      behavior: "smooth",
-      block: "end",
-      inline: "nearest"
-    });
+    if (messagesEndRef.current) {
+      const chatContainer = messagesEndRef.current.parentElement;
+      chatContainer.scrollTo({
+        top: chatContainer.scrollHeight,
+        behavior: 'smooth',
+      });
+    }
   }, []);
 
   useEffect(() => {
-    scrollToBottom();
+    // Add a small delay to ensure DOM updates are complete
+    const timeoutId = setTimeout(scrollToBottom, 100);
+    return () => clearTimeout(timeoutId);
   }, [messages, scrollToBottom]);
 
   const helpButtons = [
-    { type: "explain", icon: "📝", text: "Step-by-Step" },
-    { type: "basics", icon: "🧠", text: "Basics" },
-    { type: "test", icon: "🎯", text: "Test Me" },
-    { type: "similar", icon: "🔄", text: "Examples" },
-    { type: "realworld", icon: "🌍", text: "Real-World" },
-    { type: "keypoints", icon: "🔍", text: "Key Points" },
-    { type: "challenge", icon: "🏆", text: "Challenge" },
-    { type: "mistakes", icon: "⚠️", text: "Mistakes" },
-    { type: "solve", icon: "✨", text: "Solve" },
-    { type: "related", icon: "🔗", text: "Topics" },
-    { type: "mnemonic", icon: "💡", text: "Shortcut" },
-    { type: "ask-similar", icon: "🤔", text: "Similar" }
+    { type: 'explain', icon: '📝', text: 'Step-by-Step' },
+    { type: 'basics', icon: '🧠', text: 'Basics' },
+    { type: 'test', icon: '🎯', text: 'Test Me' },
+    { type: 'similar', icon: '🔄', text: 'Examples' },
+    { type: 'realworld', icon: '🌍', text: 'Real-World' },
+    { type: 'keypoints', icon: '🔍', text: 'Key Points' },
+    { type: 'challenge', icon: '🏆', text: 'Challenge' },
+    { type: 'mistakes', icon: '⚠️', text: 'Mistakes' },
+    { type: 'solve', icon: '✨', text: 'Solve' },
+    { type: 'related', icon: '🔗', text: 'Topics' },
+    { type: 'mnemonic', icon: '💡', text: 'Shortcut' },
+    { type: 'ask-similar', icon: '🤔', text: 'Similar' },
   ];
 
-  const mathProblem = "Find the maximum and minimum values of the function f(x) = x³ - 3x² + 2 in the interval [0,3]";
+  const mathProblem =
+    'Find the maximum and minimum values of the function f(x) = x³ - 3x² + 2 in the interval [0,3]';
 
   // Update buttonResponses to include step-by-step arrays
   const buttonResponses = {
     explain: [
-      "Let me break down this problem step by step:",
+      'Let me break down this problem step by step:',
       "Step 1: First, we need to find the critical points of f(x) = x³ - 3x² + 2\nWe'll do this by finding f'(x) and setting it equal to 0.",
       "Step 2: Taking the derivative:\nf'(x) = 3x² - 6x = 3x(x-2)",
       "Step 3: Setting f'(x) = 0:\n3x(x-2) = 0\nSolving this: x = 0 or x = 2",
-      "Step 4: Now we have our critical points (x = 0, 2) and we need to check these points plus the endpoints (x = 3)",
+      'Step 4: Now we have our critical points (x = 0, 2) and we need to check these points plus the endpoints (x = 3)',
       "Step 5: Let's evaluate f(x) at each point:\nf(0) = 2\nf(2) = -2\nf(3) = 2",
-      "Final Step: Comparing all values:\nMaximum value = 2 (occurs at x = 0 and x = 3)\nMinimum value = -2 (occurs at x = 2)"
+      'Final Step: Comparing all values:\nMaximum value = 2 (occurs at x = 0 and x = 3)\nMinimum value = -2 (occurs at x = 2)',
     ],
     basics: [
       "Let's review the basic concepts one by one:",
-      "1. Derivatives:\nA derivative measures the rate of change of a function. It helps us find where the function is increasing or decreasing.",
+      '1. Derivatives:\nA derivative measures the rate of change of a function. It helps us find where the function is increasing or decreasing.',
       "2. Critical Points:\nThese are points where f'(x) = 0 or where f'(x) is undefined. They're potential locations for maximum/minimum values.",
-      "3. Interval Analysis:\nOn a closed interval [a,b], we must check:\n- Critical points within the interval\n- Endpoint values",
-      "4. Maximum and Minimum:\nThe largest value in the interval is the absolute maximum.\nThe smallest value is the absolute minimum."
+      '3. Interval Analysis:\nOn a closed interval [a,b], we must check:\n- Critical points within the interval\n- Endpoint values',
+      '4. Maximum and Minimum:\nThe largest value in the interval is the absolute maximum.\nThe smallest value is the absolute minimum.',
     ],
     test: [
       "Let's test your understanding step by step:",
-      "Q1: What is the first step in finding absolute maximum/minimum values on a closed interval?",
-      "Q2: How do you find critical points?",
-      "Q3: Why do we need to check endpoints in a closed interval?",
+      'Q1: What is the first step in finding absolute maximum/minimum values on a closed interval?',
+      'Q2: How do you find critical points?',
+      'Q3: Why do we need to check endpoints in a closed interval?',
       "Q4: In our problem, why do we get two x-values when solving f'(x) = 0?",
-      "Take your time to think about each question. Would you like me to explain any of these in detail?"
+      'Take your time to think about each question. Would you like me to explain any of these in detail?',
     ],
-    similar: "Here's a similar optimization problem:\nFind the maximum and minimum values of g(x) = x² - 2x + 1 on [0,2]\n\nHowever, as this is a demo version, I can only help with the main problem above. For access to more practice problems and similar examples, please login and subscribe! 🔄\n\nWould you like me to solve the main problem instead? Just say 'yes'! 📚",
-    realworld: "This type of optimization problem appears in real-world scenarios like:\n\n• Manufacturing to maximize profit\n• Engineering design for efficiency\n• Resource allocation",
-    keypoints: "Key points to remember:\n\n• Check critical points within interval\n• Always evaluate endpoints\n• Compare all values found\n• Consider domain restrictions",
-    challenge: "Try this challenge:\nModify the original function to f(x) = x³ - 4x² + 2 and find its max/min on [0,4]. How does this change affect the solution?",
-    mistakes: "Common mistakes to avoid:\n\n• Forgetting to check endpoints\n• Missing critical points\n• Incorrect derivative calculations\n• Not verifying max vs min",
-    solve: "Complete solution:\nf(x) = x³ - 3x² + 2\nf'(x) = 3x² - 6x = 3x(x-2)\nCritical points: x = 0, 2\n\nEvaluating:\nf(0) = 2\nf(2) = -2\nf(3) = 2\n\nTherefore,\nMaximum = 2 (at x = 0 and x = 3)\nMinimum = -2 (at x = 2)",
-    related: "Related topics to explore:\n\n• Derivative applications\n• Optimization problems\n• Critical point analysis\n• Curve sketching",
-    mnemonic: "Remember this shortcut:\n'CEED' method:\nC - Critical points\nE - Endpoints\nE - Evaluate\nD - Determine max/min",
-    "ask-similar": "Here's a similar problem to practice:\nFind the maximum and minimum values of g(x) = -x³ + 6x² - 9x + 1 on [0,4]"
+    similar:
+      "Here's a similar optimization problem:\nFind the maximum and minimum values of g(x) = x² - 2x + 1 on [0,2]\n\nHowever, as this is a demo version, I can only help with the main problem above. For access to more practice problems and similar examples, please login and subscribe! 🔄\n\nWould you like me to solve the main problem instead? Just say 'yes'! 📚",
+    realworld:
+      'This type of optimization problem appears in real-world scenarios like:\n\n• Manufacturing to maximize profit\n• Engineering design for efficiency\n• Resource allocation',
+    keypoints:
+      'Key points to remember:\n\n• Check critical points within interval\n• Always evaluate endpoints\n• Compare all values found\n• Consider domain restrictions',
+    challenge:
+      'Try this challenge:\nModify the original function to f(x) = x³ - 4x² + 2 and find its max/min on [0,4]. How does this change affect the solution?',
+    mistakes:
+      'Common mistakes to avoid:\n\n• Forgetting to check endpoints\n• Missing critical points\n• Incorrect derivative calculations\n• Not verifying max vs min',
+    solve:
+      "Complete solution:\nf(x) = x³ - 3x² + 2\nf'(x) = 3x² - 6x = 3x(x-2)\nCritical points: x = 0, 2\n\nEvaluating:\nf(0) = 2\nf(2) = -2\nf(3) = 2\n\nTherefore,\nMaximum = 2 (at x = 0 and x = 3)\nMinimum = -2 (at x = 2)",
+    related:
+      'Related topics to explore:\n\n• Derivative applications\n• Optimization problems\n• Critical point analysis\n• Curve sketching',
+    mnemonic:
+      "Remember this shortcut:\n'CEED' method:\nC - Critical points\nE - Endpoints\nE - Evaluate\nD - Determine max/min",
+    'ask-similar':
+      "Here's a similar problem to practice:\nFind the maximum and minimum values of g(x) = -x³ + 6x² - 9x + 1 on [0,4]",
   };
 
   // Update handleHelpClick to show responses step by step
   const handleHelpClick = (buttonType) => {
-    const responses = Array.isArray(buttonResponses[buttonType]) 
-      ? [...buttonResponses[buttonType], "\nNote: This is a demo version. For access to more practice problems, detailed explanations, and personalized help, please login and subscribe! 🌟"] 
+    const responses = Array.isArray(buttonResponses[buttonType])
+      ? [
+          ...buttonResponses[buttonType],
+          '\nNote: This is a demo version. For access to more practice problems, detailed explanations, and personalized help, please login and subscribe! 🌟',
+        ]
       : [buttonResponses[buttonType]];
 
     const userRequest = `Help me ${buttonType === 'solve' ? 'solve' : 'understand'} this problem ${buttonType === 'solve' ? '' : `using the ${buttonType} approach`}.`;
-    
-    setMessages(prev => [...prev, { 
-      type: 'user', 
-      content: userRequest 
-    }]);
+
+    setMessages((prev) => [
+      ...prev,
+      {
+        type: 'user',
+        content: userRequest,
+      },
+    ]);
 
     // Show responses one by one with delays
     responses.forEach((response, index) => {
-      setTimeout(() => {
-        setMessages(prev => [...prev, {
-          type: 'assistant',
-          content: response
-        }]);
-      }, (index + 1) * 1500); // 1.5 second delay between each step
+      setTimeout(
+        () => {
+          setMessages((prev) => [
+            ...prev,
+            {
+              type: 'assistant',
+              content: response,
+            },
+          ]);
+        },
+        (index + 1) * 1500
+      ); // 1.5 second delay between each step
     });
   };
 
@@ -194,14 +220,17 @@ const Demo2 = () => {
   const handleSolveStep = (steps, currentStep = 0) => {
     if (currentStep < steps.length) {
       setIsTyping(true);
-      
+
       setTimeout(() => {
         setIsTyping(false);
-        setMessages(prev => [...prev, {
-          type: 'assistant',
-          content: steps[currentStep]
-        }]);
-        
+        setMessages((prev) => [
+          ...prev,
+          {
+            type: 'assistant',
+            content: steps[currentStep],
+          },
+        ]);
+
         // Schedule next step
         setTimeout(() => {
           handleSolveStep(steps, currentStep + 1);
@@ -216,52 +245,54 @@ const Demo2 = () => {
     const words = input.split(/\s+/);
 
     const containsPattern = (patterns) => {
-      return patterns.some(pattern => 
-        words.some(word => word === pattern || word.includes(pattern))
+      return patterns.some((pattern) =>
+        words.some((word) => word === pattern || word.includes(pattern))
       );
     };
 
     // Track both problems
     const problems = {
       original: {
-        question: "Find max/min of f(x) = x³ - 3x² + 2 on [0,3]",
+        question: 'Find max/min of f(x) = x³ - 3x² + 2 on [0,3]',
         steps: [
           "Let's solve this! 📝",
           "First, let's find f'(x):\n• f'(x) = 3x² - 6x = 3x(x-2)",
-          "Critical points:\n• x = 0 or x = 2",
+          'Critical points:\n• x = 0 or x = 2',
           "Let's check the values:\n• f(0) = 2\n• f(2) = -2\n• f(3) = 2",
-          "There we have it!\n• Max = 2 (at x = 0, 3)\n• Min = -2 (at x = 2)"
-        ]
+          'There we have it!\n• Max = 2 (at x = 0, 3)\n• Min = -2 (at x = 2)',
+        ],
       },
       similar: {
-        question: "Find max/min of g(x) = x² - 2x + 1 on [0,2]",
+        question: 'Find max/min of g(x) = x² - 2x + 1 on [0,2]',
         steps: [
           "Let's solve this one! 📝",
           "First, g'(x):\n• g'(x) = 2x - 2",
-          "Critical point:\n• 2x - 2 = 0\n• x = 1",
-          "Checking values:\n• g(0) = 1\n• g(1) = 0\n• g(2) = 1",
-          "Here's what we found:\n• Max = 1 (at x = 0, 2)\n• Min = 0 (at x = 1)"
-        ]
+          'Critical point:\n• 2x - 2 = 0\n• x = 1',
+          'Checking values:\n• g(0) = 1\n• g(1) = 0\n• g(2) = 1',
+          "Here's what we found:\n• Max = 1 (at x = 0, 2)\n• Min = 0 (at x = 1)",
+        ],
       },
       askSimilar: {
-        question: "Find max/min of h(x) = -x³ + 6x² - 9x + 1 on [0,4]",
+        question: 'Find max/min of h(x) = -x³ + 6x² - 9x + 1 on [0,4]',
         steps: [
           "Let's tackle this! 📝",
           "First, h'(x):\n• h'(x) = -3x² + 12x - 9\n• h'(x) = -3(x² - 4x + 3)\n• h'(x) = -3(x - 1)(x - 3)",
-          "Critical points:\n• x = 1 or x = 3",
-          "Checking values:\n• h(0) = 1\n• h(1) = -1\n• h(3) = 1\n• h(4) = -3",
-          "Here's what we got:\n• Max = 1 (at x = 0, 3)\n• Min = -3 (at x = 1, 4)"
-        ]
-      }
+          'Critical points:\n• x = 1 or x = 3',
+          'Checking values:\n• h(0) = 1\n• h(1) = -1\n• h(3) = 1\n• h(4) = -3',
+          "Here's what we got:\n• Max = 1 (at x = 0, 3)\n• Min = -3 (at x = 1, 4)",
+        ],
+      },
     };
 
     // Check if we're in a clarification state
     const lastMessage = messages[messages.length - 1]?.content;
-    const isAskingForClarification = lastMessage === "Which problem would you like help with?\n1. Original\n2. Similar\n3. Practice\n\nJust pick a number! 😊";
-    
+    const isAskingForClarification =
+      lastMessage ===
+      'Which problem would you like help with?\n1. Original\n2. Similar\n3. Practice\n\nJust pick a number! 😊';
+
     if (isAskingForClarification) {
       // Handle numeric selection directly
-      switch(input) {
+      switch (input) {
         case '1':
           handleSolveStep(problems.original.steps);
           return null;
@@ -280,38 +311,60 @@ const Demo2 = () => {
             handleSolveStep(problems.similar.steps);
             return null;
           }
-          if (input.includes('third') || input.includes('practice') || input.includes('last')) {
+          if (
+            input.includes('third') ||
+            input.includes('practice') ||
+            input.includes('last')
+          ) {
             handleSolveStep(problems.askSimilar.steps);
             return null;
           }
-          return "Please select a number (1, 2, or 3) to continue! 😊";
+          return 'Please select a number (1, 2, or 3) to continue! 😊';
       }
     }
 
     // Check for solve/help requests
-    const solvePatterns = ['solve', 'solution', 'help', 'show', 'explain', 'steps'];
-    if (containsPattern(solvePatterns) || input === '1' || input === '2' || input === '3') {
-      return "Which problem would you like help with?\n" +
-             "1. Original\n2. Similar\n3. Practice\n\n" +
-             "Just pick a number! 😊";
+    const solvePatterns = [
+      'solve',
+      'solution',
+      'help',
+      'show',
+      'explain',
+      'steps',
+    ];
+    if (
+      containsPattern(solvePatterns) ||
+      input === '1' ||
+      input === '2' ||
+      input === '3'
+    ) {
+      return (
+        'Which problem would you like help with?\n' +
+        '1. Original\n2. Similar\n3. Practice\n\n' +
+        'Just pick a number! 😊'
+      );
     }
 
     // Simple confirmations
     const confirmationPatterns = ['yes', 'yeah', 'yep', 'okay', 'sure'];
     if (containsPattern(confirmationPatterns) && words.length < 3) {
-      return "Which problem would you like help with?\n" +
-             "1. Original\n2. Similar\n3. Practice\n\n" +
-             "Just pick a number! 😊";
+      return (
+        'Which problem would you like help with?\n' +
+        '1. Original\n2. Similar\n3. Practice\n\n' +
+        'Just pick a number! 😊'
+      );
     }
 
     // Default response
-    return "Which problem would you like help with?\n" +
-           "1. Original\n2. Similar\n3. Practice\n\n" +
-           "Just pick a number! 😊";
+    return (
+      'Which problem would you like help with?\n' +
+      '1. Original\n2. Similar\n3. Practice\n\n' +
+      'Just pick a number! 😊'
+    );
   };
 
   return (
-    <section id="demo" className="relative py-10 overflow-hidden">
+    <section className="relative py-10 overflow-hidden">
       <div className="container mx-auto px-4 relative">
         <h2 className="text-4xl font-bold text-center mb-12 bg-clip-text text-transparent bg-gradient-to-r from-[#6366f1] to-[#8b5cf6]">
           Test your AI teacher now
@@ -347,8 +400,10 @@ const Demo2 = () => {
                 </div>
               </div>
               <div className="chat-container">
-                <div className="chat-messages bg-[#1f1029]/40 border border-[#4a1942]/50 rounded-xl p-4 sm:p-6 h-[40vh] 
-                          overflow-y-auto mb-4 sm:mb-6 scrollbar-thin scrollbar-thumb-[#6366f1] scrollbar-track-[#2d1635]">
+                <div
+                  className="chat-messages bg-[#1f1029]/40 border border-[#4a1942]/50 rounded-xl p-4 sm:p-6 h-[40vh] 
+                          overflow-y-auto mb-4 sm:mb-6 scrollbar-thin scrollbar-thumb-[#6366f1] scrollbar-track-[#2d1635]"
+                >
                   {messages.map((message, index) => (
                     <ChatMessage key={index} message={message} index={index} />
                   ))}
