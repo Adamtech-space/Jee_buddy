@@ -352,7 +352,7 @@ const StudyMaterials = () => {
               )}
             </div>
 
-            <div className="flex items-center space-x-2 opacity-0 group-hover:opacity-100">
+            <div className="flex items-center space-x-2">
               {loadingItems.has(item.id) ? (
                 <div className="flex items-center text-blue-400">
                   <svg
@@ -379,7 +379,7 @@ const StudyMaterials = () => {
                     : 'Processing file...'}
                 </div>
               ) : (
-                <>
+                <div className="opacity-0 group-hover:opacity-100">
                   <button
                     onClick={() =>
                       setEditingItem({ id: item.id, name: item.name })
@@ -396,7 +396,7 @@ const StudyMaterials = () => {
                   >
                     <TrashIcon className="w-4 h-4" />
                   </button>
-                </>
+                </div>
               )}
             </div>
           </div>
