@@ -166,7 +166,17 @@ export const uploadFiles = async (files, parentId, subject) => {
     if (parentId) {
       formData.append('parentId', parentId);
     }
-    formData.append('subject', subject); // Add subject to form data
+    // Ensure subject is always included
+    if (!subject) {
+      throw new Error('Subject is required');
+    }
+    formData.append('subject', subject);
+
+    console.log('Form data:', {
+      file: files[0].name,
+      parentId,
+      subject,
+    });
 
     const response = await apiInstance.post(
       '/study-materials/files',
@@ -189,11 +199,17 @@ export const getStudyMaterials = async (parentId, subject) => {
     if (parentId) params.append('parentId', parentId);
     params.append('subject', subject); // Always include subject
 
+    console.log('Fetching study materials with params:', { parentId, subject });
+    
     const response = await apiInstance.get(
       `/study-materials?${params.toString()}`
     );
+    
+    console.log('Study materials response:', response.data);
+    
     return response.data;
   } catch (error) {
+    console.error('Error fetching study materials:', error);
     throw (
       error.response?.data || { message: 'Failed to fetch study materials' }
     );

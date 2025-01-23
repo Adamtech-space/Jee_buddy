@@ -13,9 +13,10 @@ router
   .route('/folders')
   .post(validate(studyMaterialsValidation.createFolder), studyMaterialsController.createFolder);
 
+// Move validation after multer for file upload
 router
   .route('/files')
-  .post(validate(studyMaterialsValidation.uploadFile), studyMaterialsController.uploadFile);
+  .post(studyMaterialsController.uploadFile);
 
 router
   .route('/')
