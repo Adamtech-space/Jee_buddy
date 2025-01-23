@@ -536,7 +536,7 @@ const ChatBot = ({
       {!isFullScreen && window.innerWidth >= 1024 && (
         <>
           {isResizing && (
-            <div className="fixed inset-0 bg-black bg-opacity-0 z-50" />
+            <div className="fixed inset-0 bg-black bg-opacity-0 " />
           )}
           <div
             ref={resizeRef}
