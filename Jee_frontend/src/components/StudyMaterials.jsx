@@ -40,6 +40,8 @@ const StudyMaterials = () => {
   const [numPages, setNumPages] = useState(null); // for PDF viewer
   const { handleTextSelection } = useSelection();
   const [loadingItems, setLoadingItems] = useState(new Set());
+  const [uploadProgress, setUploadProgress] = useState({});
+  const [isUploading, setIsUploading] = useState(false);
 
   // Define fetchItems with useCallback before using it in useEffect
   const fetchItems = useCallback(async () => {
@@ -111,16 +113,87 @@ const StudyMaterials = () => {
     const files = Array.from(event.target.files);
     if (!files.length) return;
 
+    setIsUploading(true);
+    const progressObj = {};
+    files.forEach((file) => {
+      progressObj[file.name] = 0;
+    });
+    setUploadProgress(progressObj);
+
+    // Simulate progress updates with random increments
+    const progressInterval = setInterval(() => {
+      setUploadProgress((prev) => {
+        const newProgress = {};
+        let allNearComplete = true;
+        Object.keys(prev).forEach((fileName) => {
+          const currentProgress = prev[fileName];
+          if (currentProgress < 90) {
+            allNearComplete = false;
+            // Random increment between 2 and 15
+            const increment = Math.floor(Math.random() * 13) + 2;
+            // Slower progress as we get closer to 90%
+            const factor = Math.max(0.1, 1 - currentProgress / 100);
+            const adjustedIncrement = increment * factor;
+            newProgress[fileName] = Math.min(
+              currentProgress + adjustedIncrement,
+              90
+            );
+          } else {
+            newProgress[fileName] = currentProgress;
+          }
+        });
+        if (allNearComplete) {
+          clearInterval(progressInterval);
+        }
+        return newProgress;
+      });
+    }, 300); // Slightly slower interval for more realistic feeling
+
     try {
       await uploadFiles(files, currentFolder.id, subject);
+
+      // Simulate final progress to 100% with a slight delay
+      const finalizeProgress = async () => {
+        // First set to 95%
+        setUploadProgress((prev) => {
+          const almostComplete = {};
+          Object.keys(prev).forEach((fileName) => {
+            almostComplete[fileName] = 95;
+          });
+          return almostComplete;
+        });
+
+        // Wait a moment then set to 100%
+        await new Promise((resolve) => setTimeout(resolve, 400));
+
+        setUploadProgress((prev) => {
+          const complete = {};
+          Object.keys(prev).forEach((fileName) => {
+            complete[fileName] = 100;
+          });
+          return complete;
+        });
+
+        // Wait a moment to show 100% completion
+        await new Promise((resolve) => setTimeout(resolve, 500));
+
+        setIsUploading(false);
+        setUploadProgress({});
+      };
+
+      await finalizeProgress();
       message.success('File uploaded successfully');
       await fetchItems();
     } catch (error) {
       message.error(error.message || 'Failed to upload file');
-    }
-
-    if (event.target) {
-      event.target.value = '';
+      clearInterval(progressInterval);
+      setIsUploading(false);
+      setUploadProgress({});
+    } finally {
+      clearInterval(progressInterval);
+      if (event.target) {
+        event.target.value = '';
+      }
     }
   };
 
@@ -352,7 +425,7 @@ const StudyMaterials = () => {
               )}
             </div>
 
-            <div className="flex items-center space-x-2 opacity-0 group-hover:opacity-100">
+            <div className="flex items-center space-x-2">
               {loadingItems.has(item.id) ? (
                 <div className="flex items-center text-blue-400">
                   <svg
@@ -379,7 +452,7 @@ const StudyMaterials = () => {
                     : 'Processing file...'}
                 </div>
               ) : (
-                <>
+                <div className="opacity-0 group-hover:opacity-100">
                   <button
                     onClick={() =>
                       setEditingItem({ id: item.id, name: item.name })
@@ -396,7 +469,7 @@ const StudyMaterials = () => {
                   >
                     <TrashIcon className="w-4 h-4" />
                   </button>
-                </>
+                </div>
               )}
             </div>
           </div>
@@ -433,10 +506,50 @@ const StudyMaterials = () => {
     // Add a small delay to ensure chat is open before setting message
     setTimeout(() => {
       // You'll need to implement a way to communicate with ChatBot
-      window.dispatchEvent(new CustomEvent('setAIQuestion', { 
-        detail: { question: text }
-      }));
+      window.dispatchEvent(
+        new CustomEvent('setAIQuestion', {
+          detail: { question: text },
+        })
+      );
     }, 100);
+  };
+
+  // Update the renderUploadProgress function
+  const renderUploadProgress = () => {
+    if (!isUploading) return null;
+
+    return (
+      <div className="fixed bottom-24 right-4 bg-gray-900/90 backdrop-blur-sm p-3 rounded-lg shadow-lg w-80 border border-gray-800">
+        <div className="text-sm text-white mb-2 flex justify-between items-center">
+          <span className="font-medium">Uploading Files</span>
+          <button
+            onClick={() => {
+              setIsUploading(false);
+              setUploadProgress({});
+            }}
+            className="text-gray-400 hover:text-white text-sm"
+          >
+            ×
+          </button>
+        </div>
+        {Object.entries(uploadProgress).map(([fileName, progress]) => (
+          <div key={fileName} className="mb-1.5 last:mb-0">
+            <div className="text-xs text-gray-300 mb-1 flex justify-between items-center">
+              <span className="truncate max-w-[180px]">{fileName}</span>
+              <span className="text-xs font-medium ml-2">
+                {Math.round(progress)}%
+              </span>
+            </div>
+            <div className="w-full bg-gray-800/50 rounded-full h-1">
+              <div
+                className="bg-blue-500/80 h-1 rounded-full transition-all duration-300"
+                style={{ width: `${progress}%` }}
+              ></div>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
   };
 
   return (
@@ -544,6 +657,7 @@ const StudyMaterials = () => {
         onSaveToFlashCard={handleSaveToFlashCard}
         onAskAI={handleAskAI}
       />
+      {renderUploadProgress()}
     </>
   );
 };
