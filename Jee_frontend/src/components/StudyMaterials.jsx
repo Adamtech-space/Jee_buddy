@@ -39,6 +39,7 @@ const StudyMaterials = () => {
   const [selectedFile, setSelectedFile] = useState(null);
   const [numPages, setNumPages] = useState(null); // for PDF viewer
   const { handleTextSelection } = useSelection();
+  const [loadingItems, setLoadingItems] = useState(new Set());
 
   // Define fetchItems with useCallback before using it in useEffect
   const fetchItems = useCallback(async () => {
@@ -126,11 +127,18 @@ const StudyMaterials = () => {
   // Delete item and its children
   const handleDelete = async (itemId) => {
     try {
+      setLoadingItems((prev) => new Set(prev).add(itemId));
       await deleteStudyMaterial(itemId);
       message.success('Item deleted successfully');
       await fetchItems();
     } catch (error) {
       message.error(error.message || 'Failed to delete item');
+    } finally {
+      setLoadingItems((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(itemId);
+        return newSet;
+      });
     }
   };
 
@@ -139,12 +147,19 @@ const StudyMaterials = () => {
     if (!newName.trim()) return;
 
     try {
+      setLoadingItems((prev) => new Set(prev).add(itemId));
       await renameStudyMaterial(itemId, newName);
       message.success('Item renamed successfully');
       await fetchItems();
       setEditingItem(null);
     } catch (error) {
       message.error(error.message || 'Failed to rename item');
+    } finally {
+      setLoadingItems((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(itemId);
+        return newSet;
+      });
     }
   };
 
@@ -265,7 +280,11 @@ const StudyMaterials = () => {
     const currentItems = getCurrentFolderItems();
 
     if (loading) {
-      return <div className="text-white text-center py-4">Loading...</div>;
+      return (
+        <div className="flex items-center justify-center py-20">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+        </div>
+      );
     }
 
     if (!currentItems.length) {
@@ -334,20 +353,51 @@ const StudyMaterials = () => {
             </div>
 
             <div className="flex items-center space-x-2 opacity-0 group-hover:opacity-100">
-              <button
-                onClick={() => setEditingItem({ id: item.id, name: item.name })}
-                className="p-1 hover:bg-gray-700 rounded text-gray-300"
-                title="Rename"
-              >
-                <PencilIcon className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => handleDelete(item.id)}
-                className="p-1 hover:bg-gray-700 rounded text-gray-300"
-                title="Delete"
-              >
-                <TrashIcon className="w-4 h-4" />
-              </button>
+              {loadingItems.has(item.id) ? (
+                <div className="flex items-center text-blue-400">
+                  <svg
+                    className="animate-spin h-4 w-4 mr-1"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                      fill="none"
+                    />
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    />
+                  </svg>
+                  {item.type === 'folder'
+                    ? 'Processing folder...'
+                    : 'Processing file...'}
+                </div>
+              ) : (
+                <>
+                  <button
+                    onClick={() =>
+                      setEditingItem({ id: item.id, name: item.name })
+                    }
+                    className="p-1 hover:bg-gray-700 rounded text-gray-300"
+                    title="Rename"
+                  >
+                    <PencilIcon className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => handleDelete(item.id)}
+                    className="p-1 hover:bg-gray-700 rounded text-gray-300"
+                    title="Delete"
+                  >
+                    <TrashIcon className="w-4 h-4" />
+                  </button>
+                </>
+              )}
             </div>
           </div>
         ))}
