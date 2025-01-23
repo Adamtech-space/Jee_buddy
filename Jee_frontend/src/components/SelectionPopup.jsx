@@ -100,24 +100,25 @@ const SelectionPopup = ({ onSaveToFlashCard, onAskAI }) => {
     <div
       ref={popupRef}
       className={`
-        fixed flex gap-2 p-2 rounded-lg shadow-lg bg-gray-900 border border-gray-700
+        selection-popup fixed flex gap-2 p-2 rounded-lg shadow-lg bg-gray-900 border border-gray-700
         transition-all duration-200 ease-in-out
         ${window.innerWidth <= 768 ? 'w-[95%] mx-auto bottom-4 left-0 right-0' : ''}
       `}
       style={{
-        zIndex: 99999, // Ensure it's above everything
+        zIndex: 99999,
+        pointerEvents: 'auto'
       }}
     >
       <button
         onClick={() => handleAction(onAskAI)}
-        className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-800 hover:bg-gray-700 rounded-md text-sm text-white transition-colors"
+        className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 bg-gray-800 hover:bg-gray-700 rounded-md text-sm text-white transition-colors"
       >
         Ask AI
       </button>
-      <div className="w-px h-4 bg-gray-600"></div>
+      <div className="w-px h-4 bg-gray-600 self-center"></div>
       <button
         onClick={() => handleAction(onSaveToFlashCard)}
-        className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-800 hover:bg-gray-700 rounded-md text-sm text-white transition-colors"
+        className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 bg-gray-800 hover:bg-gray-700 rounded-md text-sm text-white transition-colors"
       >
         Save to Flash Cards
       </button>
