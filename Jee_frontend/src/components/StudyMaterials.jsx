@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useOutletContext } from 'react-router-dom';
 import { message } from 'antd';
 import {
@@ -42,6 +42,7 @@ const StudyMaterials = () => {
   const [loadingItems, setLoadingItems] = useState(new Set());
   const [uploadProgress, setUploadProgress] = useState({});
   const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef(null);
 
   // Define fetchItems with useCallback before using it in useEffect
   const fetchItems = useCallback(async () => {
@@ -362,19 +363,43 @@ const StudyMaterials = () => {
 
     if (!currentItems.length) {
       return (
-        <div className="text-gray-400 text-center py-4">No items found</div>
+        <div className="flex flex-col items-center justify-center text-center mt-10 sm:mt-20 px-4">
+          <FolderIcon className="w-16 h-16 text-gray-600 mb-4" />
+          <p className="text-lg mb-2">No items found in this folder</p>
+          <p className="text-sm text-gray-500 mb-6">
+            Get started by creating a folder or uploading files
+          </p>
+
+          <div className="flex items-center gap-4 flex-col sm:flex-row w-full sm:w-auto">
+            <button
+              onClick={() => setIsCreatingFolder(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors text-white w-full sm:w-auto justify-center"
+            >
+              <FolderPlusIcon className="w-5 h-5" />
+              <span>Create Folder</span>
+            </button>
+
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="flex items-center gap-2 px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors text-white w-full sm:w-auto justify-center cursor-pointer"
+            >
+              <CloudArrowUpIcon className="w-5 h-5" />
+              <span>Upload Files</span>
+            </button>
+          </div>
+        </div>
       );
     }
 
     return (
-      <div className="space-y-1">
+      <div className="space-y-1 px-2 sm:px-0">
         {currentItems.map((item) => (
           <div
             key={item.id}
-            className="flex items-center justify-between p-3 hover:bg-gray-800 rounded-lg group"
+            className="flex items-center justify-between p-3 hover:bg-gray-800 rounded-lg group flex-wrap gap-2"
           >
             <div
-              className="flex items-center space-x-3 flex-1 text-white cursor-pointer"
+              className="flex items-center space-x-3 text-white cursor-pointer min-w-0 flex-1"
               onClick={async () => {
                 if (item.type === 'folder') {
                   navigateToFolder(item.id);
@@ -398,36 +423,20 @@ const StudyMaterials = () => {
                 <DocumentIcon className="w-5 h-5 text-gray-400" />
               )}
 
-              {editingItem?.id === item.id ? (
-                <input
-                  type="text"
-                  value={editingItem.name}
-                  onChange={(e) =>
-                    setEditingItem({ ...editingItem, name: e.target.value })
-                  }
-                  onBlur={() => handleRename(item.id, editingItem.name)}
-                  onKeyDown={(e) =>
-                    e.key === 'Enter' && handleRename(item.id, editingItem.name)
-                  }
-                  className="px-2 py-1 bg-gray-700 border border-gray-600 rounded text-white"
-                  autoFocus
-                />
-              ) : (
-                <div>
-                  <p className="font-medium">{item.name}</p>
-                  {item.type === 'file' && (
-                    <p className="text-sm text-gray-400">
-                      {(item.file_size / (1024 * 1024)).toFixed(1)} MB •{' '}
-                      {new Date(item.created_at).toLocaleDateString()}
-                    </p>
-                  )}
-                </div>
-              )}
+              <div className="min-w-0">
+                <p className="font-medium truncate">{item.name}</p>
+                {item.type === 'file' && (
+                  <p className="text-xs sm:text-sm text-gray-400 truncate">
+                    {(item.file_size / (1024 * 1024)).toFixed(1)} MB •{' '}
+                    {new Date(item.created_at).toLocaleDateString()}
+                  </p>
+                )}
+              </div>
             </div>
 
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-2 ml-auto">
               {loadingItems.has(item.id) ? (
-                <div className="flex items-center text-blue-400">
+                <div className="flex items-center text-blue-400 text-sm">
                   <svg
                     className="animate-spin h-4 w-4 mr-1"
                     viewBox="0 0 24 24"
@@ -447,24 +456,26 @@ const StudyMaterials = () => {
                       d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                     />
                   </svg>
-                  {item.type === 'folder'
-                    ? 'Processing folder...'
-                    : 'Processing file...'}
+                  <span className="hidden sm:inline">
+                    {item.type === 'folder'
+                      ? 'Processing folder...'
+                      : 'Processing file...'}
+                  </span>
                 </div>
               ) : (
-                <div className="opacity-0 group-hover:opacity-100">
+                <div className="flex opacity-100 sm:opacity-0 sm:group-hover:opacity-100">
                   <button
                     onClick={() =>
                       setEditingItem({ id: item.id, name: item.name })
                     }
-                    className="p-1 hover:bg-gray-700 rounded text-gray-300"
+                    className="p-2 hover:bg-gray-700 rounded text-gray-300"
                     title="Rename"
                   >
                     <PencilIcon className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => handleDelete(item.id)}
-                    className="p-1 hover:bg-gray-700 rounded text-gray-300"
+                    className="p-2 hover:bg-gray-700 rounded text-gray-300"
                     title="Delete"
                   >
                     <TrashIcon className="w-4 h-4" />
@@ -560,34 +571,30 @@ const StudyMaterials = () => {
         className="h-full flex flex-col bg-black rounded-lg"
       >
         <div className="p-4 border-b border-gray-800">
-          <div className="flex justify-between items-center mb-4">
+          <div className="flex justify-between items-center mb-4 flex-col sm:flex-row gap-4 sm:gap-0">
             <h2 className="text-xl font-bold text-white capitalize">
-              {subject} Study Materials
+              My {subject} Study Materials
             </h2>
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={() => setIsCreatingFolder(true)}
-                className="p-2 hover:bg-gray-800 rounded text-gray-300"
-                title="Create Folder"
-              >
-                <FolderPlusIcon className="w-5 h-5" />
-              </button>
-              <input
-                type="file"
-                id="file-upload"
-                className="hidden"
-                onChange={handleFileUpload}
-                multiple
-                accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png"
-              />
-              <label
-                htmlFor="file-upload"
-                className="p-2 hover:bg-gray-800 rounded cursor-pointer text-gray-300"
-                title="Upload Files"
-              >
-                <CloudArrowUpIcon className="w-5 h-5" />
-              </label>
-            </div>
+            {getCurrentFolderItems().length > 0 && (
+              <div className="flex items-center gap-3 w-full sm:w-auto justify-center sm:justify-end">
+                <button
+                  onClick={() => setIsCreatingFolder(true)}
+                  className="flex items-center gap-2 px-3 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg transition-all duration-200 text-gray-300 hover:text-white border border-gray-700 hover:border-gray-600 hover:shadow-lg group flex-1 sm:flex-initial justify-center"
+                  title="Create Folder"
+                >
+                  <FolderPlusIcon className="w-5 h-5 transition-transform group-hover:scale-110" />
+                  <span className="text-sm font-medium">New Folder</span>
+                </button>
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex items-center gap-2 px-3 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg transition-all duration-200 text-white border border-blue-500 hover:border-blue-400 hover:shadow-lg group flex-1 sm:flex-initial justify-center"
+                  title="Upload Files"
+                >
+                  <CloudArrowUpIcon className="w-5 h-5 transition-transform group-hover:scale-110" />
+                  <span className="text-sm font-medium">Upload</span>
+                </button>
+              </div>
+            )}
           </div>
 
           {renderBreadcrumbs()}
@@ -658,6 +665,14 @@ const StudyMaterials = () => {
         onAskAI={handleAskAI}
       />
       {renderUploadProgress()}
+      <input
+        ref={fileInputRef}
+        type="file"
+        className="hidden"
+        onChange={handleFileUpload}
+        multiple
+        accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png"
+      />
     </>
   );
 };
