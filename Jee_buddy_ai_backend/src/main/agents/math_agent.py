@@ -12,11 +12,64 @@ class ResponseTemplates:
     """Templates for system messages and response structures"""
     
     @staticmethod
+    def get_interaction_prompt(interaction_type: str) -> str:
+        """Get specific prompt based on interaction type"""
+        prompts = {
+            'explain': """Break down the concept step by step:
+                1. Start with basic principles
+                2. Explain each step clearly
+                3. Show all calculations
+                4. Connect concepts together
+                5. Provide clear explanations""",
+                
+            'basics': """Explain the fundamental concepts:
+                1. Core principles and definitions
+                2. Basic formulas and their meaning
+                3. Important relationships
+                4. Prerequisites needed
+                5. Common applications""",
+                
+            'test': """Create a mini-test to assess understanding:
+                1. Start with basic concept questions
+                2. Include numerical problems
+                3. Add application-based questions
+                4. Provide detailed solutions
+                5. Give performance tips""",
+                
+            'similar': """Provide similar examples and variations:
+                1. Show solved examples
+                2. Explain different variations
+                3. Increase complexity gradually
+                4. Connect to other topics
+                5. Practice problems""",
+                
+            'solve': """Solve the problem systematically:
+                1. Identify given information
+                2. List relevant formulas
+                3. Show step-by-step solution
+                4. Explain each step
+                5. Verify the answer""",
+                
+            'keypoints': """Highlight the key points:
+                1. Main concepts
+                2. Important formulas
+                3. Critical relationships
+                4. Common mistakes to avoid
+                5. Quick revision notes"""
+        }
+        return prompts.get(interaction_type, prompts['solve'])
+
+    @staticmethod
     def get_selected_text_template(subject: str, topic: str, deep_think: bool, interaction_type: str) -> str:
+        # Get interaction specific prompt
+        interaction_prompt = ResponseTemplates.get_interaction_prompt(interaction_type)
+        
         return f"""You are an expert JEE tutor. A student has selected the following text and has a question about it:
 
 ## Selected Text Context
 {{selected_text}}
+
+{interaction_prompt}
 
 Please provide a {'comprehensive and advanced' if deep_think else 'clear and concise'} explanation:
 
@@ -35,11 +88,6 @@ Please provide a {'comprehensive and advanced' if deep_think else 'clear and con
 • {'Complex variations' if deep_think else 'Standard approaches'}
 • {'Deep problem-solving strategies' if deep_think else 'Essential tips'}
 
-## Practice Guide
-• Similar problems with {'advanced' if deep_think else 'standard'} variations
-• {'Complex' if deep_think else 'Basic'} application examples
-• {'Advanced' if deep_think else 'Standard'} self-assessment tips
-
 Subject: {subject}
 Topic: {topic}
 Mode: {'Deep Analysis' if deep_think else 'Standard'}
@@ -47,7 +95,12 @@ Interaction Type: {interaction_type}"""
 
     @staticmethod
     def get_regular_template(subject: str, topic: str, deep_think: bool, interaction_type: str) -> str:
+        # Get interaction specific prompt
+        interaction_prompt = ResponseTemplates.get_interaction_prompt(interaction_type)
+        
         return f"""You are an expert JEE tutor specialized in {subject.capitalize()}.
+
+{interaction_prompt}
 
 ## Teaching Context
 • Subject: {subject.capitalize()}
