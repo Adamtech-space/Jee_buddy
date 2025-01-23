@@ -1,6 +1,6 @@
 const supabase = require('../config/supabaseClient');
 
-const createFolder = async (userId, { name, parentId = null }) => {
+const createFolder = async (userId, { name, parentId = null, subject }) => {
   const { data: folder, error } = await supabase
     .from('study_materials')
     .insert([{
@@ -8,6 +8,7 @@ const createFolder = async (userId, { name, parentId = null }) => {
       name,
       type: 'folder',
       parent_id: parentId,
+      subject,
       created_at: new Date().toISOString()
     }])
     .select()
@@ -17,7 +18,7 @@ const createFolder = async (userId, { name, parentId = null }) => {
   return folder;
 };
 
-const uploadFile = async (userId, { name, parentId = null, file, size, mimeType }) => {
+const uploadFile = async (userId, { name, parentId = null, file, size, mimeType, subject }) => {
   // First upload file to storage bucket
   const filePath = `${userId}/${Date.now()}-${name}`;
   const { error: uploadError } = await supabase.storage
@@ -37,6 +38,7 @@ const uploadFile = async (userId, { name, parentId = null, file, size, mimeType 
       file_path: filePath,
       file_size: size,
       mime_type: mimeType,
+      subject,
       created_at: new Date().toISOString()
     }])
     .select()
@@ -53,23 +55,57 @@ const uploadFile = async (userId, { name, parentId = null, file, size, mimeType 
   return fileEntry;
 };
 
-const getItems = async (userId, parentId = null) => {
-  const query = supabase
-    .from('study_materials')
-    .select('*')
-    .eq('user_id', userId)
-    .order('type', { ascending: false }) // Folders first
-    .order('created_at', { ascending: false });
+const getItems = async (userId, parentId = null, subject) => {
+  // Debug: Log input parameters
+  console.log('getItems called with:', { userId, parentId, subject });
 
-  if (parentId) {
-    query.eq('parent_id', parentId);
-  } else {
-    query.is('parent_id', null);
+  try {
+    let query = supabase
+      .from('study_materials')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('subject', subject)
+      .order('type', { ascending: false }) // Folders first
+      .order('created_at', { ascending: false });
+
+    // Add parentId condition
+    if (parentId) {
+      query = query.eq('parent_id', parentId);
+    } else {
+      query = query.is('parent_id', null);
+    }
+
+    // Execute the query
+    const { data: items, error } = await query;
+  
+    // Debug: Log the results and any error
+    console.log('Query results:', {
+      itemsCount: items?.length || 0,
+      firstItem: items?.[0],
+      error,
+      userId,
+      subject
+    });
+
+    if (error) {
+      console.error('Supabase error:', error);
+      throw error;
+    }
+
+    // Verify the data matches our filters
+    if (items && items.length > 0) {
+      console.log('First item matches:', {
+        userIdMatch: items[0].user_id === userId,
+        subjectMatch: items[0].subject === subject,
+        parentIdMatch: parentId ? items[0].parent_id === parentId : items[0].parent_id === null
+      });
+    }
+
+    return items || [];
+  } catch (error) {
+    console.error('Error in getItems:', error);
+    throw error;
   }
-
-  const { data: items, error } = await query;
-  if (error) throw error;
-  return items;
 };
 
 const deleteItem = async (userId, itemId) => {
