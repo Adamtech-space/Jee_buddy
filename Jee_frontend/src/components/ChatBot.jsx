@@ -5,6 +5,9 @@ import {
   ArrowsPointingInIcon,
   PaperClipIcon,
   PaperAirplaneIcon,
+  PencilIcon,
+  StopIcon,
+  SparklesIcon,
 } from '@heroicons/react/24/outline';
 import PropTypes from 'prop-types';
 import { aiService } from '../interceptors/ai.service';
@@ -54,41 +57,193 @@ const ChatBot = ({
   const [isPinnedText, setIsPinnedText] = useState(false);
   const [isPinnedImage, setIsPinnedImage] = useState(false);
   const [isDeepThinkEnabled, setIsDeepThinkEnabled] = useState(false);
+  const [editingMessageId, setEditingMessageId] = useState(null);
+  const [editingContent, setEditingContent] = useState('');
+  const [abortController, setAbortController] = useState(null);
+  const [activeHelpType, setActiveHelpType] = useState(null);
 
-  // Define handleSubmit with useCallback before using it in useEffect
+  // Scroll to bottom function
+  const scrollToBottom = useCallback(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({
+        behavior: 'smooth',
+        block: 'end',
+      });
+    }
+  }, []);
+
+  // Modify typing effect to check for cancellation
+  useEffect(() => {
+    let timer;
+    const currentMessage = messages[messages.length - 1];
+    
+    if (isTyping && currentMessage?.sender === 'assistant' && 
+        currentTypingIndex < currentMessage.content.length) {
+      timer = setTimeout(() => {
+        if (!isTyping) return; // Don't update if typing has been cancelled
+        
+        setDisplayedResponse(
+          currentMessage.content.slice(0, currentTypingIndex + 1)
+        );
+        setCurrentTypingIndex(prev => prev + 1);
+        
+        // Only scroll if user hasn't scrolled up
+        const container = document.querySelector('.overflow-y-auto');
+        if (container && 
+            Math.abs(container.scrollHeight - container.scrollTop - container.clientHeight) < 100) {
+          scrollToBottom();
+        }
+      }, 10);
+    } else if (isTyping && currentMessage?.sender === 'assistant') {
+      setIsTyping(false);
+    }
+
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, [isTyping, currentTypingIndex, messages, scrollToBottom]);
+
+  // Update scroll effect - only scroll on new messages
+  useEffect(() => {
+    if (!isTyping) {
+      scrollToBottom();
+    }
+  }, [messages, isTyping, scrollToBottom]);
+
+  // Add message editing function
+  const handleEditMessage = (messageId, content) => {
+    setEditingMessageId(messageId);
+    setEditingContent(content);
+  };
+
+  // Save edited message and regenerate response
+  const handleSaveEdit = async (messageId) => {
+    // Find the edited message and its index
+    const messageIndex = messages.findIndex(msg => msg.id === messageId);
+    
+    // Update the edited message
+    const updatedMessages = messages.slice(0, messageIndex + 1).map(msg => 
+      msg.id === messageId ? { ...msg, content: editingContent } : msg
+    );
+    
+    setMessages(updatedMessages);
+    setEditingMessageId(null);
+    setEditingContent('');
+
+    // Regenerate response
+    setIsLoading(true);
+    try {
+      const userData = JSON.parse(localStorage.getItem('user')) || {};
+      const sessionId = userData.current_session_id;
+
+      if (!sessionId) {
+        throw new Error('No valid session ID found');
+      }
+
+      const response = await aiService.askQuestion(editingContent, {
+        user_id: userData.id || 'anonymous',
+        session_id: sessionId,
+        subject: subject || '',
+        topic: topic || '',
+        type: 'solve',
+        pinnedText: '',
+        selectedText: '',
+        source: 'Chat',
+        Deep_think: isDeepThinkEnabled,
+      });
+
+      const aiMessage = {
+        id: Date.now(),
+        sender: 'assistant',
+        type: 'text',
+        content: response.solution,
+      };
+      
+      setMessages([...updatedMessages, aiMessage]);
+      setDisplayedResponse('');
+      setCurrentTypingIndex(0);
+      setIsTyping(true);
+      
+    } catch (error) {
+      console.error('ChatBot - Error regenerating response:', error);
+      const errorMessage = `Failed to regenerate response: ${error?.message || 'Please try again'}`;
+      setMessages([
+        ...updatedMessages,
+        {
+          id: Date.now(),
+          sender: 'assistant',
+          type: 'text',
+          content: errorMessage,
+        },
+      ]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Modify cancel response to stop at current position
+  const handleCancelResponse = useCallback(() => {
+    if (abortController) {
+      abortController.abort();
+      setAbortController(null);
+    }
+    setIsTyping(false);
+    setIsLoading(false);
+    if (messages.length > 0) {
+      const lastMessage = messages[messages.length - 1];
+      if (lastMessage.sender === 'assistant') {
+        const finalContent = displayedResponse || lastMessage.content;
+        setMessages(prev => {
+          const updatedMessages = [...prev];
+          updatedMessages[updatedMessages.length - 1] = {
+            ...lastMessage,
+            content: finalContent,
+          };
+          return updatedMessages;
+        });
+        setDisplayedResponse(finalContent);
+        setCurrentTypingIndex(finalContent.length);
+      }
+    }
+  }, [abortController, messages, displayedResponse]);
+
+  // Modify handleSubmit to properly handle cancellation
   const handleSubmit = useCallback(async (e) => {
     e.preventDefault();
-    console.log('ChatBot - handleSubmit called with:', {
-      chatMessage,
-      selectedTextPreview,
-      pinnedImage,
-      deepThink: isDeepThinkEnabled
-    });
 
     if (!chatMessage.trim() && !pinnedImage && !selectedTextPreview) {
-      console.log('ChatBot - No content to submit');
       return;
     }
 
-    // Add message with image if present
-    if (pinnedImage) {
-      setMessages(prev => [...prev, {
+    // If currently generating, cancel instead
+    if (isLoading || isTyping) {
+      handleCancelResponse();
+      return;
+    }
+
+    // Create new AbortController
+    const controller = new AbortController();
+    setAbortController(controller);
+
+    // Add user message first
+    const messageId = Date.now();
+    const userMessage = pinnedImage ? {
+      id: messageId,
         sender: 'user',
         type: 'image',
         content: pinnedImage.content,
         fileName: pinnedImage.fileName,
         question: chatMessage
-      }]);
-    } else {
-      // Add text message
-      setMessages(prev => [...prev, {
+    } : {
+      id: messageId,
         sender: 'user',
         type: selectedTextPreview ? 'selected-text' : 'text',
         content: chatMessage,
         source: selectedTextPreview?.source,
         selectedText: selectedTextPreview?.content
-      }]);
-    }
+    };
+
+    setMessages(prev => [...prev, userMessage]);
 
     // Clear states if not pinned
     const questionContext = selectedTextPreview;
@@ -99,7 +254,6 @@ const ChatBot = ({
     setIsLoading(true);
 
     try {
-      // Get user data from localStorage
       const userData = JSON.parse(localStorage.getItem('user')) || {};
       const sessionId = userData.current_session_id;
 
@@ -118,36 +272,49 @@ const ChatBot = ({
         source: questionContext?.source || 'Chat',
         image: imageToSend?.content?.split(',')[1] || null,
         Deep_think: isDeepThinkEnabled,
+        signal: controller.signal,
       });
 
+      // Check if cancelled before updating state
+      if (controller.signal.aborted) {
+        return;
+      }
+
       const aiMessage = {
+        id: Date.now(),
         sender: 'assistant',
         type: 'text',
         content: response.solution,
       };
-      setMessages((prev) => [...prev, aiMessage]);
+      
+      setMessages(prev => [...prev, aiMessage]);
       setDisplayedResponse('');
       setCurrentTypingIndex(0);
       setIsTyping(true);
       setIsDeepThinkEnabled(false);
       
     } catch (error) {
+      if (error.name === 'AbortError') {
+        console.log('Request was cancelled');
+        return;
+      }
       console.error('ChatBot - Error processing message:', error);
       const errorMessage = `Failed to process message: ${error?.message || 'Please try again'}`;
-      setMessages((prev) => [
-        ...prev,
-        {
+      setMessages(prev => [...prev, {
+        id: Date.now(),
           sender: 'assistant',
           type: 'text',
           content: errorMessage,
-        },
-      ]);
+      }]);
       setDisplayedResponse(errorMessage);
       setCurrentTypingIndex(errorMessage.length);
     } finally {
+      if (!controller.signal.aborted) {
       setIsLoading(false);
+        setAbortController(null);
     }
-  }, [chatMessage, selectedTextPreview, pinnedImage, isPinnedText, isPinnedImage, subject, topic, setMessages, setIsTyping, setDisplayedResponse, setCurrentTypingIndex, isDeepThinkEnabled]);
+    }
+  }, [chatMessage, selectedTextPreview, pinnedImage, isPinnedText, isPinnedImage, subject, topic, isDeepThinkEnabled, handleCancelResponse]);
 
   // Get user profile from localStorage
   useEffect(() => {
@@ -160,28 +327,33 @@ const ChatBot = ({
   // Listen for AI questions from other components
   useEffect(() => {
     const handleAIQuestion = (event) => {
-      console.log('ChatBot - Received setAIQuestion event:', event);
       if (event.detail?.question) {
         const text = event.detail.question;
         const source = event.detail.source || 'Selected Text';
         
-        console.log('ChatBot - Setting selected text preview:', { text, source });
-        
-        // Only set the preview, don't auto-submit
+        // Set the selected text preview
         setSelectedTextPreview({
           content: text,
           source: source
         });
+
+        // Open chat if not already open
+        if (!isOpen) {
+          setIsOpen(true);
+        }
+
+        // Focus the input for user to type their question
+        if (inputRef.current) {
+          inputRef.current.focus();
+        }
       }
     };
 
-    console.log('ChatBot - Adding setAIQuestion event listener');
     window.addEventListener('setAIQuestion', handleAIQuestion);
     return () => {
-      console.log('ChatBot - Removing setAIQuestion event listener');
       window.removeEventListener('setAIQuestion', handleAIQuestion);
     };
-  }, []);
+  }, [isOpen, setIsOpen]);
 
   const helpButtons = [
     { type: 'explain', icon: '📝', text: 'Step-by-Step' },
@@ -191,40 +363,6 @@ const ChatBot = ({
     { type: 'solve', icon: '✨', text: 'Solve' },
     { type: 'keypoints', icon: '🔍', text: 'Key Points' },
   ];
-
-  // Scroll to bottom effect
-  const scrollToBottom = () => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({
-        behavior: 'smooth',
-        block: 'end',
-      });
-    }
-  };
-
-  // Update scroll effect
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages, displayedResponse, isTyping]);
-
-  // Typing effect
-  useEffect(() => {
-    if (
-      isTyping &&
-      currentTypingIndex < messages[messages.length - 1]?.content.length
-    ) {
-      const timer = setTimeout(() => {
-        setDisplayedResponse(
-          messages[messages.length - 1].content.slice(0, currentTypingIndex + 1)
-        );
-        setCurrentTypingIndex((prev) => prev + 1);
-        scrollToBottom();
-      }, 10);
-      return () => clearTimeout(timer);
-    } else if (isTyping) {
-      setIsTyping(false);
-    }
-  }, [isTyping, currentTypingIndex, messages]);
 
   // Handle resize functionality
   useEffect(() => {
@@ -306,9 +444,14 @@ const ChatBot = ({
   };
 
   const handleHelpClick = async (type) => {
+    if (activeHelpType === type) {
+      setActiveHelpType(null);
+      return;
+    }
+    setActiveHelpType(type);
     try {
       const userQuestion = chatMessage.trim();
-      const displayText = `Help me with ${type}${userQuestion ? ': ' + userQuestion : ''}`;
+      const displayText = userQuestion ? userQuestion : '';
 
       // Add message with image if present
       if (pinnedImage) {
@@ -365,6 +508,7 @@ const ChatBot = ({
       if (!isPinnedImage) setPinnedImage(null);
       setMessage('');
 
+      // Add the response to the messages state
       setMessages((prev) => [
         ...prev,
         {
@@ -394,11 +538,12 @@ const ChatBot = ({
   const renderMessage = (msg, index) => {
     const isLastMessage = index === messages.length - 1;
     const content = isLastMessage && msg.sender === 'assistant' ? displayedResponse : msg.content;
+    const isEditing = msg.id === editingMessageId;
 
     return (
       <div
-        key={index}
-        className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'} mb-4`}
+        key={msg.id || index}
+        className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'} mb-4 group items-start`}
       >
         {msg.sender === 'assistant' && (
           <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-r from-purple-500 to-indigo-500 flex items-center justify-center mr-2">
@@ -418,14 +563,50 @@ const ChatBot = ({
           </div>
         )}
 
-        <div
-          className={`max-w-[80%] rounded-lg p-4 ${
+        {/* Edit button for user messages */}
+        {msg.sender === 'user' && !isEditing && (
+          <div className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 mr-2">
+            <button
+              onClick={() => handleEditMessage(msg.id, msg.content)}
+              className="p-1.5 rounded-lg hover:bg-gray-800 transition-colors"
+            >
+              <PencilIcon className="w-4 h-4 text-gray-400" />
+            </button>
+          </div>
+        )}
+
+        <div className={`flex flex-col ${msg.sender === 'user' ? 'items-end' : 'items-start'} max-w-[75%]`}>
+          <div
+            className={`rounded-lg p-3 break-words w-full ${
             msg.sender === 'user'
-              ? 'bg-blue-500 text-white ml-2'
+                ? 'bg-blue-500 text-white'
               : 'bg-gradient-to-r from-gray-800 to-gray-900 text-white shadow-xl'
           }`}
-        >
-          {msg.type === 'image' ? (
+      >
+            {isEditing ? (
+              <div className="flex flex-col gap-2 w-full">
+                <textarea
+                  value={editingContent}
+                  onChange={(e) => setEditingContent(e.target.value)}
+                  className="w-full bg-gray-700 text-white rounded p-2 min-h-[100px] resize-none"
+                  autoFocus
+                />
+                <div className="flex justify-end gap-2">
+                  <button
+                    onClick={() => setEditingMessageId(null)}
+                    className="px-2 py-1 text-sm bg-gray-700 hover:bg-gray-600 rounded"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => handleSaveEdit(msg.id)}
+                    className="px-2 py-1 text-sm bg-blue-500 hover:bg-blue-600 rounded"
+                  >
+                    Save
+                  </button>
+                </div>
+              </div>
+            ) : msg.type === 'image' ? (
             <div className="space-y-2">
               <div className="relative bg-gray-800/50 rounded p-2">
                 <img
@@ -448,27 +629,28 @@ const ChatBot = ({
             </div>
           ) : msg.type === 'selected-text' ? (
             <div className="space-y-2">
-              <div className="text-xs bg-gray-800/50 rounded p-2 truncate">
+                <div className="text-xs bg-gray-800/50 rounded p-2 break-words">
                 {msg.selectedText}
               </div>
               <div className="flex items-center gap-1 text-xs text-gray-300">
                 <span className="inline-block w-1 h-1 bg-gray-400 rounded-full"></span>
                 <span>{msg.source}</span>
               </div>
-              <div className="text-[15px]">
+                <div className="text-[15px] break-words">
                 {content}
               </div>
             </div>
           ) : (
-            <pre className="whitespace-pre-wrap font-sans text-[15px] leading-relaxed">
+              <div className="text-[15px] leading-relaxed whitespace-pre-wrap break-words">
               {content}
               {isLastMessage && msg.sender === 'assistant' && isTyping && (
                 <span className="inline-block w-2 h-5 bg-blue-400 animate-pulse ml-1">
                   |
                 </span>
               )}
-            </pre>
+              </div>
           )}
+          </div>
         </div>
 
         {msg.sender === 'user' && userProfile?.picture && (
@@ -505,6 +687,62 @@ const ChatBot = ({
     return () => window.removeEventListener('resize', updateWidth);
   }, []);
 
+  // Render loading state with deep thinking animation
+  const renderLoadingState = () => (
+    <div className="flex justify-start mb-2">
+      <div className="flex-shrink-0 w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-gradient-to-r from-purple-500 to-indigo-500 flex items-center justify-center mr-2">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          className="h-3 w-3 sm:h-5 sm:w-5 text-white"
+          viewBox="0 0 20 20"
+          fill="currentColor"
+        >
+          <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+          <path
+            fillRule="evenodd"
+            d="M10 18a8 8 0 100-16 8 8 0 000 16zm0-2a6 6 0 100-12 6 6 0 000 12z"
+            clipRule="evenodd"
+          />
+        </svg>
+      </div>
+      <div className="flex flex-col items-center gap-2 w-full max-w-[80%]">
+        <div className="bg-gradient-to-r from-gray-800 to-gray-900 rounded-lg p-3 shadow-xl flex items-center gap-3 w-full">
+          {isDeepThinkEnabled ? (
+            <div className="flex items-center gap-3">
+              <SparklesIcon className="w-4 h-4 text-blue-400 animate-pulse" />
+              <div className="flex flex-col gap-1">
+                <div className="flex gap-2">
+                  <div className="w-2 h-2 bg-blue-400 rounded-full animate-ping" 
+                       style={{ animationDuration: '1.5s', animationDelay: '0ms' }} />
+                  <div className="w-2 h-2 bg-blue-400 rounded-full animate-ping" 
+                       style={{ animationDuration: '1.5s', animationDelay: '300ms' }} />
+                  <div className="w-2 h-2 bg-blue-400 rounded-full animate-ping" 
+                       style={{ animationDuration: '1.5s', animationDelay: '600ms' }} />
+                </div>
+                <span className="text-xs text-blue-400">Deep thinking in progress...</span>
+              </div>
+            </div>
+          ) : (
+            <div className="flex gap-1">
+              <div
+                className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce"
+                style={{ animationDelay: '0ms' }}
+              />
+              <div
+                className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce"
+                style={{ animationDelay: '150ms' }}
+              />
+              <div
+                className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce"
+                style={{ animationDelay: '300ms' }}
+              />
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div
       ref={resizeRef}
@@ -518,14 +756,12 @@ const ChatBot = ({
         zIndex: isFullScreen ? 60 : 50,
       }}
       onMouseUp={(e) => {
-        // Only handle selection if not clicking on buttons or inputs
         if (!(e.target instanceof HTMLButtonElement) && 
             !(e.target instanceof HTMLInputElement)) {
           handleTextSelection(e);
         }
       }}
       onTouchEnd={(e) => {
-        // Only handle selection if not touching buttons or inputs
         if (!(e.target instanceof HTMLButtonElement) && 
             !(e.target instanceof HTMLInputElement)) {
           handleTextSelection(e);
@@ -536,7 +772,7 @@ const ChatBot = ({
       {!isFullScreen && window.innerWidth >= 1024 && (
         <>
           {isResizing && (
-            <div className="fixed inset-0 bg-black bg-opacity-0 z-50" />
+            <div className="fixed inset-0 bg-black bg-opacity-0 " />
           )}
           <div
             ref={resizeRef}
@@ -607,7 +843,9 @@ const ChatBot = ({
             <button
               key={button.type}
               onClick={() => handleHelpClick(button.type)}
-              className="flex items-center gap-1 px-2 py-1 bg-gray-800 rounded-lg hover:bg-gray-700 transition-colors text-[11px] sm:text-sm text-gray-300 hover:text-white whitespace-nowrap flex-shrink-0"
+              className={`flex items-center gap-1 px-2 py-1 rounded-lg transition-colors text-[11px] sm:text-sm flex-shrink-0 ${
+                activeHelpType === button.type ? 'bg-blue-500 text-white' : 'bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white'
+              }`}
             >
               <span className="text-base">{button.icon}</span>
               <span>{button.text}</span>
@@ -619,41 +857,7 @@ const ChatBot = ({
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-2 sm:p-3 md:p-4 bg-gray-900 hide-scrollbar">
         {messages.map(renderMessage)}
-        {isLoading && (
-          <div className="flex justify-start mb-2">
-            <div className="flex-shrink-0 w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-gradient-to-r from-purple-500 to-indigo-500 flex items-center justify-center mr-2">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-3 w-3 sm:h-5 sm:w-5 text-white"
-                viewBox="0 0 20 20"
-                fill="currentColor"
-              >
-                <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
-                <path
-                  fillRule="evenodd"
-                  d="M10 18a8 8 0 100-16 8 8 0 000 16zm0-2a6 6 0 100-12 6 6 0 000 12z"
-                  clipRule="evenodd"
-                />
-              </svg>
-            </div>
-            <div className="bg-gradient-to-r from-gray-800 to-gray-900 rounded-lg p-2 shadow-xl">
-              <div className="flex gap-1">
-                <div
-                  className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce"
-                  style={{ animationDelay: '0ms' }}
-                ></div>
-                <div
-                  className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce"
-                  style={{ animationDelay: '150ms' }}
-                ></div>
-                <div
-                  className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce"
-                  style={{ animationDelay: '300ms' }}
-                ></div>
-              </div>
-            </div>
-          </div>
-        )}
+        {isLoading && renderLoadingState()}
         <div ref={messagesEndRef} />
       </div>
 
@@ -767,12 +971,19 @@ const ChatBot = ({
               <PaperClipIcon className="h-4 w-4 text-gray-400 hover:text-white" />
             </button>
             <button
-              type="submit"
+              type={isLoading || isTyping ? "button" : "submit"}
+              onClick={isLoading || isTyping ? handleCancelResponse : undefined}
               disabled={!chatMessage.trim() && !pinnedImage && !selectedTextPreview}
-              className="p-1.5 hover:bg-gray-700 rounded-full transition-colors disabled:opacity-50"
-              title="Send Message"
+              className={`p-1.5 hover:bg-gray-700 rounded-full transition-colors disabled:opacity-50 ${
+                isLoading || isTyping ? 'text-red-500 hover:text-red-400' : ''
+              }`}
+              title={isLoading || isTyping ? "Stop generating" : "Send Message"}
             >
+              {isLoading || isTyping ? (
+                <StopIcon className="h-4 w-4" />
+              ) : (
               <PaperAirplaneIcon className="h-4 w-4 text-gray-400 hover:text-white" />
+              )}
             </button>
           </div>
           <input

@@ -32,7 +32,7 @@ const Sidebar = ({ isMobileOpen, setIsMobileOpen }) => {
   const menuItems = [
     { icon: "📚", label: "Books", path: "books" },
     { icon: "🗂️", label: "Flash Cards", path: "flashcards" },
-    { icon: "📝", label: "Study Materials", path: "materials" }
+    { icon: "📝", label: "My Study Materials", path: "materials" }
   ];
 
   useEffect(() => {
