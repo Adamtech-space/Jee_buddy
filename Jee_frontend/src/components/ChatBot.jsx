@@ -72,28 +72,59 @@ const ChatBot = ({
     }
   }, []);
 
-  // Modify typing effect to check for cancellation
+  // Update scroll logic to allow user control
+  useEffect(() => {
+    const container = document.querySelector('.overflow-y-auto');
+    if (!container) return;
+
+    let userScrolling = false;
+
+    const handleScroll = () => {
+      const isAtBottom = Math.abs(container.scrollHeight - container.scrollTop - container.clientHeight) < 100;
+      userScrolling = !isAtBottom;
+    };
+
+    const observer = new MutationObserver(() => {
+      const isAtBottom = Math.abs(container.scrollHeight - container.scrollTop - container.clientHeight) < 100;
+      if (!userScrolling && isAtBottom) {
+        scrollToBottom();
+      }
+    });
+
+    observer.observe(container, { childList: true, subtree: true });
+
+    container.addEventListener('scroll', handleScroll);
+
+    return () => {
+      observer.disconnect();
+      container.removeEventListener('scroll', handleScroll);
+    };
+  }, [messages, scrollToBottom]);
+
+  // Modify typing effect to allow free scrolling
   useEffect(() => {
     let timer;
     const currentMessage = messages[messages.length - 1];
+    const container = document.querySelector('.overflow-y-auto');
     
     if (isTyping && currentMessage?.sender === 'assistant' && 
         currentTypingIndex < currentMessage.content.length) {
       timer = setTimeout(() => {
-        if (!isTyping) return; // Don't update if typing has been cancelled
+        if (!isTyping) return;
         
         setDisplayedResponse(
           currentMessage.content.slice(0, currentTypingIndex + 1)
         );
         setCurrentTypingIndex(prev => prev + 1);
         
-        // Only scroll if user hasn't scrolled up
-        const container = document.querySelector('.overflow-y-auto');
-        if (container && 
-            Math.abs(container.scrollHeight - container.scrollTop - container.clientHeight) < 100) {
-          scrollToBottom();
+        // Only auto-scroll if user is already at the bottom
+        if (container) {
+          const isAtBottom = Math.abs(container.scrollHeight - container.scrollTop - container.clientHeight) < 100;
+          if (isAtBottom) {
+            messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+          }
         }
-      }, 10);
+      }, 1);
     } else if (isTyping && currentMessage?.sender === 'assistant') {
       setIsTyping(false);
     }
@@ -101,14 +132,7 @@ const ChatBot = ({
     return () => {
       if (timer) clearTimeout(timer);
     };
-  }, [isTyping, currentTypingIndex, messages, scrollToBottom]);
-
-  // Update scroll effect - only scroll on new messages
-  useEffect(() => {
-    if (!isTyping) {
-      scrollToBottom();
-    }
-  }, [messages, isTyping, scrollToBottom]);
+  }, [isTyping, currentTypingIndex, messages]);
 
   // Add message editing function
   const handleEditMessage = (messageId, content) => {
@@ -181,13 +205,13 @@ const ChatBot = ({
     }
   };
 
-  // Modify cancel response to stop at current position
+  // Modify cancel response to stop typing effect immediately
   const handleCancelResponse = useCallback(() => {
+    setIsTyping(false); // Stop typing effect immediately
     if (abortController) {
       abortController.abort();
       setAbortController(null);
     }
-    setIsTyping(false);
     setIsLoading(false);
     if (messages.length > 0) {
       const lastMessage = messages[messages.length - 1];
@@ -316,7 +340,7 @@ const ChatBot = ({
         setAbortController(null);
     }
     }
-  }, [chatMessage, selectedTextPreview, pinnedImage, isPinnedText, isPinnedImage, subject, topic, isDeepThinkEnabled, handleCancelResponse, activeHelpType]);
+  }, [chatMessage, selectedTextPreview, pinnedImage, isPinnedText, isPinnedImage, subject, topic, isDeepThinkEnabled, handleCancelResponse, activeHelpType, isLoading, isTyping]);
 
   // Get user profile from localStorage
   useEffect(() => {
@@ -607,57 +631,32 @@ const ChatBot = ({
     return () => window.removeEventListener('resize', updateWidth);
   }, []);
 
-  // Render loading state with deep thinking animation
+  // Render loading state with SparklesIcon
   const renderLoadingState = () => (
     <div className="flex justify-start mb-2">
       <div className="flex-shrink-0 w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-gradient-to-r from-purple-500 to-indigo-500 flex items-center justify-center mr-2">
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          className="h-3 w-3 sm:h-5 sm:w-5 text-white"
+        <SparklesIcon
+          className="h-3 w-3 sm:h-5 sm:w-5 text-white animate-spin"
           viewBox="0 0 20 20"
           fill="currentColor"
-        >
-          <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
-          <path
-            fillRule="evenodd"
-            d="M10 18a8 8 0 100-16 8 8 0 000 16zm0-2a6 6 0 100-12 6 6 0 000 12z"
-            clipRule="evenodd"
-          />
-        </svg>
+        />
       </div>
       <div className="flex flex-col items-center gap-2 w-full max-w-[80%]">
         <div className="bg-gradient-to-r from-gray-800 to-gray-900 rounded-lg p-3 shadow-xl flex items-center gap-3 w-full">
-          {isDeepThinkEnabled ? (
-            <div className="flex items-center gap-3">
-              <SparklesIcon className="w-4 h-4 text-blue-400 animate-pulse" />
-              <div className="flex flex-col gap-1">
-                <div className="flex gap-2">
-                  <div className="w-2 h-2 bg-blue-400 rounded-full animate-ping" 
-                       style={{ animationDuration: '1.5s', animationDelay: '0ms' }} />
-                  <div className="w-2 h-2 bg-blue-400 rounded-full animate-ping" 
-                       style={{ animationDuration: '1.5s', animationDelay: '300ms' }} />
-                  <div className="w-2 h-2 bg-blue-400 rounded-full animate-ping" 
-                       style={{ animationDuration: '1.5s', animationDelay: '600ms' }} />
-                </div>
-                <span className="text-xs text-blue-400">Deep thinking in progress...</span>
+          <div className="flex items-center gap-3">
+            <SparklesIcon className="w-4 h-4 text-blue-400 animate-pulse" />
+            <div className="flex flex-col gap-1">
+              <div className="flex gap-2">
+                <div className="w-2 h-2 bg-blue-400 rounded-full animate-ping" 
+                     style={{ animationDuration: '1.5s', animationDelay: '0ms' }} />
+                <div className="w-2 h-2 bg-blue-400 rounded-full animate-ping" 
+                     style={{ animationDuration: '1.5s', animationDelay: '300ms' }} />
+                <div className="w-2 h-2 bg-blue-400 rounded-full animate-ping" 
+                     style={{ animationDuration: '1.5s', animationDelay: '600ms' }} />
               </div>
+              <span className="text-xs text-blue-400">Thinking...</span>
             </div>
-          ) : (
-            <div className="flex gap-1">
-              <div
-                className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce"
-                style={{ animationDelay: '0ms' }}
-              />
-              <div
-                className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce"
-                style={{ animationDelay: '150ms' }}
-              />
-              <div
-                className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce"
-                style={{ animationDelay: '300ms' }}
-              />
-            </div>
-          )}
+          </div>
         </div>
       </div>
     </div>
