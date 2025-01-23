@@ -261,7 +261,9 @@ const ChatBot = ({
         throw new Error('No valid session ID found');
       }
 
-      const response = await aiService.askQuestion(chatMessage, {
+      const questionWithInteraction = `${chatMessage} (${activeHelpType || 'solve'})`;
+
+      const response = await aiService.askQuestion(questionWithInteraction, {
         user_id: userData.id || 'anonymous',
         session_id: sessionId,
         subject: subject || '',
