@@ -62,7 +62,7 @@ const ChatBot = ({
   const [abortController, setAbortController] = useState(null);
   const [activeHelpType, setActiveHelpType] = useState(null);
 
-  // Scroll to bottom function
+  // Smooth scrolling functionality
   const scrollToBottom = useCallback(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({
@@ -72,34 +72,51 @@ const ChatBot = ({
     }
   }, []);
 
-  // Update scroll logic to allow user control
+  // Update scroll logic for smoother control
   useEffect(() => {
     const container = document.querySelector('.overflow-y-auto');
     if (!container) return;
 
     let userScrolling = false;
+    let lastScrollTop = container.scrollTop;
 
     const handleScroll = () => {
       const isAtBottom = Math.abs(container.scrollHeight - container.scrollTop - container.clientHeight) < 100;
-      userScrolling = !isAtBottom;
+      const isScrollingDown = container.scrollTop > lastScrollTop;
+      lastScrollTop = container.scrollTop;
+
+      if (isScrollingDown && isAtBottom) {
+        userScrolling = false;
+      } else {
+        userScrolling = !isAtBottom;
+      }
     };
 
     const observer = new MutationObserver(() => {
-      const isAtBottom = Math.abs(container.scrollHeight - container.scrollTop - container.clientHeight) < 100;
-      if (!userScrolling && isAtBottom) {
-        scrollToBottom();
+      if (!userScrolling) {
+        requestAnimationFrame(() => {
+          container.scrollTo({
+            top: container.scrollHeight,
+            behavior: 'smooth'
+          });
+        });
       }
     });
 
-    observer.observe(container, { childList: true, subtree: true });
+    observer.observe(container, { 
+      childList: true, 
+      subtree: true, 
+      characterData: true,
+      characterDataOldValue: true 
+    });
 
-    container.addEventListener('scroll', handleScroll);
+    container.addEventListener('scroll', handleScroll, { passive: true });
 
     return () => {
       observer.disconnect();
       container.removeEventListener('scroll', handleScroll);
     };
-  }, [messages, scrollToBottom]);
+  }, [messages]);
 
   // Modify typing effect to allow free scrolling
   useEffect(() => {
