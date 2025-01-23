@@ -113,6 +113,7 @@ class MathAgent:
             api_key=self.api_key,
             base_url="https://api.deepseek.com"
         )
+        print("client created")
         try:
             yield client
         finally:
