@@ -229,18 +229,18 @@ const ChatBot = ({
     const messageId = Date.now();
     const userMessage = pinnedImage ? {
       id: messageId,
-        sender: 'user',
-        type: 'image',
-        content: pinnedImage.content,
-        fileName: pinnedImage.fileName,
-        question: chatMessage
+      sender: 'user',
+      type: 'image',
+      content: pinnedImage.content,
+      fileName: pinnedImage.fileName,
+      question: chatMessage
     } : {
       id: messageId,
-        sender: 'user',
-        type: selectedTextPreview ? 'selected-text' : 'text',
-        content: chatMessage,
-        source: selectedTextPreview?.source,
-        selectedText: selectedTextPreview?.content
+      sender: 'user',
+      type: selectedTextPreview ? 'selected-text' : 'text',
+      content: chatMessage,
+      source: selectedTextPreview?.source,
+      selectedText: selectedTextPreview?.content
     };
 
     setMessages(prev => [...prev, userMessage]);
@@ -266,7 +266,7 @@ const ChatBot = ({
         session_id: sessionId,
         subject: subject || '',
         topic: topic || '',
-        type: 'solve',
+        type: activeHelpType || 'solve',
         pinnedText: '',
         selectedText: questionContext?.content || '',
         source: questionContext?.source || 'Chat',
@@ -314,7 +314,7 @@ const ChatBot = ({
         setAbortController(null);
     }
     }
-  }, [chatMessage, selectedTextPreview, pinnedImage, isPinnedText, isPinnedImage, subject, topic, isDeepThinkEnabled, handleCancelResponse]);
+  }, [chatMessage, selectedTextPreview, pinnedImage, isPinnedText, isPinnedImage, subject, topic, isDeepThinkEnabled, handleCancelResponse, activeHelpType]);
 
   // Get user profile from localStorage
   useEffect(() => {
@@ -356,13 +356,15 @@ const ChatBot = ({
   }, [isOpen, setIsOpen]);
 
   const helpButtons = [
-    { type: 'explain', icon: '📝', text: 'Step-by-Step' },
-    { type: 'basics', icon: '🧠', text: 'Basics' },
-    { type: 'test', icon: '🎯', text: 'Test Me' },
-    { type: 'similar', icon: '🔄', text: 'Examples' },
-    { type: 'solve', icon: '✨', text: 'Solve' },
-    { type: 'keypoints', icon: '🔍', text: 'Key Points' },
-  ];
+    { type: 'Step-by-Step', icon: '📝', text: 'Step-by-Step' },
+    { type: 'Basics', icon: '🧠', text: 'Basics' },
+    { type: 'Test Me', icon: '🎯', text: 'Test Me' },
+    { type: 'Examples', icon: '🔄', text: 'Examples' },
+    { type: 'Solve', icon: '✨', text: 'Solve' },
+    { type: 'Key Points', icon: '🔍', text: 'Key Points' },
+    { type: 'Explain', icon: '📝', text: 'Explain' },
+    { type: 'Similar', icon: '🔄', text: 'Similar' },
+  ]
 
   // Handle resize functionality
   useEffect(() => {
@@ -443,95 +445,11 @@ const ChatBot = ({
     }
   };
 
-  const handleHelpClick = async (type) => {
+  const handleHelpClick = (type) => {
     if (activeHelpType === type) {
       setActiveHelpType(null);
-      return;
-    }
-    setActiveHelpType(type);
-    try {
-      const userQuestion = chatMessage.trim();
-      const displayText = userQuestion ? userQuestion : '';
-
-      // Add message with image if present
-      if (pinnedImage) {
-        setMessages(prev => [...prev, {
-          sender: 'user',
-          type: 'image',
-          content: pinnedImage.content,
-          fileName: pinnedImage.fileName,
-          question: displayText,
-          helpType: type
-        }]);
-      } else {
-        // Add text message
-        setMessages(prev => [...prev, {
-          sender: 'user',
-          type: selectedTextPreview ? 'selected-text' : 'text',
-          content: displayText,
-          source: selectedTextPreview?.source,
-          selectedText: selectedTextPreview?.content,
-          helpType: type
-        }]);
-      }
-
-      setIsLoading(true);
-
-      // Get user data from localStorage
-      const userData = JSON.parse(localStorage.getItem('user')) || {};
-      const sessionId = userData.current_session_id;
-
-      if (!sessionId) {
-        throw new Error('No valid session ID found');
-      }
-
-      const payload = {
-        user_id: userData.id || 'anonymous',
-        session_id: sessionId,
-        subject: subject || '',
-        topic: topic || '',
-        type,
-        question: userQuestion,
-        pinnedText: '',
-        selectedText: selectedTextPreview?.content || '',
-        source: selectedTextPreview?.source || 'Chat',
-        image: pinnedImage?.content?.split(',')[1] || null,
-        Deep_think: isDeepThinkEnabled,
-        interaction_type: type
-      };
-
-      console.log('Sending help request with payload:', payload);
-      const response = await aiService.getHelpResponse(type, payload);
-
-      // Clear states if not pinned
-      if (!isPinnedText) setSelectedTextPreview(null);
-      if (!isPinnedImage) setPinnedImage(null);
-      setMessage('');
-
-      // Add the response to the messages state
-      setMessages((prev) => [
-        ...prev,
-        {
-          sender: 'assistant',
-          type: 'text',
-          content: response.solution,
-        },
-      ]);
-      setIsDeepThinkEnabled(false);
-    } catch (error) {
-      const errorMessage = `Failed to process request: ${error?.message || 'Please try again'}`;
-      setMessages((prev) => [
-        ...prev,
-        {
-          sender: 'assistant',
-          type: 'text',
-          content: errorMessage,
-        },
-      ]);
-      setDisplayedResponse(errorMessage);
-      setCurrentTypingIndex(errorMessage.length);
-    } finally {
-      setIsLoading(false);
+    } else {
+      setActiveHelpType(type);
     }
   };
 
