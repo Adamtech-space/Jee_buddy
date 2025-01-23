@@ -18,11 +18,23 @@ const uploadFile = async (userId, data) => {
   }
 };
 
-const getItems = async (userId, parentId) => {
+const getItems = async (userId, parentId, subject) => {
   try {
-    return await studyMaterialsModel.getItems(userId, parentId);
+    // Debug: Log service layer parameters
+    console.log('Service getItems called with:', { userId, parentId, subject });
+    const items = await studyMaterialsModel.getItems(userId, parentId, subject);
+    return items;
   } catch (error) {
-    throw new ApiError(httpStatus.BAD_REQUEST, 'Failed to fetch items');
+    console.error('Service layer error:', error);
+    // If it's already an ApiError, rethrow it
+    if (error instanceof ApiError) {
+      throw error;
+    }
+    // Otherwise, wrap it in an ApiError
+    throw new ApiError(
+      httpStatus.BAD_REQUEST,
+      error.message || 'Failed to fetch items'
+    );
   }
 };
 

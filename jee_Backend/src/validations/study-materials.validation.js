@@ -4,18 +4,21 @@ const createFolder = {
   body: Joi.object().keys({
     name: Joi.string().required().min(1).max(255),
     parentId: Joi.string().uuid().allow(null),
+    subject: Joi.string().required(),
   }),
 };
 
 const uploadFile = {
   body: Joi.object().keys({
     parentId: Joi.string().uuid().allow(null),
+    subject: Joi.string().required(),
   }),
 };
 
 const getItems = {
   query: Joi.object().keys({
     parentId: Joi.string().uuid().allow(null),
+    subject: Joi.string().required(),
   }),
 };
 

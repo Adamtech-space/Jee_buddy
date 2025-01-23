@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate, useParams, useOutletContext } from 'react-router-dom';
 import { pdfjs } from 'react-pdf';
@@ -11,6 +11,14 @@ const BooksList = () => {
   const { subject } = useParams();
   const [selectedBook, setSelectedBook] = useState(null);
   const { filteredBooks } = useOutletContext();
+  const [loading, setLoading] = useState(true);
+
+  // Add useEffect to simulate loading
+  useEffect(() => {
+    if (filteredBooks && Object.keys(filteredBooks).length > 0) {
+      setLoading(false);
+    }
+  }, [filteredBooks]);
 
   const handleBookClick = (book) => {
     setSelectedBook(selectedBook?.id === book.id ? null : book);
@@ -18,7 +26,9 @@ const BooksList = () => {
 
   const handlePdfClick = (url) => {
     const encodedUrl = encodeURIComponent(url);
-    navigate(`/dashboard/${subject}/pdf/${encodedUrl}`, { state: { pdfUrl: url } });
+    navigate(`/dashboard/${subject}/pdf/${encodedUrl}`, {
+      state: { pdfUrl: url },
+    });
   };
 
   const getRandomColor = () => {
@@ -30,7 +40,7 @@ const BooksList = () => {
       'from-red-500 to-red-700',
       'from-orange-500 to-orange-700',
       'from-yellow-500 to-yellow-700',
-      'from-green-500 to-green-700'
+      'from-green-500 to-green-700',
     ];
     return colors[Math.floor(Math.random() * colors.length)];
   };
@@ -40,9 +50,9 @@ const BooksList = () => {
     visible: {
       opacity: 1,
       transition: {
-        staggerChildren: 0.1
-      }
-    }
+        staggerChildren: 0.1,
+      },
+    },
   };
 
   const itemVariants = {
@@ -51,11 +61,19 @@ const BooksList = () => {
       y: 0,
       opacity: 1,
       transition: {
-        type: "spring",
-        stiffness: 100
-      }
-    }
+        type: 'spring',
+        stiffness: 100,
+      },
+    },
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-black">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
 
   if (!filteredBooks || Object.keys(filteredBooks).length === 0) {
     return (
@@ -67,7 +85,9 @@ const BooksList = () => {
 
   return (
     <div className="p-4 md:p-6 lg:p-8">
-      <h2 className="text-3xl font-bold mb-8 capitalize">{subject} Books for JEE Preparation</h2>
+      <h2 className="text-3xl font-bold mb-8 capitalize">
+        {subject} Books for JEE Preparation
+      </h2>
 
       <motion.div
         variants={containerVariants}
@@ -91,18 +111,24 @@ const BooksList = () => {
                     className="cursor-pointer"
                     onClick={() => handleBookClick(book)}
                   >
-                    <h3 className="text-2xl font-bold text-white mb-2">{book.displayName[0]}</h3>
+                    <h3 className="text-2xl font-bold text-white mb-2">
+                      {book.displayName[0]}
+                    </h3>
                     {book.displayName[1] && (
-                      <p className="text-gray-400 text-sm mb-4">Unit: {book.displayName[1]}</p>
+                      <p className="text-gray-400 text-sm mb-4">
+                        Unit: {book.displayName[1]}
+                      </p>
                     )}
                   </div>
 
                   <motion.div
                     initial="hidden"
-                    animate={selectedBook?.id === book.id ? "visible" : "hidden"}
+                    animate={
+                      selectedBook?.id === book.id ? 'visible' : 'hidden'
+                    }
                     variants={{
-                      visible: { height: "auto", opacity: 1 },
-                      hidden: { height: 0, opacity: 0 }
+                      visible: { height: 'auto', opacity: 1 },
+                      hidden: { height: 0, opacity: 0 },
                     }}
                     transition={{ duration: 0.3 }}
                     className="overflow-hidden"
@@ -129,7 +155,7 @@ const BooksList = () => {
                             </span>
                           </div>
                         </div>
-                        <motion.div 
+                        <motion.div
                           className="text-white"
                           whileHover={{ x: 5 }}
                         >

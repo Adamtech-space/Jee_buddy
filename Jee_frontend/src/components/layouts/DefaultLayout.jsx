@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useLocation, useParams, Outlet, useNavigate } from 'react-router-dom';
 import PropTypes from 'prop-types';
-import { ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline';
+import { ChatBubbleLeftRightIcon, ArrowLeftIcon } from '@heroicons/react/24/outline';
 import Navbar from '../Navbar';
 import ChatBot from '../ChatBot';
 import { SelectionProvider } from '../../context/SelectionContext';
@@ -58,32 +58,34 @@ const Sidebar = ({ isMobileOpen, setIsMobileOpen }) => {
         }`}
       >
         <div className="flex flex-col h-full">
+          {/* Header Section */}
           <div className="p-4">
-            <div className="flex flex-col">
-              <div className="flex items-center justify-between">
-                <h2 className="text-lg md:text-xl font-bold text-white capitalize">
-                  {subject}
-                </h2>
-                <button
-                  className="px-3 py-1 text-xs md:text-sm text-gray-200 hover:text-white 
-                  bg-gray-800 hover:bg-gray-700 rounded-md border border-gray-700 
-                  transition-colors duration-200 cursor-pointer"
-                  onClick={() => navigate('/subject-selection')}
-                >
-                  Change Subject
-                </button>
-              </div>
-              <div className="flex items-center space-x-2">
-                <p className="text-xs md:text-sm text-gray-400">
-                  JEE Preparation
-                </p>
-                <KeyboardShortcut shortcut="Ctrl+Shift+B" />
-              </div>
+            <div className="flex items-center mb-1">
+              <button
+                className="p-2 mr-3 text-gray-400 hover:text-white 
+                  bg-gray-800/50 hover:bg-gray-800 rounded-lg 
+                  transition-colors duration-200"
+                onClick={() => navigate('/subject-selection')}
+                title="Back to Subject Selection"
+              >
+                <ArrowLeftIcon className="w-5 h-5" />
+              </button>
+              <h2 className="text-xl font-semibold text-white capitalize">
+                {subject}
+              </h2>
+            </div>
+            <div className="flex items-center ">
+              <span className="text-sm text-gray-400">JEE Preparation</span>
+              <span className="ml-2 text-[10px] text-gray-500">
+                <span className="opacity-60">Press:</span>
+                <span className="ml-1 font-medium">Ctrl + Shift + B</span>
+              </span>
             </div>
           </div>
 
-          <nav className="flex-1 overflow-y-auto">
-            <ul className="space-y-1 md:space-y-2 px-2">
+          {/* Navigation Menu */}
+          <nav className="mt-4">
+            <ul className="space-y-2 px-3">
               {menuItems.map((item) => {
                 const isActive = location.pathname.includes(`/${item.path}`);
                 return (
@@ -95,16 +97,15 @@ const Sidebar = ({ isMobileOpen, setIsMobileOpen }) => {
                           setIsMobileOpen(false);
                         }
                       }}
-                      className={`w-full flex items-center justify-start
-                                px-3 md:px-4 py-2 md:py-3 rounded-lg transition-all duration-200 
-                                text-sm md:text-base ${
-                                  isActive
-                                    ? 'bg-blue-500 text-white'
-                                    : 'text-gray-300 hover:bg-gray-800'
-                                }`}
+                      className={`w-full flex items-center px-4 py-3 rounded-lg
+                        transition-colors duration-200 text-base ${
+                          isActive
+                            ? 'bg-blue-500 text-white'
+                            : 'text-gray-300 hover:bg-gray-800'
+                        }`}
                     >
-                      <span className="text-base md:text-xl">{item.icon}</span>
-                      <span className="ml-2 md:ml-3">{item.label}</span>
+                      <span className="text-xl mr-3">{item.icon}</span>
+                      <span>{item.label}</span>
                     </button>
                   </li>
                 );

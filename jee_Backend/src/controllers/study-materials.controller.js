@@ -3,6 +3,7 @@ const catchAsync = require('../utils/catchAsync');
 const studyMaterialsService = require('../services/study-materials.service');
 const multer = require('multer');
 const path = require('path');
+const studyMaterialsValidation = require('../validations/study-materials.validation');
 
 // Configure multer for file upload
 const storage = multer.memoryStorage();
@@ -27,6 +28,7 @@ const createFolder = catchAsync(async (req, res) => {
   const folder = await studyMaterialsService.createFolder(req.user.id, {
     name: req.body.name,
     parentId: req.body.parentId,
+    subject: req.body.subject,
   });
 
   res.status(httpStatus.CREATED).json({
@@ -52,12 +54,22 @@ const uploadFile = catchAsync(async (req, res) => {
       });
     }
 
+    // Validate required fields after multer processes the request
+    const { error } = studyMaterialsValidation.uploadFile.body.validate(req.body);
+    if (error) {
+      return res.status(httpStatus.BAD_REQUEST).json({
+        status: 'error',
+        message: error.details[0].message,
+      });
+    }
+
     const file = await studyMaterialsService.uploadFile(req.user.id, {
       name: req.file.originalname,
       parentId: req.body.parentId,
       file: req.file.buffer,
       size: req.file.size,
       mimeType: req.file.mimetype,
+      subject: req.body.subject,
     });
 
     res.status(httpStatus.CREATED).json({
@@ -69,9 +81,32 @@ const uploadFile = catchAsync(async (req, res) => {
 });
 
 const getItems = catchAsync(async (req, res) => {
+  // Debug: Log the request details
+  console.log('getItems controller:', {
+    userId: req.user.id,
+    queryParams: req.query,
+    user: req.user
+  });
+
+  // Validate required parameters
+  if (!req.user?.id) {
+    return res.status(httpStatus.BAD_REQUEST).json({
+      status: 'error',
+      message: 'User ID is required'
+    });
+  }
+
+  if (!req.query.subject) {
+    return res.status(httpStatus.BAD_REQUEST).json({
+      status: 'error',
+      message: 'Subject is required'
+    });
+  }
+
   const items = await studyMaterialsService.getItems(
     req.user.id,
-    req.query.parentId || null
+    req.query.parentId || null,
+    req.query.subject
   );
 
   res.status(httpStatus.OK).json({
