@@ -60,6 +60,7 @@ const ChatBot = ({
   const [editingMessageId, setEditingMessageId] = useState(null);
   const [editingContent, setEditingContent] = useState('');
   const [abortController, setAbortController] = useState(null);
+  const [activeHelpType, setActiveHelpType] = useState(null);
 
   // Scroll to bottom function
   const scrollToBottom = useCallback(() => {
@@ -443,9 +444,14 @@ const ChatBot = ({
   };
 
   const handleHelpClick = async (type) => {
+    if (activeHelpType === type) {
+      setActiveHelpType(null);
+      return;
+    }
+    setActiveHelpType(type);
     try {
       const userQuestion = chatMessage.trim();
-      const displayText = `Help me with ${type}${userQuestion ? ': ' + userQuestion : ''}`;
+      const displayText = userQuestion ? userQuestion : '';
 
       // Add message with image if present
       if (pinnedImage) {
@@ -502,6 +508,7 @@ const ChatBot = ({
       if (!isPinnedImage) setPinnedImage(null);
       setMessage('');
 
+      // Add the response to the messages state
       setMessages((prev) => [
         ...prev,
         {
@@ -575,7 +582,7 @@ const ChatBot = ({
                 ? 'bg-blue-500 text-white'
               : 'bg-gradient-to-r from-gray-800 to-gray-900 text-white shadow-xl'
           }`}
-        >
+      >
             {isEditing ? (
               <div className="flex flex-col gap-2 w-full">
                 <textarea
@@ -836,7 +843,9 @@ const ChatBot = ({
             <button
               key={button.type}
               onClick={() => handleHelpClick(button.type)}
-              className="flex items-center gap-1 px-2 py-1 bg-gray-800 rounded-lg hover:bg-gray-700 transition-colors text-[11px] sm:text-sm text-gray-300 hover:text-white whitespace-nowrap flex-shrink-0"
+              className={`flex items-center gap-1 px-2 py-1 rounded-lg transition-colors text-[11px] sm:text-sm flex-shrink-0 ${
+                activeHelpType === button.type ? 'bg-blue-500 text-white' : 'bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white'
+              }`}
             >
               <span className="text-base">{button.icon}</span>
               <span>{button.text}</span>
