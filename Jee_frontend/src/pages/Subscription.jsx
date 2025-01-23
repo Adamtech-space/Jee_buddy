@@ -390,8 +390,18 @@ const Subscription = () => {
           onClick={() => navigate(-1)}
           className="flex items-center text-white mb-8 hover:text-purple-400 transition-colors"
         >
-          <svg className="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          <svg
+            className="w-6 h-6 mr-2"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M10 19l-7-7m0 0l7-7m-7 7h18"
+            />
           </svg>
           Back to Dashboard
         </button>
@@ -403,20 +413,22 @@ const Subscription = () => {
                 Your JEE Buddy Subscription
               </h1>
               <p className="text-gray-400 text-lg">
-                {currentPlan.type === 'PREMIUM' 
-                  ? 'You are enjoying our highest tier plan with all premium features!' 
+                {currentPlan.type === 'PREMIUM'
+                  ? 'You are enjoying our highest tier plan with all premium features!'
                   : 'Upgrade your plan anytime to unlock more features and benefits'}
               </p>
             </div>
 
             {/* Current Plan Card */}
             <div className="mb-16">
-              <h2 className="text-2xl text-white font-semibold mb-6">Current Plan</h2>
+              <h2 className="text-2xl text-white font-semibold mb-6">
+                Current Plan
+              </h2>
               <div className="rounded-3xl bg-gradient-to-b from-[#2c2439] to-[#1a1625] p-8 relative overflow-hidden">
                 {/* Decorative Elements */}
                 <div className="absolute top-0 right-0 w-40 h-40 bg-purple-500 opacity-10 rounded-full transform translate-x-20 -translate-y-20"></div>
                 <div className="absolute bottom-0 left-0 w-32 h-32 bg-blue-500 opacity-10 rounded-full transform -translate-x-16 translate-y-16"></div>
-                
+
                 {/* Active Plan Badge */}
                 <div className="absolute top-4 right-4">
                   <span className="bg-green-500 text-white px-4 py-1 rounded-full text-sm font-medium">
@@ -425,18 +437,32 @@ const Subscription = () => {
                 </div>
 
                 <div className="relative z-10">
-                  <h2 className="text-3xl font-bold text-white mb-4">{currentPlan.name}</h2>
+                  <h2 className="text-3xl font-bold text-white mb-4">
+                    {currentPlan.name}
+                  </h2>
                   <div className="flex items-baseline mb-8">
                     <span className="text-2xl text-[#8075FF]">₹</span>
-                    <span className="text-5xl font-bold text-[#8075FF]">{currentPlan.price}</span>
+                    <span className="text-5xl font-bold text-[#8075FF]">
+                      {currentPlan.price}
+                    </span>
                     <span className="text-gray-400 ml-2">/month</span>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4 text-left mb-8">
                     {getPlanFeatures(currentPlan.type).map((feature, index) => (
                       <div key={index} className="flex items-center text-white">
-                        <svg className="w-5 h-5 mr-3 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        <svg
+                          className="w-5 h-5 mr-3 text-green-500"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M5 13l4 4L19 7"
+                          />
                         </svg>
                         {feature}
                       </div>
@@ -456,33 +482,71 @@ const Subscription = () => {
             {/* Show upgrade option only if not on Premium plan */}
             {currentPlan.type !== 'PREMIUM' && (
               <div>
-                <h2 className="text-2xl text-white font-semibold mb-6">Available Upgrades</h2>
+                <h2 className="text-2xl text-white font-semibold mb-6">
+                  Available Upgrades
+                </h2>
                 <div className="rounded-3xl bg-[#1a1625] p-8">
                   <div className="flex flex-col md:flex-row items-center justify-between gap-8">
                     <div>
-                      <h3 className="text-2xl font-bold text-white mb-2">Premium Plan</h3>
-                      <p className="text-gray-400 mb-4">Unlock unlimited AI usage and advanced features</p>
+                      <h3 className="text-2xl font-bold text-white mb-2">
+                        Premium Plan
+                      </h3>
+                      <p className="text-gray-400 mb-4">
+                        Unlock unlimited AI usage and advanced features
+                      </p>
                       <div className="flex items-baseline mb-4">
                         <span className="text-xl text-[#8075FF]">₹</span>
-                        <span className="text-4xl font-bold text-[#8075FF]">4,999</span>
+                        <span className="text-4xl font-bold text-[#8075FF]">
+                          4,999
+                        </span>
                         <span className="text-gray-400 ml-2">/month</span>
                       </div>
                       <ul className="space-y-2 mb-6">
                         <li className="flex items-center text-white">
-                          <svg className="w-5 h-5 mr-3 text-[#8075FF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          <svg
+                            className="w-5 h-5 mr-3 text-[#8075FF]"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M5 13l4 4L19 7"
+                            />
                           </svg>
                           Unlimited AI Usage
                         </li>
                         <li className="flex items-center text-white">
-                          <svg className="w-5 h-5 mr-3 text-[#8075FF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          <svg
+                            className="w-5 h-5 mr-3 text-[#8075FF]"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M5 13l4 4L19 7"
+                            />
                           </svg>
                           AI Generated Question Bank
                         </li>
                         <li className="flex items-center text-white">
-                          <svg className="w-5 h-5 mr-3 text-[#8075FF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          <svg
+                            className="w-5 h-5 mr-3 text-[#8075FF]"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M5 13l4 4L19 7"
+                            />
                           </svg>
                           Performance Analytics
                         </li>
@@ -490,18 +554,22 @@ const Subscription = () => {
                     </div>
                     <div className="flex flex-col items-center">
                       <button
-                        onClick={() => handleGetStarted({
-                          type: 'PREMIUM',
-                          price: 4999,
-                          name: 'Premium Plan',
-                          id: PLANS['PREMIUM']
-                        })}
+                        onClick={() =>
+                          handleGetStarted({
+                            type: 'PREMIUM',
+                            price: 4999,
+                            name: 'Premium Plan',
+                            id: PLANS['PREMIUM'],
+                          })
+                        }
                         disabled={loading}
                         className="px-8 py-3 rounded-lg bg-[#8075FF] text-white font-semibold hover:bg-[#6a5ff0] transition-colors"
                       >
                         {loading ? 'Processing...' : 'Upgrade to Premium'}
                       </button>
-                      <p className="text-gray-500 text-sm mt-2">Cancel or change plans anytime</p>
+                      <p className="text-gray-500 text-sm mt-2">
+                        Cancel or change plans anytime
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -514,7 +582,7 @@ const Subscription = () => {
             <h1 className="text-4xl md:text-5xl text-center font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent mb-16">
               Choose the plan that works best for you
             </h1>
-            
+
             {/* Existing plans grid */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               {/* Basic Plan */}
@@ -523,56 +591,100 @@ const Subscription = () => {
                   <h2 className="text-2xl font-bold text-white mb-4">Basic</h2>
                   <div className="flex items-baseline">
                     <span className="text-2xl text-[#8075FF]">₹</span>
-                    <span className="text-4xl font-bold text-[#8075FF]">499</span>
+                    <span className="text-4xl font-bold text-[#8075FF]">
+                      499
+                    </span>
                     <span className="text-gray-400 ml-2">/month</span>
                   </div>
                 </div>
                 <ul className="space-y-4 mb-8 flex-grow">
                   <li className="flex items-center text-white">
-                    <svg className="w-5 h-5 mr-3 text-[#8075FF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    <svg
+                      className="w-5 h-5 mr-3 text-[#8075FF]"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M5 13l4 4L19 7"
+                      />
                     </svg>
                     Access to AI Learning Assistant
                   </li>
                   <li className="flex items-center text-white">
-                    <svg className="w-5 h-5 mr-3 text-[#8075FF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    <svg
+                      className="w-5 h-5 mr-3 text-[#8075FF]"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M5 13l4 4L19 7"
+                      />
                     </svg>
                     Basic Study Materials
                   </li>
                   <li className="flex items-center text-white">
-                    <svg className="w-5 h-5 mr-3 text-[#8075FF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    <svg
+                      className="w-5 h-5 mr-3 text-[#8075FF]"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M5 13l4 4L19 7"
+                      />
                     </svg>
                     Limited AI Usage
                   </li>
                   <li className="flex items-center text-white">
-                    <svg className="w-5 h-5 mr-3 text-[#8075FF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    <svg
+                      className="w-5 h-5 mr-3 text-[#8075FF]"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M5 13l4 4L19 7"
+                      />
                     </svg>
                     Email Support
                   </li>
                 </ul>
                 {!isSubscribed && (
                   <button
-                    onClick={() => handleGetStarted({
-                      type: 'BASIC',
-                      price: 499,
-                      name: 'Basic Plan',
-                      id: PLANS['BASIC']
-                    })}
+                    onClick={() =>
+                      handleGetStarted({
+                        type: 'BASIC',
+                        price: 499,
+                        name: 'Basic Plan',
+                        id: PLANS['BASIC'],
+                      })
+                    }
                     disabled={loading}
                     className="w-full py-3 rounded-lg bg-[#1e1b29] text-white font-semibold hover:bg-[#2a2635] transition-colors"
                   >
                     {loading ? 'Processing...' : 'Get Started'}
                   </button>
-          )}
-        </div>
+                )}
+              </div>
 
               {/* Pro Plan */}
-              <div className="rounded-3xl bg-gradient-to-b from-[#2c2439] to-[#1a1625] p-8 flex flex-col relative">
-                <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                  <span className="bg-[#8075FF] text-white px-4 py-1 rounded-full text-sm">
+              <div className="rounded-3xl bg-gradient-to-b from-[#2c2439] to-[#1a1625] p-8 flex flex-col relative mt-8 md:mt-0">
+                <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 whitespace-nowrap">
+                  <span className="bg-[#8075FF] text-white px-4 py-1 rounded-full text-sm font-medium inline-block">
                     Most Popular
                   </span>
                 </div>
@@ -580,115 +692,225 @@ const Subscription = () => {
                   <h2 className="text-2xl font-bold text-white mb-4">Pro</h2>
                   <div className="flex items-baseline">
                     <span className="text-2xl text-[#8075FF]">₹</span>
-                    <span className="text-4xl font-bold text-[#8075FF]">1,499</span>
-                    <span className="text-gray-400 ml-2">/month</span>
-                  </div>
-          </div>
-                <ul className="space-y-4 mb-8 flex-grow">
-                  <li className="flex items-center text-white">
-                    <svg className="w-5 h-5 mr-3 text-[#8075FF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    Everything in Basic
-                  </li>
-                  <li className="flex items-center text-white">
-                    <svg className="w-5 h-5 mr-3 text-[#8075FF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    Extra AI Usage
-                  </li>
-            <li className="flex items-center text-white">
-                    <svg className="w-5 h-5 mr-3 text-[#8075FF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    Advanced Study Materials
-            </li>
-            <li className="flex items-center text-white">
-                    <svg className="w-5 h-5 mr-3 text-[#8075FF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    Question Bank
-            </li>
-            <li className="flex items-center text-white">
-                    <svg className="w-5 h-5 mr-3 text-[#8075FF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    Strength and Weakness Analysis
-            </li>
-          </ul>
-          {!isSubscribed && (
-            <button
-                    onClick={() => handleGetStarted({
-                      type: 'PRO',
-                      price: 1499,
-                      name: 'Pro Plan',
-                      id: PLANS['PRO']
-                    })}
-              disabled={loading}
-                    className="w-full py-3 rounded-lg bg-[#8075FF] text-white font-semibold hover:bg-[#6a5ff0] transition-colors"
-            >
-                    {loading ? 'Processing...' : 'Get Started'}
-            </button>
-          )}
-              </div>
-
-              {/* Premium Plan */}
-              <div className="rounded-3xl bg-[#1a1625] p-8 flex flex-col">
-                <div className="mb-6">
-                  <h2 className="text-2xl font-bold text-white mb-4">Premium</h2>
-                  <div className="flex items-baseline">
-                    <span className="text-2xl text-[#8075FF]">₹</span>
-                    <span className="text-4xl font-bold text-[#8075FF]">4,999</span>
+                    <span className="text-4xl font-bold text-[#8075FF]">
+                      1,499
+                    </span>
                     <span className="text-gray-400 ml-2">/month</span>
                   </div>
                 </div>
                 <ul className="space-y-4 mb-8 flex-grow">
                   <li className="flex items-center text-white">
-                    <svg className="w-5 h-5 mr-3 text-[#8075FF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    <svg
+                      className="w-5 h-5 mr-3 text-[#8075FF]"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M5 13l4 4L19 7"
+                      />
+                    </svg>
+                    Everything in Basic
+                  </li>
+                  <li className="flex items-center text-white">
+                    <svg
+                      className="w-5 h-5 mr-3 text-[#8075FF]"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M5 13l4 4L19 7"
+                      />
+                    </svg>
+                    Extra AI Usage
+                  </li>
+                  <li className="flex items-center text-white">
+                    <svg
+                      className="w-5 h-5 mr-3 text-[#8075FF]"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M5 13l4 4L19 7"
+                      />
+                    </svg>
+                    Advanced Study Materials
+                  </li>
+                  <li className="flex items-center text-white">
+                    <svg
+                      className="w-5 h-5 mr-3 text-[#8075FF]"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M5 13l4 4L19 7"
+                      />
+                    </svg>
+                    Question Bank
+                  </li>
+                  <li className="flex items-center text-white">
+                    <svg
+                      className="w-5 h-5 mr-3 text-[#8075FF]"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M5 13l4 4L19 7"
+                      />
+                    </svg>
+                    Strength and Weakness Analysis
+                  </li>
+                </ul>
+                {!isSubscribed && (
+                  <button
+                    onClick={() =>
+                      handleGetStarted({
+                        type: 'PRO',
+                        price: 1499,
+                        name: 'Pro Plan',
+                        id: PLANS['PRO'],
+                      })
+                    }
+                    disabled={loading}
+                    className="w-full py-3 rounded-lg bg-[#8075FF] text-white font-semibold hover:bg-[#6a5ff0] transition-colors"
+                  >
+                    {loading ? 'Processing...' : 'Get Started'}
+                  </button>
+                )}
+              </div>
+
+              {/* Premium Plan */}
+              <div className="rounded-3xl bg-[#1a1625] p-8 flex flex-col">
+                <div className="mb-6">
+                  <h2 className="text-2xl font-bold text-white mb-4">
+                    Premium
+                  </h2>
+                  <div className="flex items-baseline">
+                    <span className="text-2xl text-[#8075FF]">₹</span>
+                    <span className="text-4xl font-bold text-[#8075FF]">
+                      4,999
+                    </span>
+                    <span className="text-gray-400 ml-2">/month</span>
+                  </div>
+                </div>
+                <ul className="space-y-4 mb-8 flex-grow">
+                  <li className="flex items-center text-white">
+                    <svg
+                      className="w-5 h-5 mr-3 text-[#8075FF]"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M5 13l4 4L19 7"
+                      />
                     </svg>
                     Everything in Pro
                   </li>
                   <li className="flex items-center text-white">
-                    <svg className="w-5 h-5 mr-3 text-[#8075FF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    <svg
+                      className="w-5 h-5 mr-3 text-[#8075FF]"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M5 13l4 4L19 7"
+                      />
                     </svg>
                     Unlimited AI Usage
                   </li>
                   <li className="flex items-center text-white">
-                    <svg className="w-5 h-5 mr-3 text-[#8075FF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    <svg
+                      className="w-5 h-5 mr-3 text-[#8075FF]"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M5 13l4 4L19 7"
+                      />
                     </svg>
                     AI Generated Question Bank
                   </li>
                   <li className="flex items-center text-white">
-                    <svg className="w-5 h-5 mr-3 text-[#8075FF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    <svg
+                      className="w-5 h-5 mr-3 text-[#8075FF]"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M5 13l4 4L19 7"
+                      />
                     </svg>
                     Performance Analytics
                   </li>
                   <li className="flex items-center text-white">
-                    <svg className="w-5 h-5 mr-3 text-[#8075FF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    <svg
+                      className="w-5 h-5 mr-3 text-[#8075FF]"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M5 13l4 4L19 7"
+                      />
                     </svg>
                     Priority Support
                   </li>
                 </ul>
                 {!isSubscribed && (
-            <button
-                    onClick={() => handleGetStarted({
-                      type: 'PREMIUM',
-                      price: 4999,
-                      name: 'Premium Plan',
-                      id: PLANS['PREMIUM']
-                    })}
+                  <button
+                    onClick={() =>
+                      handleGetStarted({
+                        type: 'PREMIUM',
+                        price: 4999,
+                        name: 'Premium Plan',
+                        id: PLANS['PREMIUM'],
+                      })
+                    }
                     disabled={loading}
                     className="w-full py-3 rounded-lg bg-[#1e1b29] text-white font-semibold hover:bg-[#2a2635] transition-colors"
                   >
                     {loading ? 'Processing...' : 'Get Started'}
-            </button>
-          )}
-        </div>
+                  </button>
+                )}
+              </div>
             </div>
           </>
         )}
