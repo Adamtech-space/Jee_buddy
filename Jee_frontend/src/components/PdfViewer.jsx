@@ -81,21 +81,29 @@ const PdfViewer = () => {
     }
   };
 
-  const handleAskAI = (text) => {
-    console.log('PdfViewer - handleAskAI called with text:', text);
-    console.log('PdfViewer - PDF Title:', pdfTitle);
-    
+  const handleAskAI = (text, source) => {
     setIsChatOpen(true);
+    
+    // Ensure chat is open before dispatching event
     setTimeout(() => {
       const eventData = {
         detail: { 
           question: text,
-          source: `PDF: ${pdfTitle}`
+          source: source || `PDF: ${pdfTitle}`
         }
       };
-      console.log('PdfViewer - Dispatching event with data:', eventData);
+      
       window.dispatchEvent(new CustomEvent('setAIQuestion', eventData));
-    }, 500); // Increased timeout to ensure chat is open
+    }, 100); // Short delay to ensure chat is open
+  };
+
+  // Handle text selection
+  const handleSelection = (e) => {
+    // Only handle selection if not clicking on buttons or inputs
+    if (!(e.target instanceof HTMLButtonElement) && 
+        !(e.target instanceof HTMLInputElement)) {
+      handleTextSelection(e);
+    }
   };
 
   if (!pdfUrl) return null;
@@ -109,20 +117,8 @@ const PdfViewer = () => {
         right: isMobile ? '0' : (isChatOpen ? '450px' : '0'),
         bottom: '0',
       }}
-      onMouseUp={(e) => {
-        // Only handle selection if not clicking on buttons or inputs
-        if (!(e.target instanceof HTMLButtonElement) && 
-            !(e.target instanceof HTMLInputElement)) {
-          handleTextSelection(e);
-        }
-      }}
-      onTouchEnd={(e) => {
-        // Only handle selection if not touching buttons or inputs
-        if (!(e.target instanceof HTMLButtonElement) && 
-            !(e.target instanceof HTMLInputElement)) {
-          handleTextSelection(e);
-        }
-      }}
+      onMouseUp={handleSelection}
+      onTouchEnd={handleSelection}
     >
       {/* Back button - Left side */}
       <div className="absolute top-4 left-4 z-10">
