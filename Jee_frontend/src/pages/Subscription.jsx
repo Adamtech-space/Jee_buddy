@@ -122,7 +122,11 @@ SubscriptionCard.defaultProps = {
 
 const Subscription = () => {
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(false);
+  const [loadingStates, setLoadingStates] = useState({
+    BASIC: false,
+    PRO: false,
+    PREMIUM: false,
+  });
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [currentPlan, setCurrentPlan] = useState(null);
 
@@ -199,37 +203,36 @@ const Subscription = () => {
 
   const handleGetStarted = async (plan) => {
     try {
-      setLoading(true);
-      console.log('handleGetStarted called with plan:', plan);
+      setLoadingStates((prev) => ({
+        ...prev,
+        [plan.type]: true,
+      }));
       
       const userId = getUserId();
-      console.log('Current userId:', userId);
-      
       if (!userId) {
         alert('Please login first');
         navigate('/login');
         return;
       }
 
-      console.log('Proceeding to handlePayment with:', {
-        price: plan.price,
-        name: plan.name,
-        id: plan.id
-      });
-
       await handlePayment(plan.price, plan.name, plan.id);
     } catch (error) {
       console.error('Failed to process plan selection:', error);
       alert('Failed to process your request. Please try again.');
     } finally {
-      setLoading(false);
+      setLoadingStates((prev) => ({
+        ...prev,
+        [plan.type]: false,
+      }));
     }
   };
 
   const handlePayment = async (price, product_name, plan_id) => {
     try {
-      setLoading(true);
-      console.log('handlePayment called with:', { price, product_name, plan_id });
+      setLoadingStates((prev) => ({
+        ...prev,
+        [Object.keys(prev).find((key) => prev[key] === true)]: true,
+      }));
       
       const userId = getUserId();
       if (!userId) {
@@ -281,7 +284,10 @@ const Subscription = () => {
         modal: {
           ondismiss: function() {
             console.log('Payment modal closed');
-            setLoading(false);
+            setLoadingStates((prev) => ({
+              ...prev,
+              [Object.keys(prev).find((key) => prev[key] === true)]: false,
+            }));
           }
         },
         theme: {
@@ -307,7 +313,10 @@ const Subscription = () => {
       });
       alert(`Failed to initiate payment: ${error.message}`);
     } finally {
-      setLoading(false);
+      setLoadingStates((prev) => ({
+        ...prev,
+        [Object.keys(prev).find((key) => prev[key] === true)]: false,
+      }));
     }
   };
 
@@ -562,10 +571,12 @@ const Subscription = () => {
                             id: PLANS['PREMIUM'],
                           })
                         }
-                        disabled={loading}
+                        disabled={loadingStates.PREMIUM}
                         className="px-8 py-3 rounded-lg bg-[#8075FF] text-white font-semibold hover:bg-[#6a5ff0] transition-colors"
                       >
-                        {loading ? 'Processing...' : 'Upgrade to Premium'}
+                        {loadingStates.PREMIUM
+                          ? 'Processing...'
+                          : 'Upgrade to Premium'}
                       </button>
                       <p className="text-gray-500 text-sm mt-2">
                         Cancel or change plans anytime
@@ -673,10 +684,10 @@ const Subscription = () => {
                         id: PLANS['BASIC'],
                       })
                     }
-                    disabled={loading}
+                    disabled={loadingStates.BASIC}
                     className="w-full py-3 rounded-lg bg-[#1e1b29] text-white font-semibold hover:bg-[#2a2635] transition-colors"
                   >
-                    {loading ? 'Processing...' : 'Get Started'}
+                    {loadingStates.BASIC ? 'Processing...' : 'Get Started'}
                   </button>
                 )}
               </div>
@@ -790,10 +801,10 @@ const Subscription = () => {
                         id: PLANS['PRO'],
                       })
                     }
-                    disabled={loading}
+                    disabled={loadingStates.PRO}
                     className="w-full py-3 rounded-lg bg-[#8075FF] text-white font-semibold hover:bg-[#6a5ff0] transition-colors"
                   >
-                    {loading ? 'Processing...' : 'Get Started'}
+                    {loadingStates.PRO ? 'Processing...' : 'Get Started'}
                   </button>
                 )}
               </div>
@@ -904,10 +915,10 @@ const Subscription = () => {
                         id: PLANS['PREMIUM'],
                       })
                     }
-                    disabled={loading}
+                    disabled={loadingStates.PREMIUM}
                     className="w-full py-3 rounded-lg bg-[#1e1b29] text-white font-semibold hover:bg-[#2a2635] transition-colors"
                   >
-                    {loading ? 'Processing...' : 'Get Started'}
+                    {loadingStates.PREMIUM ? 'Processing...' : 'Get Started'}
                   </button>
                 )}
               </div>
