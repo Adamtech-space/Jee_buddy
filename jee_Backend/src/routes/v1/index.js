@@ -4,6 +4,7 @@ const userRoute = require('./user.route');
 const booksRoute = require('./books.route');
 const flashcardsRoute = require('./flashcards.route');
 const studyMaterialsRoute = require('./study-materials.route');
+const questionBankRoute = require('./questinBank.route');
 
 const router = express.Router();
 
@@ -27,6 +28,10 @@ const defaultRoutes = [
   {
     path: '/study-materials',
     route: studyMaterialsRoute,
+  },
+  {
+    path: '/question-bank',
+    route: questionBankRoute,
   },
 ];
 
