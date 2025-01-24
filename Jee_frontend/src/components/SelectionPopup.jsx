@@ -3,58 +3,65 @@ import { useSelection } from '../hooks/useSelection';
 import { useRef, useEffect } from 'react';
 
 const SelectionPopup = ({ onSaveToFlashCard, onAskAI }) => {
-  const { selectedText, selectionPosition, showPopup, clearSelection } = useSelection();
+  const {
+    selectedText,
+    selectionPosition,
+    showPopup,
+    clearSelection,
+    setSelectionPosition,
+    setShowPopup,
+  } = useSelection();
   const popupRef = useRef(null);
 
   useEffect(() => {
-    // Prevent default selection behavior on mobile
-    const preventDefaultSelection = (e) => {
-      if (window.innerWidth <= 768) {
-        if (e.type === 'selectionchange') {
-          // Add a small delay to check for selection
-          setTimeout(() => {
-            const selection = window.getSelection();
-            if (selection && selection.toString().trim().length > 0) {
-              // Prevent default only if there's actual text selected
-              document.addEventListener(
-                'touchend',
-                (e) => {
-                  e.preventDefault();
-                  // Force show the popup immediately after selection
-                  const selection = window.getSelection();
-                  if (selection && selection.toString().trim().length > 0) {
-                    const range = selection.getRangeAt(0);
-                    const rect = range.getBoundingClientRect();
-                    // Update selection position to trigger popup
-                    if (rect) {
-                      const event = new MouseEvent('mouseup', {
-                        bubbles: true,
-                        cancelable: true,
-                        view: window,
-                        clientX: rect.left + rect.width / 2,
-                        clientY: rect.bottom,
-                      });
-                      document.dispatchEvent(event);
-                    }
-                  }
-                },
-                { once: true }
-              );
-            }
-          }, 100);
-        }
+    const handleSelection = () => {
+      const selection = window.getSelection();
+      if (selection && selection.toString().trim().length > 0) {
+        const range = selection.getRangeAt(0);
+        const rect = range.getBoundingClientRect();
+        setSelectionPosition({
+          x: rect.left + rect.width / 2,
+          y: rect.bottom + window.scrollY,
+        });
+        setShowPopup(true);
+      } else {
+        setShowPopup(false);
       }
     };
 
-    // Add listeners for both selectionchange and touchstart
-    document.addEventListener('selectionchange', preventDefaultSelection);
-    document.addEventListener('touchstart', preventDefaultSelection, {
-      passive: false,
-    });
+    // Handle both touch events and mouse events
+    const touchStartHandler = (e) => {
+      // Prevent default PDF viewer selection behavior
+      e.stopPropagation();
+    };
+
+    const touchEndHandler = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      // Small delay to ensure selection is complete
+      setTimeout(handleSelection, 50);
+    };
+
+    // Add event listeners for PDF container
+    const pdfContainer = document.querySelector('.react-pdf__Document');
+    if (pdfContainer) {
+      pdfContainer.addEventListener('touchstart', touchStartHandler, {
+        passive: false,
+      });
+      pdfContainer.addEventListener('touchend', touchEndHandler, {
+        passive: false,
+      });
+      pdfContainer.addEventListener('selectionchange', handleSelection);
+      document.addEventListener('selectionchange', handleSelection);
+    }
 
     return () => {
-      document.removeEventListener('selectionchange', preventDefaultSelection);
-      document.removeEventListener('touchstart', preventDefaultSelection);
+      if (pdfContainer) {
+        pdfContainer.removeEventListener('touchstart', touchStartHandler);
+        pdfContainer.removeEventListener('touchend', touchEndHandler);
+        pdfContainer.removeEventListener('selectionchange', handleSelection);
+        document.removeEventListener('selectionchange', handleSelection);
+      }
     };
   }, []);
 
