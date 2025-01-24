@@ -8,8 +8,6 @@ import {
   PencilIcon,
   StopIcon,
   SparklesIcon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
 } from '@heroicons/react/24/outline';
 import PropTypes from 'prop-types';
 import { aiService } from '../interceptors/ai.service';
@@ -63,17 +61,16 @@ const ChatBot = ({
   const [editingContent, setEditingContent] = useState('');
   const [abortController, setAbortController] = useState(null);
   const [activeHelpType, setActiveHelpType] = useState(null);
-  const helpButtonsRef = useRef(null);
 
   // Smooth scrolling functionality
-  useEffect(() => {
+  const scrollToBottom = useCallback(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({
         behavior: 'smooth',
         block: 'end',
       });
     }
-  }, [messages]);
+  }, []);
 
   // Update scroll logic for smoother control
   useEffect(() => {
@@ -777,44 +774,19 @@ const ChatBot = ({
 
       {/* Help Buttons - Always visible */}
       <div className="bg-gray-900 border-b border-gray-800">
-        {/* Help Buttons with Navigation Arrows */}
-        <div className="flex items-center gap-1 p-1.5">
-          <button
-            onClick={() => {
-              if (helpButtonsRef.current) {
-                helpButtonsRef.current.scrollLeft -= 200;
-              }
-            }}
-            className="hidden md:block p-1 bg-gray-800 rounded-lg hover:bg-gray-700 transition-colors flex-shrink-0"
-          >
-            <ChevronLeftIcon className="w-4 h-4 text-gray-300" />
-          </button>
-
-          <div className="flex overflow-x-auto gap-1 hide-scrollbar" ref={helpButtonsRef}>
-            {helpButtons.map((button) => (
-              <button
-                key={button.type}
-                onClick={() => handleHelpClick(button.type)}
-                className={`flex items-center gap-1 px-2 py-1 rounded-lg transition-colors text-[11px] sm:text-sm flex-shrink-0 ${
-                  activeHelpType === button.type ? 'bg-blue-500 text-white' : 'bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white'
-                }`}
-              >
-                <span className="text-base">{button.icon}</span>
-                <span>{button.text}</span>
-              </button>
-            ))}
-          </div>
-
-          <button
-            onClick={() => {
-              if (helpButtonsRef.current) {
-                helpButtonsRef.current.scrollLeft += 200;
-              }
-            }}
-            className="hidden md:block p-1 bg-gray-800 rounded-lg hover:bg-gray-700 transition-colors flex-shrink-0"
-          >
-            <ChevronRightIcon className="w-4 h-4 text-gray-300" />
-          </button>
+        <div className="flex overflow-x-auto gap-1 p-1.5 hide-scrollbar">
+          {helpButtons.map((button) => (
+            <button
+              key={button.type}
+              onClick={() => handleHelpClick(button.type)}
+              className={`flex items-center gap-1 px-2 py-1 rounded-lg transition-colors text-[11px] sm:text-sm flex-shrink-0 ${
+                activeHelpType === button.type ? 'bg-blue-500 text-white' : 'bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white'
+              }`}
+            >
+              <span className="text-base">{button.icon}</span>
+              <span>{button.text}</span>
+            </button>
+          ))}
         </div>
       </div>
 
@@ -946,7 +918,7 @@ const ChatBot = ({
               {isLoading || isTyping ? (
                 <StopIcon className="h-4 w-4" />
               ) : (
-                <PaperAirplaneIcon className="h-4 w-4 text-gray-400 hover:text-white" />
+              <PaperAirplaneIcon className="h-4 w-4 text-gray-400 hover:text-white" />
               )}
             </button>
           </div>
