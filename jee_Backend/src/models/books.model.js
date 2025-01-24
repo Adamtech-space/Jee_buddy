@@ -30,7 +30,6 @@ const getBooksMetadata = async (filters = {}) => {
       throw error;
     }
 
-    console.log('Books data from Supabase:', data); // Debug log
     return data || [];
   } catch (error) {
     console.error('Error in getBooksMetadata:', error);
