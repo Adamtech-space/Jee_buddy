@@ -268,8 +268,8 @@ const DefaultLayout = ({ children }) => {
               display: isFullScreen ? 'none' : 'block'
             }}
           >
-            {/* Search Bar - Only show in books route */}
-            {isDashboard && location.pathname.includes('/books') && (
+            {/* Search Bar - Show on main dashboard route */}
+            {isDashboard && !location.pathname.includes('/books') && !location.pathname.includes('/flashcards') && !location.pathname.includes('/materials') && (
               <div 
                 className={`fixed z-40 transition-all duration-300 ease-in-out bg-black/95 backdrop-blur-sm ${
                   scrollDirection === 'down' ? '-translate-y-full' : 'translate-y-0'
@@ -300,8 +300,8 @@ const DefaultLayout = ({ children }) => {
                 </div>
               </div>
             )}
-            {/* Add spacing div to prevent content from being hidden - only in books route */}
-            {isDashboard && location.pathname.includes('/books') && <div className="h-[3.25rem]" />}
+            {/* Add spacing div to prevent content from being hidden - only on main dashboard route */}
+            {isDashboard && !location.pathname.includes('/books') && !location.pathname.includes('/flashcards') && !location.pathname.includes('/materials') && <div className="h-[3.25rem]" />}
             <div className="max-w-full">
               {location.pathname.includes('/dashboard') ? (
                 <Outlet context={{ setSelectedText, setIsChatOpen, isChatOpen, filteredBooks }} />
