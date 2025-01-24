@@ -12,55 +12,47 @@
     
     <!-- Google Analytics -->
     <script>
-      // Debug flag for local testing
-      window.GA_DEBUG = window.location.hostname === 'localhost';
-      
-      // Initialize dataLayer
+      // Initialize dataLayer and gtag
       window.dataLayer = window.dataLayer || [];
       function gtag(){
         dataLayer.push(arguments);
-        if (window.GA_DEBUG) {
-          console.log('📊 GA Call:', ...arguments);
-        }
       }
-      
-      // Make gtag available globally
       window.gtag = gtag;
       
-      // Error handler for GA script
-      window.gaLoadError = function(error) {
-        console.error('❌ GA Script load error:', error);
-      };
-    </script>
-    
-    <!-- Load GA script with error handling -->
-    <script 
-      async 
-      src="https://www.googletagmanager.com/gtag/js?id=G-95Y1Z3HJSF"
-      onload="window.gaLoaded=true"
-      onerror="window.gaLoadError(event)"
-    ></script>
-    
-    <!-- Initialize GA -->
-    <script>
-      try {
+      // GA Load handler
+      window.gaLoaded = false;
+      window.gaLoadError = false;
+      
+      function onGaLoad() {
+        window.gaLoaded = true;
+        console.log('✅ GA script loaded');
+        
+        // Initialize GA
         gtag('js', new Date());
         gtag('config', 'G-95Y1Z3HJSF', {
-          debug_mode: window.GA_DEBUG,
           send_page_view: false,
-          cookie_domain: window.GA_DEBUG ? 'localhost' : 'jeebuddy.in',
-          cookie_flags: 'SameSite=Lax',
-          transport_url: 'https://www.google-analytics.com',
+          cookie_domain: 'auto',
+          cookie_flags: 'SameSite=Lax;Secure',
           custom_map: {
             dimension1: 'page_path',
             dimension2: 'client_id'
           }
         });
-        console.log('✅ GA config initialized');
-      } catch (error) {
-        console.error('❌ GA config error:', error);
+      }
+      
+      function onGaError(error) {
+        window.gaLoadError = true;
+        console.error('❌ GA Script load error:', error);
       }
     </script>
+    
+    <!-- Load GA script -->
+    <script 
+      async 
+      src="https://www.googletagmanager.com/gtag/js?id=G-95Y1Z3HJSF"
+      onload="onGaLoad()"
+      onerror="onGaError(event)"
+    ></script>
     
     <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
     <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
