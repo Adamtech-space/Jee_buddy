@@ -15,14 +15,17 @@
     <script>
       window.dataLayer = window.dataLayer || [];
       function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      
+      // Initialize gtag globally before React loads
       window.gtag = gtag;
       
-      gtag('js', new Date());
+      // Basic configuration
       gtag('config', 'G-95Y1Z3HJSF', {
-        send_page_view: true,
-        cookie_domain: 'jeebuddy.in',
-        cookie_flags: 'SameSite=None;Secure',
-        transport_type: 'beacon'
+        send_page_view: false, // We'll handle this in React
+        cookie_domain: 'auto', // Let GA figure out the domain
+        transport_url: 'https://www.google-analytics.com',
+        debug_mode: window.location.hostname === 'localhost'
       });
     </script>
     
