@@ -9,14 +9,25 @@
       name="description"
       content="JEE Buddy - Your AI-powered JEE preparation companion"
     />
-    <!-- Google Analytics -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-95Y1Z3HJSF"></script>
+    
+    <!-- Google tag (gtag.js) - Place this as high as possible in head -->
     <script>
       window.dataLayer = window.dataLayer || [];
       function gtag(){dataLayer.push(arguments);}
+      window.gtag = gtag;
       gtag('js', new Date());
-      gtag('config', 'G-95Y1Z3HJSF');
     </script>
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-95Y1Z3HJSF"></script>
+    <script>
+      gtag('config', 'G-95Y1Z3HJSF', {
+        send_page_view: true,
+        cookie_domain: 'jeebuddy.in',
+        debug_mode: true
+      });
+    </script>
+    
+    <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
+    <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
     <title>JEE Buddy</title>
   </head>
   <body>
