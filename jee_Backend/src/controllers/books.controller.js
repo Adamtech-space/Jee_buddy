@@ -26,7 +26,6 @@ const getBooksList = catchAsync(async (req, res) => {
       data: books
     });
   } catch (error) {
-    console.error('Error in getBooksList:', error);
     throw new ApiError(httpStatus.INTERNAL_SERVER_ERROR, 'Error fetching books');
   }
 });
