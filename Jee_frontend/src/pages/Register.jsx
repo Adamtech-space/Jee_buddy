@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate, Link } from 'react-router-dom';
 import { userRegister, googleSignIn } from '../interceptors/services';
+import { logEvent } from '../utils/analytics';
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -29,8 +30,10 @@ const Register = () => {
     try {
       const { confirmPassword, ...registrationData } = formData;
       await userRegister(registrationData);
+      logEvent('User', 'Registration', 'Email Registration');
       navigate('/login');
     } catch (error) {
+      logEvent('Error', 'Registration Failed', error.message);
       setError(error.message || 'Registration failed. Please try again.');
     } finally {
       setIsLoading(false);
@@ -42,11 +45,13 @@ const Register = () => {
     setError('');
 
     try {
+      logEvent('User', 'Google Sign In Attempt', 'Registration Page');
       const response = await googleSignIn();
       if (response.url) {
         window.location.href = response.url;
       }
     } catch (err) {
+      logEvent('Error', 'Google Sign In Failed', err.message);
       setError(err.message || 'Google sign-in failed. Please try again.');
       setIsLoading(false);
     }

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate, Link } from 'react-router-dom';
 import { userLogin, googleSignIn } from '../interceptors/services';
+import { logEvent } from '../utils/analytics';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -17,8 +18,10 @@ const Login = () => {
 
     try {
       await userLogin({ email, password });
+      logEvent('User', 'Login', 'Email Login Success');
       navigate('/subject-selection');
     } catch (err) {
+      logEvent('Error', 'Login Failed', err.message);
       setError(err.message || 'Login failed. Please try again.');
     } finally {
       setIsLoading(false);
@@ -30,11 +33,13 @@ const Login = () => {
     setError('');
 
     try {
+      logEvent('User', 'Google Sign In Attempt', 'Login Page');
       const response = await googleSignIn();
       if (response.url) {
         window.location.href = response.url;
       }
     } catch (err) {
+      logEvent('Error', 'Google Sign In Failed', err.message);
       setError(err.message || 'Google sign-in failed. Please try again.');
       setIsLoading(false);
     }
