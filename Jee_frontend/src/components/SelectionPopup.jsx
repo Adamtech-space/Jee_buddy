@@ -19,6 +19,7 @@ const SelectionPopup = ({ onSaveToFlashCard, onAskAI }) => {
       if (selection && selection.toString().trim().length > 0) {
         const range = selection.getRangeAt(0);
         const rect = range.getBoundingClientRect();
+        // Immediately update position and show popup
         setSelectionPosition({
           x: rect.left + rect.width / 2,
           y: rect.bottom + window.scrollY,
@@ -29,39 +30,15 @@ const SelectionPopup = ({ onSaveToFlashCard, onAskAI }) => {
       }
     };
 
-    // Handle both touch events and mouse events
-    const touchStartHandler = (e) => {
-      // Prevent default PDF viewer selection behavior
-      e.stopPropagation();
-    };
-
-    const touchEndHandler = (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      // Small delay to ensure selection is complete
-      setTimeout(handleSelection, 50);
-    };
-
-    // Add event listeners for PDF container
-    const pdfContainer = document.querySelector('.react-pdf__Document');
-    if (pdfContainer) {
-      pdfContainer.addEventListener('touchstart', touchStartHandler, {
-        passive: false,
-      });
-      pdfContainer.addEventListener('touchend', touchEndHandler, {
-        passive: false,
-      });
-      pdfContainer.addEventListener('selectionchange', handleSelection);
-      document.addEventListener('selectionchange', handleSelection);
-    }
+    // Listen for all possible selection events
+    document.addEventListener('selectionchange', handleSelection);
+    document.addEventListener('touchend', handleSelection);
+    document.addEventListener('mouseup', handleSelection);
 
     return () => {
-      if (pdfContainer) {
-        pdfContainer.removeEventListener('touchstart', touchStartHandler);
-        pdfContainer.removeEventListener('touchend', touchEndHandler);
-        pdfContainer.removeEventListener('selectionchange', handleSelection);
-        document.removeEventListener('selectionchange', handleSelection);
-      }
+      document.removeEventListener('selectionchange', handleSelection);
+      document.removeEventListener('touchend', handleSelection);
+      document.removeEventListener('mouseup', handleSelection);
     };
   }, []);
 
