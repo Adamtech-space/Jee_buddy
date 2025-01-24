@@ -79,9 +79,13 @@ const ChatBot = ({
 
     let userScrolling = false;
     let lastScrollTop = container.scrollTop;
+    let touchStartY = 0; // Track touch start position
 
     const handleScroll = () => {
-      const isAtBottom = Math.abs(container.scrollHeight - container.scrollTop - container.clientHeight) < 100;
+      const isAtBottom =
+        Math.abs(
+          container.scrollHeight - container.scrollTop - container.clientHeight
+        ) < 100;
       const isScrollingDown = container.scrollTop > lastScrollTop;
       lastScrollTop = container.scrollTop;
 
@@ -92,29 +96,64 @@ const ChatBot = ({
       }
     };
 
+    // Add touch event handlers for better mobile support
+    const handleTouchStart = (e) => {
+      touchStartY = e.touches[0].clientY;
+    };
+
+    const handleTouchMove = (e) => {
+      const touchY = e.touches[0].clientY;
+      const isScrollingUp = touchY > touchStartY;
+
+      if (isScrollingUp) {
+        userScrolling = true; // User is actively scrolling up
+      }
+
+      touchStartY = touchY;
+    };
+
     const observer = new MutationObserver(() => {
       if (!userScrolling) {
         requestAnimationFrame(() => {
           container.scrollTo({
             top: container.scrollHeight,
-            behavior: 'smooth'
+            behavior: 'smooth',
           });
         });
       }
     });
 
-    observer.observe(container, { 
-      childList: true, 
-      subtree: true, 
+    observer.observe(container, {
+      childList: true,
+      subtree: true,
       characterData: true,
-      characterDataOldValue: true 
+      characterDataOldValue: true,
     });
 
+    // Add event listeners
     container.addEventListener('scroll', handleScroll, { passive: true });
+    container.addEventListener('touchstart', handleTouchStart, {
+      passive: true,
+    });
+    container.addEventListener('touchmove', handleTouchMove, { passive: true });
+
+    // Mouse wheel event for more precise control
+    container.addEventListener(
+      'wheel',
+      () => {
+        userScrolling = true;
+      },
+      { passive: true }
+    );
 
     return () => {
       observer.disconnect();
       container.removeEventListener('scroll', handleScroll);
+      container.removeEventListener('touchstart', handleTouchStart);
+      container.removeEventListener('touchmove', handleTouchMove);
+      container.removeEventListener('wheel', () => {
+        userScrolling = true;
+      });
     };
   }, [messages]);
 
