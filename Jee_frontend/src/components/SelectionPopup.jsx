@@ -109,6 +109,26 @@ const SelectionPopup = ({ onSaveToFlashCard, onAskAI }) => {
     clearSelection();
   };
 
+  const handleAIClick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const selectedText = window.getSelection().toString();
+    if (selectedText) {
+      setShowPopup(false);
+      onAskAI(selectedText);
+    }
+  };
+
+  const handleSaveClick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const selectedText = window.getSelection().toString();
+    if (selectedText) {
+      setShowPopup(false);
+      onSaveToFlashCard(selectedText);
+    }
+  };
+
   return (
     <div
       ref={popupRef}
@@ -128,7 +148,8 @@ const SelectionPopup = ({ onSaveToFlashCard, onAskAI }) => {
       }}
     >
       <button
-        onClick={() => handleAction(onAskAI)}
+        onClick={handleAIClick}
+        onTouchEnd={handleAIClick}
         className={`
           ${
             window.innerWidth <= 768
@@ -140,7 +161,8 @@ const SelectionPopup = ({ onSaveToFlashCard, onAskAI }) => {
         {window.innerWidth <= 768 ? 'AI' : '🤖 Ask AI'}
       </button>
       <button
-        onClick={() => handleAction(onSaveToFlashCard)}
+        onClick={handleSaveClick}
+        onTouchEnd={handleSaveClick}
         className={`
           ${
             window.innerWidth <= 768
