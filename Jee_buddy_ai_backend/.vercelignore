@@ -1,0 +1,13 @@
+*.pyc
+__pycache__
+.pytest_cache
+.coverage
+htmlcov
+.git
+.env
+*.log
+tests/
+docs/
+*.md
+*.txt
+!requirements.txt 
