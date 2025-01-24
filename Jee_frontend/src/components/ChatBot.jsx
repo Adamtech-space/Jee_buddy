@@ -863,7 +863,7 @@ const ChatBot = ({
       } ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}
       style={{
         width: isFullScreen || window.innerWidth < 640 ? '100%' : `${width}px`,
-        zIndex: isFullScreen ? 60 : 50,
+        zIndex: isFullScreen ? 60 : 40,
       }}
       onMouseUp={(e) => {
         if (

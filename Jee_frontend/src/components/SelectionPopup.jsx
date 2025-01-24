@@ -11,14 +11,37 @@ const SelectionPopup = ({ onSaveToFlashCard, onAskAI }) => {
     const preventDefaultSelection = (e) => {
       if (window.innerWidth <= 768) {
         if (e.type === 'selectionchange') {
-          // Allow the selection to happen but prevent the default menu
-          document.addEventListener(
-            'touchend',
-            (e) => {
-              e.preventDefault();
-            },
-            { once: true }
-          );
+          // Add a small delay to check for selection
+          setTimeout(() => {
+            const selection = window.getSelection();
+            if (selection && selection.toString().trim().length > 0) {
+              // Prevent default only if there's actual text selected
+              document.addEventListener(
+                'touchend',
+                (e) => {
+                  e.preventDefault();
+                  // Force show the popup immediately after selection
+                  const selection = window.getSelection();
+                  if (selection && selection.toString().trim().length > 0) {
+                    const range = selection.getRangeAt(0);
+                    const rect = range.getBoundingClientRect();
+                    // Update selection position to trigger popup
+                    if (rect) {
+                      const event = new MouseEvent('mouseup', {
+                        bubbles: true,
+                        cancelable: true,
+                        view: window,
+                        clientX: rect.left + rect.width / 2,
+                        clientY: rect.bottom,
+                      });
+                      document.dispatchEvent(event);
+                    }
+                  }
+                },
+                { once: true }
+              );
+            }
+          }, 100);
         }
       }
     };

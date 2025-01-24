@@ -234,8 +234,8 @@ const DefaultLayout = ({ children }) => {
       <div className="min-h-screen bg-black overflow-x-hidden">
         {/* Fixed navbar at top */}
         <div className="fixed top-0 left-0 right-0 z-50">
-          <Navbar 
-            isMobileOpen={isMobileOpen} 
+          <Navbar
+            isMobileOpen={isMobileOpen}
             setIsMobileOpen={setIsMobileOpen}
             isChatOpen={isChatOpen}
             setIsChatOpen={setIsChatOpen}
@@ -247,37 +247,55 @@ const DefaultLayout = ({ children }) => {
         <div className="flex min-h-screen pt-16 relative">
           {/* Sidebar */}
           {isDashboard && !isFullScreen && (
-            <div className={`fixed inset-y-0 left-0 transform transition-transform duration-300 ease-in-out ${
-              !isSidebarOpen ? '-translate-x-64' : 'translate-x-0'
-            } ${isMobileOpen ? 'z-40' : 'z-0'}`}>
-              <Sidebar 
+            <div
+              className={`fixed inset-y-0 left-0 transform transition-transform duration-300 ease-in-out ${
+                !isSidebarOpen ? '-translate-x-64' : 'translate-x-0'
+              } ${isMobileOpen ? 'z-40' : 'z-0'}`}
+            >
+              <Sidebar
                 isMobileOpen={isMobileOpen}
                 setIsMobileOpen={setIsMobileOpen}
               />
             </div>
           )}
-          
+
           {/* Main content */}
-          <main 
+          <main
             className={`flex-1 w-full transition-all duration-300 ease-in-out ${
               isDashboard && !isFullScreen && isSidebarOpen ? 'md:pl-64' : ''
             } px-2 sm:px-4 md:px-6`}
             style={{
-              paddingRight: isDashboard && isChatOpen && !isFullScreen && window.innerWidth >= 768 ? `${chatWidth}px` : '0',
+              paddingRight:
+                isDashboard &&
+                isChatOpen &&
+                !isFullScreen &&
+                window.innerWidth >= 768
+                  ? `${chatWidth}px`
+                  : '0',
               transition: isResizing ? 'none' : 'all 0.3s ease-out',
-              display: isFullScreen ? 'none' : 'block'
+              display: isFullScreen ? 'none' : 'block',
             }}
           >
             {/* Search Bar - Only show in books route */}
             {isDashboard && location.pathname.includes('/books') && (
-              <div 
+              <div
                 className={`fixed z-40 transition-all duration-300 ease-in-out bg-black/95 backdrop-blur-sm ${
-                  scrollDirection === 'down' ? '-translate-y-full' : 'translate-y-0'
+                  scrollDirection === 'down'
+                    ? '-translate-y-full'
+                    : 'translate-y-0'
                 } ${
-                  isDashboard && !isFullScreen && isSidebarOpen ? 'md:left-64' : 'left-0'
+                  isDashboard && !isFullScreen && isSidebarOpen
+                    ? 'md:left-64'
+                    : 'left-0'
                 } right-0 top-16 w-full`}
                 style={{
-                  right: isDashboard && isChatOpen && !isFullScreen && window.innerWidth >= 768 ? `${chatWidth}px` : '0',
+                  right:
+                    isDashboard &&
+                    isChatOpen &&
+                    !isFullScreen &&
+                    window.innerWidth >= 768
+                      ? `${chatWidth}px`
+                      : '0',
                 }}
               >
                 <div className="w-full h-full px-2 sm:px-4 md:px-6 py-2">
@@ -291,8 +309,17 @@ const DefaultLayout = ({ children }) => {
                         value={searchQuery}
                       />
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <svg className="h-4 w-4 md:h-5 md:w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                          <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
+                        <svg
+                          className="h-4 w-4 md:h-5 md:w-5 text-gray-400"
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 20 20"
+                          fill="currentColor"
+                        >
+                          <path
+                            fillRule="evenodd"
+                            d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z"
+                            clipRule="evenodd"
+                          />
                         </svg>
                       </div>
                     </div>
@@ -301,10 +328,19 @@ const DefaultLayout = ({ children }) => {
               </div>
             )}
             {/* Add spacing div to prevent content from being hidden - only in books route */}
-            {isDashboard && location.pathname.includes('/books') && <div className="h-[3.25rem]" />}
+            {isDashboard && location.pathname.includes('/books') && (
+              <div className="h-[3.25rem]" />
+            )}
             <div className="max-w-full">
               {location.pathname.includes('/dashboard') ? (
-                <Outlet context={{ setSelectedText, setIsChatOpen, isChatOpen, filteredBooks }} />
+                <Outlet
+                  context={{
+                    setSelectedText,
+                    setIsChatOpen,
+                    isChatOpen,
+                    filteredBooks,
+                  }}
+                />
               ) : (
                 children
               )}
@@ -312,42 +348,51 @@ const DefaultLayout = ({ children }) => {
           </main>
 
           {/* Chat toggle button - Only show on tablet and larger screens when chat is closed */}
-          {isDashboard && !isChatOpen && !isFullScreen && window.innerWidth >= 768 && (
-            <button
-              onClick={() => setIsChatOpen(true)}
-              className="fixed bottom-6 right-6 w-14 h-14 bg-blue-500 rounded-full flex items-center justify-center shadow-lg z-50 hover:bg-blue-600 transition-colors"
-              aria-label="Open AI Chat"
-            >
-              <ChatBubbleLeftRightIcon className="w-6 h-6 text-white" />
-            </button>
-          )}
+          {isDashboard &&
+            !isChatOpen &&
+            !isFullScreen &&
+            window.innerWidth >= 768 && (
+              <button
+                onClick={() => setIsChatOpen(true)}
+                className="fixed bottom-6 right-6 w-14 h-14 bg-blue-500 rounded-full flex items-center justify-center shadow-lg z-30 hover:bg-blue-600 transition-colors"
+                aria-label="Open AI Chat"
+              >
+                <ChatBubbleLeftRightIcon className="w-6 h-6 text-white" />
+              </button>
+            )}
 
           {/* Mobile chat toggle button - Only show on mobile when chat is closed */}
-          {isDashboard && !isChatOpen && !isFullScreen && window.innerWidth < 768 && (
-            <button
-              onClick={() => {
-                setIsChatOpen(true);
-                setIsFullScreen(true);
-              }}
-              className="fixed bottom-4 right-4 w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center shadow-lg z-50 hover:bg-blue-600 transition-colors"
-              aria-label="Open AI Chat"
-            >
-              <ChatBubbleLeftRightIcon className="w-5 h-5 text-white" />
-            </button>
-          )}
+          {isDashboard &&
+            !isChatOpen &&
+            !isFullScreen &&
+            window.innerWidth < 768 && (
+              <button
+                onClick={() => {
+                  setIsChatOpen(true);
+                  setIsFullScreen(true);
+                }}
+                className="fixed bottom-4 right-4 w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center shadow-lg z-30 hover:bg-blue-600 transition-colors"
+                aria-label="Open AI Chat"
+              >
+                <ChatBubbleLeftRightIcon className="w-5 h-5 text-white" />
+              </button>
+            )}
 
           {/* ChatBot */}
           {isDashboard && (
-            <div 
+            <div
               className={`fixed transform transition-transform duration-300 ease-in-out ${
                 isFullScreen ? 'inset-0' : 'top-16 bottom-0 right-0'
               } ${isChatOpen ? 'translate-x-0' : 'translate-x-full'}`}
-              style={{ 
-                width: isFullScreen || window.innerWidth < 768 ? '100%' : `${chatWidth}px`,
-                zIndex: isFullScreen ? 60 : 50
+              style={{
+                width:
+                  isFullScreen || window.innerWidth < 768
+                    ? '100%'
+                    : `${chatWidth}px`,
+                zIndex: isFullScreen ? 60 : 40,
               }}
             >
-              <ChatBot 
+              <ChatBot
                 isOpen={isChatOpen}
                 setIsOpen={setIsChatOpen}
                 isFullScreen={isFullScreen}
