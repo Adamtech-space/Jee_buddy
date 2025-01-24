@@ -1,7 +1,7 @@
 // Google Analytics utility functions
 const GA_TRACKING_ID = 'G-95Y1Z3HJSF';
-const MAX_RETRIES = 3;  // Reduced retries for development
-const RETRY_DELAY = 500; // Shorter delay
+const MAX_RETRIES = 5;  // Increased retries
+const RETRY_DELAY = 1000; // Increased delay
 
 // Environment detection
 const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
@@ -12,10 +12,7 @@ let hasShownInitMessage = false;
 // Development mode mock implementation
 const mockGtag = (...args) => {
   if (isDevelopment) {
-    // Only log events, not configuration calls
-    if (args[0] === 'event') {
-      console.log('📊 Dev Event:', args[1], args[2]);
-    }
+    console.log('📊 Dev Event:', ...args);
   }
   return true;
 };
@@ -25,6 +22,13 @@ const isGALoaded = () => {
   if (isDevelopment) {
     return true;
   }
+  
+  // Check for load error
+  if (window.gaLoadError) {
+    console.error('❌ GA failed to load (script error)');
+    return false;
+  }
+  
   return window.gaLoaded === true && typeof window.gtag === 'function';
 };
 
@@ -33,23 +37,27 @@ const waitForGtag = () => new Promise((resolve) => {
   // In development, resolve immediately with mock
   if (isDevelopment) {
     window.gtag = window.gtag || mockGtag;
-    if (!hasShownInitMessage) {
-      console.log('🔧 Using GA mock for development');
-      hasShownInitMessage = true;
-    }
+    console.log('🔧 Using GA mock for development');
     resolve(true);
     return;
   }
 
-  // Production check
+  // Check if already loaded
   if (isGALoaded()) {
-    console.log('✅ GA initialized');
+    console.log('✅ GA already initialized');
     resolve(true);
     return;
   }
 
   let retries = 0;
   const check = () => {
+    // Check for load error
+    if (window.gaLoadError) {
+      console.error('❌ GA script failed to load');
+      resolve(false);
+      return;
+    }
+
     if (isGALoaded()) {
       console.log('✅ GA initialized successfully');
       resolve(true);
@@ -58,14 +66,15 @@ const waitForGtag = () => new Promise((resolve) => {
 
     if (retries < MAX_RETRIES) {
       retries++;
-      console.log(`⏳ Checking GA availability (${retries}/${MAX_RETRIES})`);
+      console.log(`⏳ Waiting for GA (${retries}/${MAX_RETRIES})`);
       setTimeout(check, RETRY_DELAY);
     } else {
-      console.warn('⚠️ GA failed to initialize in production');
+      console.error('❌ GA initialization timeout');
       resolve(false);
     }
   };
 
+  // Start checking
   check();
 });
 
@@ -79,13 +88,14 @@ export const initGA = async () => {
     }
 
     // Send initial pageview
-    window.gtag('event', 'page_view', {
+    const eventData = {
       page_title: document.title,
       page_location: window.location.href,
       page_path: window.location.pathname,
       send_to: GA_TRACKING_ID
-    });
+    };
 
+    window.gtag('event', 'page_view', eventData);
     return true;
   } catch (error) {
     console.error('❌ GA initialization error:', error);
@@ -117,7 +127,11 @@ export const testGAEvent = async () => {
 // Log page view
 export const logPageView = async (path = window.location.pathname) => {
   try {
-    await waitForGtag();
+    const isAvailable = await waitForGtag();
+    if (!isAvailable && !isDevelopment) {
+      console.warn('⚠️ Skipping page view - GA not available');
+      return;
+    }
 
     const eventData = {
       page_location: window.location.origin + path,
@@ -128,14 +142,18 @@ export const logPageView = async (path = window.location.pathname) => {
 
     window.gtag('event', 'page_view', eventData);
   } catch (error) {
-    console.warn('⚠️ Page view logging failed:', error.message);
+    console.error('❌ Page view logging failed:', error);
   }
 };
 
 // Log custom event
 export const logEvent = async (category, action, label = null) => {
   try {
-    await waitForGtag();
+    const isAvailable = await waitForGtag();
+    if (!isAvailable && !isDevelopment) {
+      console.warn('⚠️ Skipping event - GA not available');
+      return;
+    }
 
     const eventData = {
       event_category: category,
@@ -145,14 +163,18 @@ export const logEvent = async (category, action, label = null) => {
 
     window.gtag('event', action, eventData);
   } catch (error) {
-    console.warn('⚠️ Event logging failed:', error.message);
+    console.error('❌ Event logging failed:', error);
   }
 };
 
 // Log exception
 export const logException = async (description = '', fatal = false) => {
   try {
-    await waitForGtag();
+    const isAvailable = await waitForGtag();
+    if (!isAvailable && !isDevelopment) {
+      console.warn('⚠️ Skipping exception - GA not available');
+      return;
+    }
 
     const eventData = {
       description,
@@ -162,6 +184,6 @@ export const logException = async (description = '', fatal = false) => {
 
     window.gtag('event', 'exception', eventData);
   } catch (error) {
-    console.warn('⚠️ Exception logging failed:', error.message);
+    console.error('❌ Exception logging failed:', error);
   }
 };
