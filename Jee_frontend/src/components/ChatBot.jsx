@@ -64,16 +64,6 @@ const ChatBot = ({
   const [abortController, setAbortController] = useState(null);
   const [activeHelpType, setActiveHelpType] = useState(null);
 
-  // Smooth scrolling functionality
-  const scrollToBottom = useCallback(() => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({
-        behavior: 'smooth',
-        block: 'end',
-      });
-    }
-  }, []);
-
   // Update scroll logic for smoother control
   useEffect(() => {
     const container = document.querySelector('.overflow-y-auto');

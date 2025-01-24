@@ -1,6 +1,4 @@
-// Google Analytics Measurement ID
-const MEASUREMENT_ID = 'G-95Y1Z3HJSF';
-
+// Google Analytics utility functions
 export const initGA = () => {
   // GA is already initialized in index.html
   if (!window.gtag) {
