@@ -3,7 +3,7 @@ import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
 // Layout
 import DefaultLayout from '../components/layouts/DefaultLayout';
 // Ram landing page
-import Jeebuddy from '../landingPage/JeeBuddy'
+// import Jeebuddy from '../landingPage/JeeBuddy'
 
 // Auth Pages
 import Login from '../pages/Login';
@@ -45,40 +45,77 @@ const AppRoutes = () => {
   return (
     <Routes>
       {/* Public Routes - Only accessible when not logged in */}
-      <Route path="/" element={
-        isAuthenticated ? (
-          <Navigate to="/subject-selection" replace />
-        ) : (
-          <>
-            <Jeebuddy/>
-          </>
-        )
-      } />
+      <Route
+        path="/"
+        element={
+          isAuthenticated ? (
+            <Navigate to="/subject-selection" replace />
+          ) : (
+            <Navigate to="/login" replace />
+          )
+        }
+      />
 
       {/* Auth Routes - Only accessible when not logged in */}
-      <Route path="/login" element={isAuthenticated ? <Navigate to="/subject-selection" replace /> : <Login />} />
-      <Route path="/register" element={isAuthenticated ? <Navigate to="/subject-selection" replace /> : <Register />} />
-      <Route path="/forgot-password" element={isAuthenticated ? <Navigate to="/subject-selection" replace /> : <ForgotPassword />} />
+      <Route
+        path="/login"
+        element={
+          isAuthenticated ? (
+            <Navigate to="/subject-selection" replace />
+          ) : (
+            <Login />
+          )
+        }
+      />
+      <Route
+        path="/register"
+        element={
+          isAuthenticated ? (
+            <Navigate to="/subject-selection" replace />
+          ) : (
+            <Register />
+          )
+        }
+      />
+      <Route
+        path="/forgot-password"
+        element={
+          isAuthenticated ? (
+            <Navigate to="/subject-selection" replace />
+          ) : (
+            <ForgotPassword />
+          )
+        }
+      />
       <Route path="/auth/callback" element={<AuthCallback />} />
 
       {/* Protected Routes - Only accessible when logged in */}
       <Route element={<ProtectedRoute />}>
-        <Route path="/subject-selection" element={
-          <DefaultLayout>
-            <SubjectSelection />
-          </DefaultLayout>
-        } />
-        <Route path="/settings" element={
-          <DefaultLayout>
-            <Settings />
-          </DefaultLayout>
-        } />
-      
+        <Route
+          path="/subject-selection"
+          element={
+            <DefaultLayout>
+              <SubjectSelection />
+            </DefaultLayout>
+          }
+        />
+        <Route
+          path="/settings"
+          element={
+            <DefaultLayout>
+              <Settings />
+            </DefaultLayout>
+          }
+        />
 
-
-        <Route path="/dashboard/:subject" element={<DefaultLayout>
-          <Outlet />
-        </DefaultLayout>}>
+        <Route
+          path="/dashboard/:subject"
+          element={
+            <DefaultLayout>
+              <Outlet />
+            </DefaultLayout>
+          }
+        >
           <Route index element={<BooksList />} />
           <Route path="books" element={<BooksList />} />
           <Route path="books/:topicId" element={<TopicContent />} />
@@ -91,7 +128,10 @@ const AppRoutes = () => {
       </Route>
 
       {/* Redirects */}
-      <Route path="/dashboard" element={<Navigate to="/subject-selection" replace />} />
+      <Route
+        path="/dashboard"
+        element={<Navigate to="/subject-selection" replace />}
+      />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
