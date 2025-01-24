@@ -808,24 +808,24 @@ const ChatBot = ({
         {/* Help Buttons Container */}
         <div
           ref={containerRef}
-          className="flex overflow-x-auto gap-2 py-3 px-4 hide-scrollbar scroll-smooth"
+          className="flex overflow-x-auto gap-1.5 py-2 px-3 hide-scrollbar scroll-smooth"
         >
           {helpButtons.map((button) => (
             <button
               key={button.type}
               onClick={() => handleHelpClick(button.type)}
               className={`
-                flex items-center gap-2 px-4 py-2 rounded-xl
+                flex items-center gap-1.5 px-3 py-1.5 rounded-lg
                 transition-all duration-300 ease-out
-                text-sm flex-shrink-0 font-medium
+                text-xs flex-shrink-0 font-medium
                 ${
                   activeHelpType === button.type
-                    ? 'bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-lg shadow-blue-500/20 scale-105 hover:shadow-blue-500/30 hover:scale-110'
-                    : 'bg-gray-800/80 text-gray-300 hover:bg-gray-700/90 hover:text-white hover:-translate-y-0.5 hover:shadow-lg'
+                    ? 'bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-md shadow-blue-500/20 scale-105 hover:shadow-blue-500/30 hover:scale-110'
+                    : 'bg-gray-800/80 text-gray-300 hover:bg-gray-700/90 hover:text-white hover:-translate-y-0.5 hover:shadow-md'
                 }
               `}
             >
-              <span className="text-lg transform transition-transform duration-300 hover:scale-110">
+              <span className="text-sm transform transition-transform duration-300 hover:scale-110">
                 {button.icon}
               </span>
               <span>{button.text}</span>
@@ -985,14 +985,9 @@ const ChatBot = ({
                 onClick={() => setIsPinnedText(!isPinnedText)}
                 className="p-1 hover:bg-gray-700/50 rounded-full transition-colors flex-shrink-0"
               >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className={`h-4 w-4 ${isPinnedText ? 'text-blue-400' : 'text-gray-400 hover:text-white'}`}
-                  viewBox="0 0 20 20"
-                  fill="currentColor"
-                >
-                  <path d="M9.293 1.293a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 4.414V15a1 1 0 11-2 0V4.414L7.707 5.707a1 1 0 01-1.414-1.414l3-3z" />
-                </svg>
+                <span className={`text-sm ${isPinnedText ? 'opacity-100' : 'opacity-50 hover:opacity-75'} transition-opacity`}>
+                  📌
+                </span>
               </button>
               <button
                 onClick={() => setSelectedTextPreview(null)}
@@ -1022,14 +1017,9 @@ const ChatBot = ({
                 onClick={() => setIsPinnedImage(!isPinnedImage)}
                 className="p-1 hover:bg-gray-700/50 rounded-full transition-colors"
               >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className={`h-4 w-4 ${isPinnedImage ? 'text-blue-400' : 'text-gray-400 hover:text-white'}`}
-                  viewBox="0 0 20 20"
-                  fill="currentColor"
-                >
-                  <path d="M9.293 1.293a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 4.414V15a1 1 0 11-2 0V4.414L7.707 5.707a1 1 0 01-1.414-1.414l3-3z" />
-                </svg>
+                <span className={`text-sm ${isPinnedImage ? 'opacity-100' : 'opacity-5 hover:opacity-75'} transition-opacity`}>
+                  📌
+                </span>
               </button>
               <button
                 onClick={() => setPinnedImage(null)}
