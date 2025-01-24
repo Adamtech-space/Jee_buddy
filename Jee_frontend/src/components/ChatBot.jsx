@@ -8,6 +8,8 @@ import {
   PencilIcon,
   StopIcon,
   SparklesIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
 } from '@heroicons/react/24/outline';
 import PropTypes from 'prop-types';
 import { aiService } from '../interceptors/ai.service';
@@ -225,7 +227,7 @@ const ChatBot = ({
         session_id: sessionId,
         subject: subject || '',
         topic: topic || '',
-        type: 'solve',
+        type: activeHelpType || '',
         pinnedText: '',
         selectedText: '',
         source: 'Chat',
@@ -341,14 +343,14 @@ const ChatBot = ({
         throw new Error('No valid session ID found');
       }
 
-      const questionWithInteraction = `${chatMessage} (${activeHelpType || 'solve'})`;
+      const questionWithInteraction = `${chatMessage} (${activeHelpType || ''})`;
 
       const response = await aiService.askQuestion(questionWithInteraction, {
         user_id: userData.id || 'anonymous',
         session_id: sessionId,
         subject: subject || '',
         topic: topic || '',
-        type: activeHelpType || 'solve',
+        type: activeHelpType || '',
         pinnedText: '',
         selectedText: questionContext?.content || '',
         source: questionContext?.source || 'Chat',
@@ -812,21 +814,72 @@ const ChatBot = ({
       </div>
 
       {/* Help Buttons - Always visible */}
-      <div className="bg-gray-900 border-b border-gray-800">
-        <div className="flex overflow-x-auto gap-1 p-1.5 hide-scrollbar">
+      <div className="bg-gray-900 border-b border-gray-800 relative group">
+        <button 
+          onClick={() => {
+            const container = document.querySelector('.help-buttons-container');
+            container.scrollBy({ left: -200, behavior: 'smooth' });
+          }}
+          className="absolute left-0 top-1/2 -translate-y-1/2 z-10 p-2 bg-gradient-to-r from-gray-900 to-gray-800 opacity-0 group-hover:opacity-100 transition-opacity duration-200 shadow-lg"
+          aria-label="Scroll left"
+        >
+          <div className="bg-gray-700 hover:bg-gray-600 rounded-full p-1.5 transition-colors">
+            <ChevronLeftIcon className="w-4 h-4 text-white" />
+          </div>
+        </button>
+        
+        <div 
+          className="flex overflow-x-auto gap-2 py-2 px-3 hide-scrollbar help-buttons-container mx-12 scroll-smooth"
+          onScroll={(e) => {
+            const container = e.currentTarget;
+            const leftButton = container.previousElementSibling;
+            const rightButton = container.nextElementSibling;
+            
+            if (container.scrollLeft > 0) {
+              leftButton.classList.remove('opacity-0');
+              leftButton.classList.add('opacity-100');
+            } else {
+              leftButton.classList.add('opacity-0');
+              leftButton.classList.remove('opacity-100');
+            }
+            
+            if (container.scrollLeft + container.clientWidth < container.scrollWidth) {
+              rightButton.classList.remove('opacity-0');
+              rightButton.classList.add('opacity-100');
+            } else {
+              rightButton.classList.add('opacity-0');
+              rightButton.classList.remove('opacity-100');
+            }
+          }}
+        >
           {helpButtons.map((button) => (
             <button
               key={button.type}
               onClick={() => handleHelpClick(button.type)}
-              className={`flex items-center gap-1 px-2 py-1 rounded-lg transition-colors text-[11px] sm:text-sm flex-shrink-0 ${
-                activeHelpType === button.type ? 'bg-blue-500 text-white' : 'bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white'
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all duration-200 text-[11px] sm:text-sm flex-shrink-0 ${
+                activeHelpType === button.type 
+                  ? 'bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-lg shadow-blue-500/20 scale-105' 
+                  : 'bg-gray-800/80 text-gray-300 hover:bg-gray-700 hover:text-white hover:scale-105'
               }`}
             >
               <span className="text-base">{button.icon}</span>
-              <span>{button.text}</span>
+              <span className="font-medium">{button.text}</span>
             </button>
           ))}
         </div>
+
+        <button 
+          onClick={() => {
+            const container = document.querySelector('.help-buttons-container');
+            container.scrollBy({ left: 200, behavior: 'smooth' });
+          }}
+          className="absolute right-0 top-1/2 -translate-y-1/2 z-10 p-2 bg-gradient-to-l from-gray-900 to-gray-800 opacity-0 group-hover:opacity-100 transition-opacity duration-200 shadow-lg"
+          aria-label="Scroll right"
+        >
+          <div className="bg-gray-700 hover:bg-gray-600 rounded-full p-1.5 transition-colors">
+            <ChevronRightIcon className="w-4 h-4 text-white" />
+          </div>
+        </button>
       </div>
 
       {/* Messages */}
