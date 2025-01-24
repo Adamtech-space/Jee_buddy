@@ -17,6 +17,7 @@ import BooksList from '../components/BooksList';
 import TopicContent from '../components/TopicContent';
 import FlashCards from '../components/FlashCards';
 import StudyMaterials from '../components/StudyMaterials';
+import QuestionBank from '../components/QuestionBank';
 
 // settings with subscription components
 import Settings from '../pages/Subscription';
@@ -30,8 +31,9 @@ import PdfViewer from '../components/PdfViewer';
 
 // Protected Route Component
 const ProtectedRoute = () => {
-  const isAuthenticated = localStorage.getItem('tokens') && localStorage.getItem('user');
-  
+  const isAuthenticated =
+    localStorage.getItem('tokens') && localStorage.getItem('user');
+
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
@@ -40,7 +42,8 @@ const ProtectedRoute = () => {
 };
 
 const AppRoutes = () => {
-  const isAuthenticated = localStorage.getItem('tokens') && localStorage.getItem('user');
+  const isAuthenticated =
+    localStorage.getItem('tokens') && localStorage.getItem('user');
 
   return (
     <Routes>
@@ -121,6 +124,7 @@ const AppRoutes = () => {
           <Route path="books/:topicId" element={<TopicContent />} />
           <Route path="flashcards" element={<FlashCards />} />
           <Route path="materials" element={<StudyMaterials />} />
+          <Route path="question-bank" element={<QuestionBank />} />
           <Route path="pdf/:pdfUrl" element={<PdfViewer />} />
           <Route path="topic/:topicId" element={<TopicContent />} />
           <Route path="settings" element={<Settings />} />
