@@ -10,18 +10,19 @@
       content="JEE Buddy - Your AI-powered JEE preparation companion"
     />
     
-    <!-- Google Analytics -->
+    <!-- Google tag (gtag.js) - GA4 -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-95Y1Z3HJSF"></script>
     <script>
       window.dataLayer = window.dataLayer || [];
-      function gtag() {
-        window.dataLayer.push(arguments);
-      }
-      window.gtag = gtag; // Make gtag globally available
+      function gtag(){dataLayer.push(arguments);}
+      window.gtag = gtag;
+      
       gtag('js', new Date());
       gtag('config', 'G-95Y1Z3HJSF', {
-        page_path: window.location.pathname,
-        debug_mode: true
+        send_page_view: true,
+        cookie_domain: 'jeebuddy.in',
+        cookie_flags: 'SameSite=None;Secure',
+        transport_type: 'beacon'
       });
     </script>
     

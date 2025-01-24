@@ -1,6 +1,9 @@
 // Google Analytics utility functions
-const MAX_RETRIES = 10;
-const RETRY_DELAY = 500; // 500ms
+const GA_TRACKING_ID = 'G-95Y1Z3HJSF';
+const MAX_RETRIES = 3;
+const RETRY_DELAY = 1000; // 1 second
+
+const isDevelopment = window.location.hostname === 'localhost';
 
 const waitForGtag = () => new Promise((resolve) => {
   let retries = 0;
@@ -9,12 +12,18 @@ const waitForGtag = () => new Promise((resolve) => {
     if (typeof window.gtag === 'function') {
       console.log('✅ Google Analytics found');
       resolve(true);
-    } else if (retries < MAX_RETRIES) {
+      return;
+    }
+    
+    if (retries < MAX_RETRIES) {
       retries++;
-      console.log(`⏳ Waiting for GA... (${retries}/${MAX_RETRIES})`);
       setTimeout(check, RETRY_DELAY);
     } else {
-      console.error('🔴 Google Analytics not loaded after multiple retries');
+      if (isDevelopment) {
+        console.log('ℹ️ GA not loaded in development');
+      } else {
+        console.warn('⚠️ GA not loaded in production');
+      }
       resolve(false);
     }
   };
@@ -23,19 +32,23 @@ const waitForGtag = () => new Promise((resolve) => {
 });
 
 export const initGA = async () => {
-  const isAvailable = await waitForGtag();
-  if (!isAvailable) return false;
-  
   try {
-    window.gtag('js', new Date());
-    window.gtag('config', 'G-95Y1Z3HJSF', {
-      page_path: window.location.pathname,
-      debug_mode: true
+    const isAvailable = await waitForGtag();
+    if (!isAvailable) {
+      return false;
+    }
+
+    window.gtag('config', GA_TRACKING_ID, {
+      send_page_view: true,
+      cookie_domain: 'jeebuddy.in',
+      cookie_flags: 'SameSite=None;Secure',
+      transport_type: 'beacon',
+      page_path: window.location.pathname
     });
-    console.log('✅ Google Analytics initialized');
+
     return true;
   } catch (error) {
-    console.error('🔴 Error initializing GA:', error);
+    console.warn('⚠️ GA initialization error:', error.message);
     return false;
   }
 };
@@ -58,54 +71,49 @@ export const testGAEvent = async () => {
   }
 };
 
-export const logPageView = async () => {
-  const isAvailable = await waitForGtag();
-  if (!isAvailable) return;
-
+export const logPageView = async (path = window.location.pathname) => {
   try {
-    const pageData = {
-      page_location: window.location.href,
-      page_path: window.location.pathname,
+    const isAvailable = await waitForGtag();
+    if (!isAvailable) return;
+
+    window.gtag('event', 'page_view', {
+      page_location: window.location.origin + path,
+      page_path: path,
       page_title: document.title,
-      debug_mode: true
-    };
-    window.gtag('event', 'page_view', pageData);
-    console.log('📝 Page view logged:', pageData);
+      send_to: GA_TRACKING_ID
+    });
   } catch (error) {
-    console.error('🔴 Error logging page view:', error);
+    console.warn('⚠️ Error logging page view:', error.message);
   }
 };
 
-export const logEvent = async (category, action, label) => {
-  const isAvailable = await waitForGtag();
-  if (!isAvailable) return;
-
+export const logEvent = async (category, action, label = null) => {
   try {
-    const eventData = {
+    const isAvailable = await waitForGtag();
+    if (!isAvailable) return;
+
+    window.gtag('event', action, {
       event_category: category,
       event_label: label,
-      debug_mode: true
-    };
-    window.gtag('event', action, eventData);
-    console.log('📊 Event logged:', { category, action, label });
+      send_to: GA_TRACKING_ID,
+      non_interaction: false
+    });
   } catch (error) {
-    console.error('🔴 Error logging event:', error);
+    console.warn('⚠️ Error logging event:', error.message);
   }
 };
 
 export const logException = async (description = '', fatal = false) => {
-  const isAvailable = await waitForGtag();
-  if (!isAvailable) return;
-
   try {
-    const exceptionData = {
+    const isAvailable = await waitForGtag();
+    if (!isAvailable) return;
+
+    window.gtag('event', 'exception', {
       description,
       fatal,
-      debug_mode: true
-    };
-    window.gtag('event', 'exception', exceptionData);
-    console.log('⚠️ Exception logged:', exceptionData);
+      send_to: GA_TRACKING_ID
+    });
   } catch (error) {
-    console.error('🔴 Error logging exception:', error);
+    console.warn('⚠️ Error logging exception:', error.message);
   }
 };
