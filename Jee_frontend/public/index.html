@@ -10,25 +10,27 @@
       content="JEE Buddy - Your AI-powered JEE preparation companion"
     />
     
-    <!-- Global site tag (gtag.js) - Google Analytics -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-95Y1Z3HJSF"></script>
+    <!-- Google Analytics -->
     <script>
+      // Initialize dataLayer and gtag function
       window.dataLayer = window.dataLayer || [];
       function gtag(){dataLayer.push(arguments);}
-      
-      // Make gtag available globally
       window.gtag = gtag;
-      
+    </script>
+    <!-- Load GA script -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-95Y1Z3HJSF" onload="window.gaLoaded=true"></script>
+    <!-- Initialize GA -->
+    <script>
       gtag('js', new Date());
-      
-      // Basic configuration
       gtag('config', 'G-95Y1Z3HJSF', {
-        send_page_view: true,
-        cookie_domain: '.jeebuddy.in',
-        cookie_flags: 'SameSite=None;Secure',
-        transport_url: 'https://www.google-analytics.com',
-        page_location: window.location.href,
-        page_path: window.location.pathname
+        debug_mode: window.location.hostname === 'localhost',
+        send_page_view: false,
+        cookie_domain: 'jeebuddy.in',
+        cookie_flags: 'SameSite=Strict;Secure',
+        custom_map: {
+          dimension1: 'page_path',
+          dimension2: 'client_id'
+        }
       });
     </script>
     
