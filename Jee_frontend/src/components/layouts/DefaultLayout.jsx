@@ -30,9 +30,10 @@ const Sidebar = ({ isMobileOpen, setIsMobileOpen }) => {
   const navigate = useNavigate();
 
   const menuItems = [
-    { icon: "📚", label: "Books", path: "books" },
-    { icon: "🗂️", label: "Flash Cards", path: "flashcards" },
-    { icon: "📝", label: "My Study Materials", path: "materials" }
+    { icon: '📚', label: 'Books', path: 'books' },
+    { icon: '🗂️', label: 'Flash Cards', path: 'flashcards' },
+    { icon: '📝', label: 'My Study Materials', path: 'materials' },
+    { icon: '❓', label: 'Question Bank', path: 'question-bank' },
   ];
 
   useEffect(() => {

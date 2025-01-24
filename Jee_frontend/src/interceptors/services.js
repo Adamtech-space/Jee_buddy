@@ -243,3 +243,12 @@ export const getFileDownloadUrl = async (itemId) => {
   }
 };
 
+export const getQuestionBankList = async (subject) => {
+  try {
+    const response = await apiInstance.get(`/question-bank?subject=${subject}`);
+    return response;
+  } catch (error) {
+    throw error.response?.data || { message: 'Failed to fetch question bank' };
+  }
+};
+
