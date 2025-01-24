@@ -54,7 +54,7 @@ const SubjectSelection = () => {
               variants={itemVariants}
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.98 }}
-              onClick={() => navigate(`/dashboard/${subject.id}`)}
+              onClick={() => navigate(`/dashboard/${subject.id}/books`)}
               className={`w-full p-6 rounded-xl shadow-lg hover:shadow-2xl 
                         transition-all duration-300 bg-gradient-to-r ${subject.color}
                         flex items-center justify-between group`}
