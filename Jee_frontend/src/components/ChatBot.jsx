@@ -164,22 +164,33 @@ const ChatBot = ({
     let timer;
     const currentMessage = messages[messages.length - 1];
     const container = document.querySelector('.overflow-y-auto');
-    
-    if (isTyping && currentMessage?.sender === 'assistant' && 
-        currentTypingIndex < currentMessage.content.length) {
+
+    if (
+      isTyping &&
+      currentMessage?.sender === 'assistant' &&
+      currentTypingIndex < currentMessage.content.length
+    ) {
       timer = setTimeout(() => {
         if (!isTyping) return;
-        
+
         setDisplayedResponse(
           currentMessage.content.slice(0, currentTypingIndex + 1)
         );
-        setCurrentTypingIndex(prev => prev + 1);
-        
+        setCurrentTypingIndex((prev) => prev + 1);
+
         // Only auto-scroll if user is already at the bottom
         if (container) {
-          const isAtBottom = Math.abs(container.scrollHeight - container.scrollTop - container.clientHeight) < 100;
+          const isAtBottom =
+            Math.abs(
+              container.scrollHeight -
+                container.scrollTop -
+                container.clientHeight
+            ) < 100;
           if (isAtBottom) {
-            messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+            messagesEndRef.current?.scrollIntoView({
+              behavior: 'smooth',
+              block: 'end',
+            });
           }
         }
       }, 1);
@@ -201,13 +212,15 @@ const ChatBot = ({
   // Save edited message and regenerate response
   const handleSaveEdit = async (messageId) => {
     // Find the edited message and its index
-    const messageIndex = messages.findIndex(msg => msg.id === messageId);
-    
+    const messageIndex = messages.findIndex((msg) => msg.id === messageId);
+
     // Update the edited message
-    const updatedMessages = messages.slice(0, messageIndex + 1).map(msg => 
-      msg.id === messageId ? { ...msg, content: editingContent } : msg
-    );
-    
+    const updatedMessages = messages
+      .slice(0, messageIndex + 1)
+      .map((msg) =>
+        msg.id === messageId ? { ...msg, content: editingContent } : msg
+      );
+
     setMessages(updatedMessages);
     setEditingMessageId(null);
     setEditingContent('');
@@ -240,12 +253,11 @@ const ChatBot = ({
         type: 'text',
         content: response.solution,
       };
-      
+
       setMessages([...updatedMessages, aiMessage]);
       setDisplayedResponse('');
       setCurrentTypingIndex(0);
       setIsTyping(true);
-      
     } catch (error) {
       console.error('ChatBot - Error regenerating response:', error);
       const errorMessage = `Failed to regenerate response: ${error?.message || 'Please try again'}`;
@@ -275,7 +287,7 @@ const ChatBot = ({
       const lastMessage = messages[messages.length - 1];
       if (lastMessage.sender === 'assistant') {
         const finalContent = displayedResponse || lastMessage.content;
-        setMessages(prev => {
+        setMessages((prev) => {
           const updatedMessages = [...prev];
           updatedMessages[updatedMessages.length - 1] = {
             ...lastMessage,
@@ -290,115 +302,135 @@ const ChatBot = ({
   }, [abortController, messages, displayedResponse]);
 
   // Modify handleSubmit to properly handle cancellation
-  const handleSubmit = useCallback(async (e) => {
-    e.preventDefault();
+  const handleSubmit = useCallback(
+    async (e) => {
+      e.preventDefault();
 
-    if (!chatMessage.trim() && !pinnedImage && !selectedTextPreview) {
-      return;
-    }
-
-    // If currently generating, cancel instead
-    if (isLoading || isTyping) {
-      handleCancelResponse();
-      return;
-    }
-
-    // Create new AbortController
-    const controller = new AbortController();
-    setAbortController(controller);
-
-    // Add user message first
-    const messageId = Date.now();
-    const userMessage = pinnedImage ? {
-      id: messageId,
-      sender: 'user',
-      type: 'image',
-      content: pinnedImage.content,
-      fileName: pinnedImage.fileName,
-      question: chatMessage
-    } : {
-      id: messageId,
-      sender: 'user',
-      type: selectedTextPreview ? 'selected-text' : 'text',
-      content: chatMessage,
-      source: selectedTextPreview?.source,
-      selectedText: selectedTextPreview?.content
-    };
-
-    setMessages(prev => [...prev, userMessage]);
-
-    // Clear states if not pinned
-    const questionContext = selectedTextPreview;
-    const imageToSend = pinnedImage;
-    if (!isPinnedText) setSelectedTextPreview(null);
-    if (!isPinnedImage) setPinnedImage(null);
-    setMessage('');
-    setIsLoading(true);
-
-    try {
-      const userData = JSON.parse(localStorage.getItem('user')) || {};
-      const sessionId = userData.current_session_id;
-
-      if (!sessionId) {
-        throw new Error('No valid session ID found');
-      }
-
-      const questionWithInteraction = `${chatMessage} (${activeHelpType || ''})`;
-
-      const response = await aiService.askQuestion(questionWithInteraction, {
-        user_id: userData.id || 'anonymous',
-        session_id: sessionId,
-        subject: subject || '',
-        topic: topic || '',
-        type: activeHelpType || '',
-        pinnedText: '',
-        selectedText: questionContext?.content || '',
-        source: questionContext?.source || 'Chat',
-        image: imageToSend?.content?.split(',')[1] || null,
-        Deep_think: isDeepThinkEnabled,
-        signal: controller.signal,
-      });
-
-      // Check if cancelled before updating state
-      if (controller.signal.aborted) {
+      if (!chatMessage.trim() && !pinnedImage && !selectedTextPreview) {
         return;
       }
 
-      const aiMessage = {
-        id: Date.now(),
-        sender: 'assistant',
-        type: 'text',
-        content: response.solution,
-      };
-      
-      setMessages(prev => [...prev, aiMessage]);
-      setDisplayedResponse('');
-      setCurrentTypingIndex(0);
-      setIsTyping(true);
-      setIsDeepThinkEnabled(false);
-      
-    } catch (error) {
-      if (error.name === 'AbortError') {
-        console.log('Request was cancelled');
+      // If currently generating, cancel instead
+      if (isLoading || isTyping) {
+        handleCancelResponse();
         return;
       }
-      console.error('ChatBot - Error processing message:', error);
-      const errorMessage = `Failed to process message: ${error?.message || 'Please try again'}`;
-      setMessages(prev => [...prev, {
-        id: Date.now(),
+
+      // Create new AbortController
+      const controller = new AbortController();
+      setAbortController(controller);
+
+      // Add user message first
+      const messageId = Date.now();
+      const userMessage = pinnedImage
+        ? {
+            id: messageId,
+            sender: 'user',
+            type: 'image',
+            content: pinnedImage.content,
+            fileName: pinnedImage.fileName,
+            question: chatMessage,
+          }
+        : {
+            id: messageId,
+            sender: 'user',
+            type: selectedTextPreview ? 'selected-text' : 'text',
+            content: chatMessage,
+            source: selectedTextPreview?.source,
+            selectedText: selectedTextPreview?.content,
+          };
+
+      setMessages((prev) => [...prev, userMessage]);
+
+      // Clear states if not pinned
+      const questionContext = selectedTextPreview;
+      const imageToSend = pinnedImage;
+      if (!isPinnedText) setSelectedTextPreview(null);
+      if (!isPinnedImage) setPinnedImage(null);
+      setMessage('');
+      setIsLoading(true);
+
+      try {
+        const userData = JSON.parse(localStorage.getItem('user')) || {};
+        const sessionId = userData.current_session_id;
+
+        if (!sessionId) {
+          throw new Error('No valid session ID found');
+        }
+
+        const questionWithInteraction = `${chatMessage} (${activeHelpType || ''})`;
+
+        const response = await aiService.askQuestion(questionWithInteraction, {
+          user_id: userData.id || 'anonymous',
+          session_id: sessionId,
+          subject: subject || '',
+          topic: topic || '',
+          type: activeHelpType || '',
+          pinnedText: '',
+          selectedText: questionContext?.content || '',
+          source: questionContext?.source || 'Chat',
+          image: imageToSend?.content?.split(',')[1] || null,
+          Deep_think: isDeepThinkEnabled,
+          signal: controller.signal,
+        });
+
+        // Check if cancelled before updating state
+        if (controller.signal.aborted) {
+          return;
+        }
+
+        const aiMessage = {
+          id: Date.now(),
           sender: 'assistant',
           type: 'text',
-          content: errorMessage,
-      }]);
-      setDisplayedResponse(errorMessage);
-      setCurrentTypingIndex(errorMessage.length);
-    } finally {
-      if (!controller.signal.aborted) {
-      setIsLoading(false);
-        setAbortController(null);
-    }
-    }
-  }, [chatMessage, selectedTextPreview, pinnedImage, isPinnedText, isPinnedImage, subject, topic, isDeepThinkEnabled, handleCancelResponse, activeHelpType, isLoading, isTyping]);
+          content: response.solution,
+        };
+
+        setMessages((prev) => [...prev, aiMessage]);
+        setDisplayedResponse('');
+        setCurrentTypingIndex(0);
+        setIsTyping(true);
+        setIsDeepThinkEnabled(false);
+      } catch (error) {
+        if (error.name === 'AbortError') {
+          console.log('Request was cancelled');
+          return;
+        }
+        console.error('ChatBot - Error processing message:', error);
+        const errorMessage = `Failed to process message: ${error?.message || 'Please try again'}`;
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: Date.now(),
+            sender: 'assistant',
+            type: 'text',
+            content: errorMessage,
+          },
+        ]);
+        setDisplayedResponse(errorMessage);
+        setCurrentTypingIndex(errorMessage.length);
+      } finally {
+        if (!controller.signal.aborted) {
+          setIsLoading(false);
+          setAbortController(null);
+        }
+      }
+    },
+    [
+      chatMessage,
+      selectedTextPreview,
+      pinnedImage,
+      isPinnedText,
+      isPinnedImage,
+      subject,
+      topic,
+      isDeepThinkEnabled,
+      handleCancelResponse,
+      activeHelpType,
+      isLoading,
+      isTyping,
+    ]
+  );
 
   // Get user profile from localStorage
   useEffect(() => {
@@ -414,11 +446,11 @@ const ChatBot = ({
       if (event.detail?.question) {
         const text = event.detail.question;
         const source = event.detail.source || 'Selected Text';
-        
+
         // Set the selected text preview
         setSelectedTextPreview({
           content: text,
-          source: source
+          source: source,
         });
 
         // Open chat if not already open
@@ -448,7 +480,7 @@ const ChatBot = ({
     { type: 'Key Points', icon: '🔍', text: 'Key Points' },
     { type: 'Explain', icon: '📝', text: 'Explain' },
     { type: 'Similar', icon: '🔄', text: 'Similar' },
-  ]
+  ];
 
   // Handle resize functionality
   useEffect(() => {
@@ -539,7 +571,10 @@ const ChatBot = ({
 
   const renderMessage = (msg, index) => {
     const isLastMessage = index === messages.length - 1;
-    const content = isLastMessage && msg.sender === 'assistant' ? displayedResponse : msg.content;
+    const content =
+      isLastMessage && msg.sender === 'assistant'
+        ? displayedResponse
+        : msg.content;
     const isEditing = msg.id === editingMessageId;
 
     return (
@@ -577,14 +612,16 @@ const ChatBot = ({
           </div>
         )}
 
-        <div className={`flex flex-col ${msg.sender === 'user' ? 'items-end' : 'items-start'} max-w-[75%]`}>
+        <div
+          className={`flex flex-col ${msg.sender === 'user' ? 'items-end' : 'items-start'} max-w-[75%]`}
+        >
           <div
             className={`rounded-lg p-3 break-words w-full ${
-            msg.sender === 'user'
+              msg.sender === 'user'
                 ? 'bg-blue-500 text-white'
-              : 'bg-gradient-to-r from-gray-800 to-gray-900 text-white shadow-xl'
-          }`}
-      >
+                : 'bg-gradient-to-r from-gray-800 to-gray-900 text-white shadow-xl'
+            }`}
+          >
             {isEditing ? (
               <div className="flex flex-col gap-2 w-full">
                 <textarea
@@ -609,49 +646,45 @@ const ChatBot = ({
                 </div>
               </div>
             ) : msg.type === 'image' ? (
-            <div className="space-y-2">
-              <div className="relative bg-gray-800/50 rounded p-2">
-                <img
-                  src={msg.content}
-                  alt="Uploaded content"
-                  className="w-32 h-32 object-cover rounded"
-                />
-                {msg.fileName && (
-                  <div className="flex items-center gap-1 text-xs text-gray-300 mt-1">
-                    <span className="inline-block w-1 h-1 bg-gray-400 rounded-full"></span>
-                    <span>{msg.fileName}</span>
-                  </div>
+              <div className="space-y-2">
+                <div className="relative bg-gray-800/50 rounded p-2">
+                  <img
+                    src={msg.content}
+                    alt="Uploaded content"
+                    className="w-32 h-32 object-cover rounded"
+                  />
+                  {msg.fileName && (
+                    <div className="flex items-center gap-1 text-xs text-gray-300 mt-1">
+                      <span className="inline-block w-1 h-1 bg-gray-400 rounded-full"></span>
+                      <span>{msg.fileName}</span>
+                    </div>
+                  )}
+                </div>
+                {msg.question && (
+                  <div className="text-[15px]">{msg.question}</div>
                 )}
               </div>
-              {msg.question && (
-                <div className="text-[15px]">
-                  {msg.question}
-                </div>
-              )}
-            </div>
-          ) : msg.type === 'selected-text' ? (
-            <div className="space-y-2">
+            ) : msg.type === 'selected-text' ? (
+              <div className="space-y-2">
                 <div className="text-xs bg-gray-800/50 rounded p-2 break-words">
-                {msg.selectedText}
+                  {msg.selectedText}
+                </div>
+                <div className="flex items-center gap-1 text-xs text-gray-300">
+                  <span className="inline-block w-1 h-1 bg-gray-400 rounded-full"></span>
+                  <span>{msg.source}</span>
+                </div>
+                <div className="text-[15px] break-words">{content}</div>
               </div>
-              <div className="flex items-center gap-1 text-xs text-gray-300">
-                <span className="inline-block w-1 h-1 bg-gray-400 rounded-full"></span>
-                <span>{msg.source}</span>
-              </div>
-                <div className="text-[15px] break-words">
-                {content}
-              </div>
-            </div>
-          ) : (
+            ) : (
               <div className="text-[15px] leading-relaxed whitespace-pre-wrap break-words">
-              {content}
-              {isLastMessage && msg.sender === 'assistant' && isTyping && (
-                <span className="inline-block w-2 h-5 bg-blue-400 animate-pulse ml-1">
-                  |
-                </span>
-              )}
+                {content}
+                {isLastMessage && msg.sender === 'assistant' && isTyping && (
+                  <span className="inline-block w-2 h-5 bg-blue-400 animate-pulse ml-1">
+                    |
+                  </span>
+                )}
               </div>
-          )}
+            )}
           </div>
         </div>
 
@@ -705,12 +738,18 @@ const ChatBot = ({
             <SparklesIcon className="w-4 h-4 text-blue-400 animate-pulse" />
             <div className="flex flex-col gap-1">
               <div className="flex gap-2">
-                <div className="w-2 h-2 bg-blue-400 rounded-full animate-ping" 
-                     style={{ animationDuration: '1.5s', animationDelay: '0ms' }} />
-                <div className="w-2 h-2 bg-blue-400 rounded-full animate-ping" 
-                     style={{ animationDuration: '1.5s', animationDelay: '300ms' }} />
-                <div className="w-2 h-2 bg-blue-400 rounded-full animate-ping" 
-                     style={{ animationDuration: '1.5s', animationDelay: '600ms' }} />
+                <div
+                  className="w-2 h-2 bg-blue-400 rounded-full animate-ping"
+                  style={{ animationDuration: '1.5s', animationDelay: '0ms' }}
+                />
+                <div
+                  className="w-2 h-2 bg-blue-400 rounded-full animate-ping"
+                  style={{ animationDuration: '1.5s', animationDelay: '300ms' }}
+                />
+                <div
+                  className="w-2 h-2 bg-blue-400 rounded-full animate-ping"
+                  style={{ animationDuration: '1.5s', animationDelay: '600ms' }}
+                />
               </div>
               <span className="text-xs text-blue-400">Thinking...</span>
             </div>
@@ -719,6 +758,110 @@ const ChatBot = ({
       </div>
     </div>
   );
+
+  // Update the help buttons section with this new implementation
+  const HelpCarousel = ({ activeHelpType, handleHelpClick }) => {
+    const containerRef = useRef(null);
+    const [showControls, setShowControls] = useState(false);
+    const [scrollPosition, setScrollPosition] = useState(0);
+
+    useEffect(() => {
+      const container = containerRef.current;
+      if (!container) return;
+
+      const handleScroll = () => {
+        setScrollPosition(container.scrollLeft);
+        setShowControls(container.scrollWidth > container.clientWidth);
+      };
+
+      // Initial check
+      handleScroll();
+
+      // Add resize observer to handle container width changes
+      const resizeObserver = new ResizeObserver(handleScroll);
+      resizeObserver.observe(container);
+
+      container.addEventListener('scroll', handleScroll);
+      return () => {
+        container.removeEventListener('scroll', handleScroll);
+        resizeObserver.disconnect();
+      };
+    }, []);
+
+    const scroll = (direction) => {
+      const container = containerRef.current;
+      if (!container) return;
+
+      const scrollAmount = container.clientWidth * 0.8;
+      container.scrollBy({
+        left: direction === 'left' ? -scrollAmount : scrollAmount,
+        behavior: 'smooth',
+      });
+    };
+
+    return (
+      <div className="bg-gray-900 border-b border-gray-800 relative">
+        {/* Left Control */}
+        {showControls && scrollPosition > 0 && (
+          <div className="absolute left-0 top-0 bottom-0 flex items-center">
+            <button
+              onClick={() => scroll('left')}
+              className="p-1.5 bg-gradient-to-r from-gray-900 via-gray-900 to-transparent"
+            >
+              <div className="bg-gray-800 hover:bg-gray-700 rounded-full p-2 transition-all duration-200 transform hover:scale-110 shadow-lg">
+                <ChevronLeftIcon className="w-4 h-4 text-white" />
+              </div>
+            </button>
+          </div>
+        )}
+
+        {/* Help Buttons Container */}
+        <div
+          ref={containerRef}
+          className="flex overflow-x-auto gap-2 py-3 px-4 hide-scrollbar scroll-smooth"
+        >
+          {helpButtons.map((button) => (
+            <button
+              key={button.type}
+              onClick={() => handleHelpClick(button.type)}
+              className={`
+                flex items-center gap-2 px-4 py-2 rounded-xl
+                transition-all duration-300 ease-out
+                text-sm flex-shrink-0 font-medium
+                ${
+                  activeHelpType === button.type
+                    ? 'bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-lg shadow-blue-500/20 scale-105 hover:shadow-blue-500/30 hover:scale-110'
+                    : 'bg-gray-800/80 text-gray-300 hover:bg-gray-700/90 hover:text-white hover:-translate-y-0.5 hover:shadow-lg'
+                }
+              `}
+            >
+              <span className="text-lg transform transition-transform duration-300 hover:scale-110">
+                {button.icon}
+              </span>
+              <span>{button.text}</span>
+            </button>
+          ))}
+        </div>
+
+        {/* Right Control */}
+        {showControls &&
+          scrollPosition <
+            containerRef.current?.scrollWidth -
+              containerRef.current?.clientWidth && (
+            <div className="absolute right-0 top-0 bottom-0 flex items-center">
+              <button
+                onClick={() => scroll('right')}
+                className="p-1.5 bg-gradient-to-l from-gray-900 via-gray-900 to-transparent"
+              >
+                <div className="bg-gray-800 hover:bg-gray-700 rounded-full p-2 transition-all duration-200 transform hover:scale-110 shadow-lg">
+                  <ChevronRightIcon className="w-4 h-4 text-white" />
+                </div>
+              </button>
+            </div>
+          )}
+      </div>
+    );
+  };
 
   return (
     <div
@@ -733,14 +876,18 @@ const ChatBot = ({
         zIndex: isFullScreen ? 60 : 50,
       }}
       onMouseUp={(e) => {
-        if (!(e.target instanceof HTMLButtonElement) && 
-            !(e.target instanceof HTMLInputElement)) {
+        if (
+          !(e.target instanceof HTMLButtonElement) &&
+          !(e.target instanceof HTMLInputElement)
+        ) {
           handleTextSelection(e);
         }
       }}
       onTouchEnd={(e) => {
-        if (!(e.target instanceof HTMLButtonElement) && 
-            !(e.target instanceof HTMLInputElement)) {
+        if (
+          !(e.target instanceof HTMLButtonElement) &&
+          !(e.target instanceof HTMLInputElement)
+        ) {
           handleTextSelection(e);
         }
       }}
@@ -814,73 +961,10 @@ const ChatBot = ({
       </div>
 
       {/* Help Buttons - Always visible */}
-      <div className="bg-gray-900 border-b border-gray-800 relative group">
-        <button 
-          onClick={() => {
-            const container = document.querySelector('.help-buttons-container');
-            container.scrollBy({ left: -200, behavior: 'smooth' });
-          }}
-          className="absolute left-0 top-1/2 -translate-y-1/2 z-10 p-2 bg-gradient-to-r from-gray-900 to-gray-800 opacity-0 group-hover:opacity-100 transition-opacity duration-200 shadow-lg"
-          aria-label="Scroll left"
-        >
-          <div className="bg-gray-700 hover:bg-gray-600 rounded-full p-1.5 transition-colors">
-            <ChevronLeftIcon className="w-4 h-4 text-white" />
-          </div>
-        </button>
-        
-        <div 
-          className="flex overflow-x-auto gap-2 py-2 px-3 hide-scrollbar help-buttons-container mx-12 scroll-smooth"
-          onScroll={(e) => {
-            const container = e.currentTarget;
-            const leftButton = container.previousElementSibling;
-            const rightButton = container.nextElementSibling;
-            
-            if (container.scrollLeft > 0) {
-              leftButton.classList.remove('opacity-0');
-              leftButton.classList.add('opacity-100');
-            } else {
-              leftButton.classList.add('opacity-0');
-              leftButton.classList.remove('opacity-100');
-            }
-            
-            if (container.scrollLeft + container.clientWidth < container.scrollWidth) {
-              rightButton.classList.remove('opacity-0');
-              rightButton.classList.add('opacity-100');
-            } else {
-              rightButton.classList.add('opacity-0');
-              rightButton.classList.remove('opacity-100');
-            }
-          }}
-        >
-          {helpButtons.map((button) => (
-            <button
-              key={button.type}
-              onClick={() => handleHelpClick(button.type)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all duration-200 text-[11px] sm:text-sm flex-shrink-0 ${
-                activeHelpType === button.type 
-                  ? 'bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-lg shadow-blue-500/20 scale-105' 
-                  : 'bg-gray-800/80 text-gray-300 hover:bg-gray-700 hover:text-white hover:scale-105'
-              }`}
-            >
-              <span className="text-base">{button.icon}</span>
-              <span className="font-medium">{button.text}</span>
-            </button>
-          ))}
-        </div>
-
-        <button 
-          onClick={() => {
-            const container = document.querySelector('.help-buttons-container');
-            container.scrollBy({ left: 200, behavior: 'smooth' });
-          }}
-          className="absolute right-0 top-1/2 -translate-y-1/2 z-10 p-2 bg-gradient-to-l from-gray-900 to-gray-800 opacity-0 group-hover:opacity-100 transition-opacity duration-200 shadow-lg"
-          aria-label="Scroll right"
-        >
-          <div className="bg-gray-700 hover:bg-gray-600 rounded-full p-1.5 transition-colors">
-            <ChevronRightIcon className="w-4 h-4 text-white" />
-          </div>
-        </button>
-      </div>
+      <HelpCarousel
+        activeHelpType={activeHelpType}
+        handleHelpClick={handleHelpClick}
+      />
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-2 sm:p-3 md:p-4 bg-gray-900 hide-scrollbar">
@@ -911,9 +995,12 @@ const ChatBot = ({
                 onClick={() => setIsPinnedText(!isPinnedText)}
                 className="p-1 hover:bg-gray-700/50 rounded-full transition-colors flex-shrink-0"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" 
-                     className={`h-4 w-4 ${isPinnedText ? 'text-blue-400' : 'text-gray-400 hover:text-white'}`} 
-                     viewBox="0 0 20 20" fill="currentColor">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className={`h-4 w-4 ${isPinnedText ? 'text-blue-400' : 'text-gray-400 hover:text-white'}`}
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                >
                   <path d="M9.293 1.293a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 4.414V15a1 1 0 11-2 0V4.414L7.707 5.707a1 1 0 01-1.414-1.414l3-3z" />
                 </svg>
               </button>
@@ -945,9 +1032,12 @@ const ChatBot = ({
                 onClick={() => setIsPinnedImage(!isPinnedImage)}
                 className="p-1 hover:bg-gray-700/50 rounded-full transition-colors"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" 
-                     className={`h-4 w-4 ${isPinnedImage ? 'text-blue-400' : 'text-gray-400 hover:text-white'}`} 
-                     viewBox="0 0 20 20" fill="currentColor">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className={`h-4 w-4 ${isPinnedImage ? 'text-blue-400' : 'text-gray-400 hover:text-white'}`}
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                >
                   <path d="M9.293 1.293a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 4.414V15a1 1 0 11-2 0V4.414L7.707 5.707a1 1 0 01-1.414-1.414l3-3z" />
                 </svg>
               </button>
@@ -976,17 +1066,19 @@ const ChatBot = ({
               type="button"
               onClick={() => setIsDeepThinkEnabled(!isDeepThinkEnabled)}
               className={`p-1.5 rounded-full transition-all duration-200 ${
-                isDeepThinkEnabled 
-                  ? 'bg-blue-500/20 hover:bg-blue-500/30 animate-pulse' 
+                isDeepThinkEnabled
+                  ? 'bg-blue-500/20 hover:bg-blue-500/30 animate-pulse'
                   : 'hover:bg-gray-700'
               }`}
-              title={isDeepThinkEnabled ? "Deep Think: ON" : "Deep Think: OFF"}
+              title={isDeepThinkEnabled ? 'Deep Think: ON' : 'Deep Think: OFF'}
             >
-              <span className={`text-lg inline-block transition-all duration-200 ${
-                isDeepThinkEnabled 
-                  ? 'text-blue-400 animate-bounce' 
-                  : 'text-gray-400 hover:text-white'
-              }`}>
+              <span
+                className={`text-lg inline-block transition-all duration-200 ${
+                  isDeepThinkEnabled
+                    ? 'text-blue-400 animate-bounce'
+                    : 'text-gray-400 hover:text-white'
+                }`}
+              >
                 🧠
               </span>
             </button>
@@ -999,18 +1091,20 @@ const ChatBot = ({
               <PaperClipIcon className="h-4 w-4 text-gray-400 hover:text-white" />
             </button>
             <button
-              type={isLoading || isTyping ? "button" : "submit"}
+              type={isLoading || isTyping ? 'button' : 'submit'}
               onClick={isLoading || isTyping ? handleCancelResponse : undefined}
-              disabled={!chatMessage.trim() && !pinnedImage && !selectedTextPreview}
+              disabled={
+                !chatMessage.trim() && !pinnedImage && !selectedTextPreview
+              }
               className={`p-1.5 hover:bg-gray-700 rounded-full transition-colors disabled:opacity-50 ${
                 isLoading || isTyping ? 'text-red-500 hover:text-red-400' : ''
               }`}
-              title={isLoading || isTyping ? "Stop generating" : "Send Message"}
+              title={isLoading || isTyping ? 'Stop generating' : 'Send Message'}
             >
               {isLoading || isTyping ? (
                 <StopIcon className="h-4 w-4" />
               ) : (
-              <PaperAirplaneIcon className="h-4 w-4 text-gray-400 hover:text-white" />
+                <PaperAirplaneIcon className="h-4 w-4 text-gray-400 hover:text-white" />
               )}
             </button>
           </div>
