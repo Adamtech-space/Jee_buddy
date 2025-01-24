@@ -853,6 +853,11 @@ const ChatBot = ({
     );
   };
 
+  HelpCarousel.propTypes = {
+    activeHelpType: PropTypes.string,
+    handleHelpClick: PropTypes.func.isRequired
+  };
+
   return (
     <div
       ref={resizeRef}
@@ -864,6 +869,7 @@ const ChatBot = ({
       style={{
         width: isFullScreen || window.innerWidth < 640 ? '100%' : `${width}px`,
         zIndex: isFullScreen ? 60 : 40,
+        paddingBottom: 'env(safe-area-inset-bottom, 16px)',
       }}
       onMouseUp={(e) => {
         if (
@@ -1032,7 +1038,7 @@ const ChatBot = ({
         )}
 
         {/* Input Form */}
-        <form onSubmit={handleSubmit} className="relative">
+        <form onSubmit={handleSubmit} className="relative pb-[env(safe-area-inset-bottom,0px)]">
           <input
             ref={inputRef}
             type="text"
@@ -1040,6 +1046,9 @@ const ChatBot = ({
             onChange={(e) => setMessage(e.target.value)}
             placeholder="Ask a question..."
             className="w-full bg-gray-800 text-white text-sm rounded-lg pl-3 pr-24 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            style={{
+              fontSize: '16px',
+            }}
           />
           <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-0.5">
             <button
