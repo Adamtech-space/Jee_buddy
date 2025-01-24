@@ -1,26 +1,16 @@
 // Google Analytics utility functions
 const GA_TRACKING_ID = 'G-95Y1Z3HJSF';
-const MAX_RETRIES = 3;
-const RETRY_DELAY = 1000; // 1 second
+const MAX_RETRIES = 5;  // Increased retries
+const RETRY_DELAY = 2000; // Increased delay to 2 seconds
 
 // Check if we're in development or production
 const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-const domain = isDevelopment ? 'localhost' : 'jeebuddy.in';
 
 const waitForGtag = () => new Promise((resolve) => {
   let retries = 0;
   
   const check = () => {
-    // In development, we'll simulate GA being available
-    if (isDevelopment) {
-      console.log('🔧 GA simulation in development mode');
-      window.gtag = window.gtag || function(...args) {
-        console.log('GA Event (Dev):', ...args);
-      };
-      resolve(true);
-      return;
-    }
-
+    // Check if gtag is available
     if (typeof window.gtag === 'function') {
       console.log('✅ Google Analytics initialized');
       resolve(true);
@@ -29,15 +19,19 @@ const waitForGtag = () => new Promise((resolve) => {
     
     if (retries < MAX_RETRIES) {
       retries++;
+      console.log(`⏳ Waiting for GA... (attempt ${retries}/${MAX_RETRIES})`);
       setTimeout(check, RETRY_DELAY);
     } else {
-      console.warn('⚠️ GA not loaded in production - please check your setup');
+      const message = isDevelopment 
+        ? '🔧 GA not loaded in development mode'
+        : '⚠️ GA not loaded in production - please check your setup';
+      console.warn(message);
       resolve(false);
     }
   };
   
-  // Start checking immediately
-  check();
+  // Start checking after a short delay to allow script to load
+  setTimeout(check, 500);
 });
 
 export const initGA = async () => {
@@ -47,13 +41,18 @@ export const initGA = async () => {
       return false;
     }
 
+    // If in development, create a mock gtag function
+    if (isDevelopment && !window.gtag) {
+      window.gtag = (...args) => {
+        console.log('🔧 GA Event (Dev):', ...args);
+      };
+    }
+
     window.gtag('config', GA_TRACKING_ID, {
       send_page_view: true,
-      cookie_domain: domain,
-      cookie_flags: 'SameSite=None;Secure',
-      transport_type: 'beacon',
+      page_location: window.location.href,
       page_path: window.location.pathname,
-      debug_mode: isDevelopment
+      page_title: document.title
     });
 
     return true;
@@ -95,7 +94,7 @@ export const logPageView = async (path = window.location.pathname) => {
 
     window.gtag('event', 'page_view', eventData);
     if (isDevelopment) {
-      console.log('📝 Page View (Dev):', eventData);
+      console.log('📝 Page View:', eventData);
     }
   } catch (error) {
     console.warn('⚠️ Error logging page view:', error.message);
@@ -116,7 +115,7 @@ export const logEvent = async (category, action, label = null) => {
 
     window.gtag('event', action, eventData);
     if (isDevelopment) {
-      console.log('📊 Event (Dev):', { action, ...eventData });
+      console.log('📊 Event:', { action, ...eventData });
     }
   } catch (error) {
     console.warn('⚠️ Error logging event:', error.message);
@@ -136,7 +135,7 @@ export const logException = async (description = '', fatal = false) => {
 
     window.gtag('event', 'exception', eventData);
     if (isDevelopment) {
-      console.log('⚠️ Exception (Dev):', eventData);
+      console.log('⚠️ Exception:', eventData);
     }
   } catch (error) {
     console.warn('⚠️ Error logging exception:', error.message);
