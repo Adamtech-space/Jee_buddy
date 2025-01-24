@@ -38,11 +38,17 @@ const Register = () => {
   };
 
   const handleGoogleSignIn = async () => {
+    setIsLoading(true);
+    setError('');
+
     try {
       const response = await googleSignIn();
-      window.location.href = response.url;
-    } catch (error) {
-      setError('Failed to initiate Google sign in. Please try again.');
+      if (response.url) {
+        window.location.href = response.url;
+      }
+    } catch (err) {
+      setError(err.message || 'Google sign-in failed. Please try again.');
+      setIsLoading(false);
     }
   };
 
