@@ -24,32 +24,31 @@ const SelectionPopup = ({ onSaveToFlashCard, onAskAI }) => {
     if (!popupRef.current || !selectionPosition) return;
 
     const popup = popupRef.current;
-    const rect = popup.getBoundingClientRect();
-    const viewportHeight = window.innerHeight;
     const viewportWidth = window.innerWidth;
 
-    // Calculate position for mobile
-    let top = selectionPosition.y - rect.height - 10;
-    let left = selectionPosition.x - (rect.width / 2);
-
-    // Handle mobile viewport constraints
+    // Mobile positioning (stacked vertically in bottom right)
     if (window.innerWidth <= 768) {
-      // Center horizontally on mobile
-      left = (viewportWidth - rect.width) / 2;
-      
-      // Position from bottom on mobile
-      top = viewportHeight - rect.height - 20;
+      popup.style.bottom = '100px'; // Position above chatbot button
+      popup.style.right = '18px';
+      popup.style.left = 'auto';
+      popup.style.top = 'auto';
     } else {
-      // Desktop position adjustments
+      // Desktop positioning (original behavior)
+      const rect = popup.getBoundingClientRect();
+      const viewportHeight = window.innerHeight;
+      
+      let top = selectionPosition.y - rect.height - 10;
+      let left = selectionPosition.x - (rect.width / 2);
+
       if (top < 0) top = selectionPosition.y + 10;
       if (left < 0) left = 0;
       if (left + rect.width > viewportWidth) {
         left = viewportWidth - rect.width - 10;
       }
-    }
 
-    popup.style.top = `${top}px`;
-    popup.style.left = `${left}px`;
+      popup.style.top = `${top}px`;
+      popup.style.left = `${left}px`;
+    }
   }, [selectionPosition]);
 
   if (!showPopup || !selectionPosition) return null;
@@ -65,21 +64,14 @@ const SelectionPopup = ({ onSaveToFlashCard, onAskAI }) => {
     const sourceElement = selection?.focusNode?.parentElement;
     let source = 'Selected Text';
     
-    console.log('SelectionPopup - Selected text:', selectedText);
-    console.log('SelectionPopup - Source element:', sourceElement);
-    
-    // Try to get a meaningful source description
     if (sourceElement) {
-      // Check for headings
       const nearestHeading = sourceElement.closest('h1, h2, h3, h4, h5, h6');
       if (nearestHeading) {
         source = `${nearestHeading.tagName}: ${nearestHeading.textContent}`;
       }
-      // Check for specific elements with data attributes
       else if (sourceElement.dataset.source) {
         source = sourceElement.dataset.source;
       }
-      // Check for parent elements that might indicate context
       else {
         const article = sourceElement.closest('article');
         const section = sourceElement.closest('section');
@@ -91,7 +83,6 @@ const SelectionPopup = ({ onSaveToFlashCard, onAskAI }) => {
       }
     }
 
-    console.log('SelectionPopup - Calling action with:', { text: selectedText, source });
     action(selectedText, source);
     clearSelection();
   };
@@ -100,27 +91,40 @@ const SelectionPopup = ({ onSaveToFlashCard, onAskAI }) => {
     <div
       ref={popupRef}
       className={`
-        selection-popup fixed flex gap-2 p-2 rounded-lg shadow-lg bg-gray-900 border border-gray-700
-        transition-all duration-200 ease-in-out
-        ${window.innerWidth <= 768 ? 'w-[95%] mx-auto bottom-4 left-0 right-0' : ''}
+        selection-popup fixed z-[99999] transition-all duration-200 ease-in-out
+        ${window.innerWidth <= 768 
+          ? 'flex flex-col gap-2 right-10 w-auto '
+          : 'flex flex-row gap-2 p-2 rounded-lg shadow-lg bg-gray-900 border border-gray-700'
+        }
       `}
       style={{
-        zIndex: 99999,
         pointerEvents: 'auto'
       }}
     >
       <button
         onClick={() => handleAction(onAskAI)}
-        className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 bg-gray-800 hover:bg-gray-700 rounded-md text-sm text-white transition-colors"
+        className={`
+          ${window.innerWidth <= 768
+            ? 'w-12 h-12 rounded-full bg-blue-500 hover:bg-blue-600 shadow-lg flex items-center justify-center text-white'
+            : 'flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 bg-gray-800 hover:bg-gray-700 rounded-md text-sm text-white'
+          }
+          transition-colors
+        `}
       >
-        Ask AI
+        {window.innerWidth <= 768 ? 'AI' : 'Ask AI'}
       </button>
-      <div className="w-px h-4 bg-gray-600 self-center"></div>
+      {window.innerWidth > 768 && <div className="w-px h-4 bg-gray-600 self-center"></div>}
       <button
         onClick={() => handleAction(onSaveToFlashCard)}
-        className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 bg-gray-800 hover:bg-gray-700 rounded-md text-sm text-white transition-colors"
+        className={`
+          ${window.innerWidth <= 768
+            ? 'w-12 h-12 rounded-full bg-blue-500 hover:bg-blue-600 shadow-lg flex items-center justify-center text-white'
+            : 'flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 bg-gray-800 hover:bg-gray-700 rounded-md text-sm text-white'
+          }
+          transition-colors
+        `}
       >
-        Save to Flash Cards
+        {window.innerWidth <= 768 ? '💾' : 'Save to Flash Cards'}
       </button>
     </div>
   );
@@ -131,4 +135,4 @@ SelectionPopup.propTypes = {
   onAskAI: PropTypes.func.isRequired
 };
 
-export default SelectionPopup; 
+export default SelectionPopup;
