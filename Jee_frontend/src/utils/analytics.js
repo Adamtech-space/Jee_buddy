@@ -1,20 +1,49 @@
 // Google Analytics utility functions
 const GA_TRACKING_ID = 'G-95Y1Z3HJSF';
-const MAX_RETRIES = 10;  // Increased retries
-const RETRY_DELAY = 500; // Shorter intervals but more retries
+const MAX_RETRIES = 3;  // Reduced retries for development
+const RETRY_DELAY = 500; // Shorter delay
 
 // Environment detection
 const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 
+// Track if we've shown init message
+let hasShownInitMessage = false;
+
+// Development mode mock implementation
+const mockGtag = (...args) => {
+  if (isDevelopment) {
+    // Only log events, not configuration calls
+    if (args[0] === 'event') {
+      console.log('📊 Dev Event:', args[1], args[2]);
+    }
+  }
+  return true;
+};
+
 // Check if GA script is loaded
 const isGALoaded = () => {
+  if (isDevelopment) {
+    return true;
+  }
   return window.gaLoaded === true && typeof window.gtag === 'function';
 };
 
 // Wait for GA to be available
 const waitForGtag = () => new Promise((resolve) => {
+  // In development, resolve immediately with mock
+  if (isDevelopment) {
+    window.gtag = window.gtag || mockGtag;
+    if (!hasShownInitMessage) {
+      console.log('🔧 Using GA mock for development');
+      hasShownInitMessage = true;
+    }
+    resolve(true);
+    return;
+  }
+
+  // Production check
   if (isGALoaded()) {
-    console.log('✅ GA already initialized');
+    console.log('✅ GA initialized');
     resolve(true);
     return;
   }
@@ -29,12 +58,10 @@ const waitForGtag = () => new Promise((resolve) => {
 
     if (retries < MAX_RETRIES) {
       retries++;
-      console.log(`⏳ Waiting for GA (${retries}/${MAX_RETRIES})`);
+      console.log(`⏳ Checking GA availability (${retries}/${MAX_RETRIES})`);
       setTimeout(check, RETRY_DELAY);
     } else {
-      console.warn(isDevelopment 
-        ? '🔧 GA not loaded in development'
-        : '⚠️ GA failed to initialize');
+      console.warn('⚠️ GA failed to initialize in production');
       resolve(false);
     }
   };
@@ -45,18 +72,9 @@ const waitForGtag = () => new Promise((resolve) => {
 // Initialize GA
 export const initGA = async () => {
   try {
-    // In development, we can mock GA
-    if (isDevelopment) {
-      if (!window.gtag) {
-        window.gtag = (...args) => {
-          console.log('🔧 GA Event (Dev):', ...args);
-        };
-      }
-      return true;
-    }
-
     const isAvailable = await waitForGtag();
-    if (!isAvailable) {
+    
+    if (!isAvailable && !isDevelopment) {
       return false;
     }
 
@@ -99,8 +117,7 @@ export const testGAEvent = async () => {
 // Log page view
 export const logPageView = async (path = window.location.pathname) => {
   try {
-    const isAvailable = await waitForGtag();
-    if (!isAvailable && !isDevelopment) return;
+    await waitForGtag();
 
     const eventData = {
       page_location: window.location.origin + path,
@@ -110,9 +127,6 @@ export const logPageView = async (path = window.location.pathname) => {
     };
 
     window.gtag('event', 'page_view', eventData);
-    if (isDevelopment) {
-      console.log('📝 Page View:', eventData);
-    }
   } catch (error) {
     console.warn('⚠️ Page view logging failed:', error.message);
   }
@@ -121,20 +135,15 @@ export const logPageView = async (path = window.location.pathname) => {
 // Log custom event
 export const logEvent = async (category, action, label = null) => {
   try {
-    const isAvailable = await waitForGtag();
-    if (!isAvailable && !isDevelopment) return;
+    await waitForGtag();
 
     const eventData = {
       event_category: category,
       event_label: label,
-      send_to: GA_TRACKING_ID,
-      debug_mode: isDevelopment
+      send_to: GA_TRACKING_ID
     };
 
     window.gtag('event', action, eventData);
-    if (isDevelopment) {
-      console.log('📊 Event:', { action, ...eventData });
-    }
   } catch (error) {
     console.warn('⚠️ Event logging failed:', error.message);
   }
@@ -143,20 +152,15 @@ export const logEvent = async (category, action, label = null) => {
 // Log exception
 export const logException = async (description = '', fatal = false) => {
   try {
-    const isAvailable = await waitForGtag();
-    if (!isAvailable && !isDevelopment) return;
+    await waitForGtag();
 
     const eventData = {
       description,
       fatal,
-      send_to: GA_TRACKING_ID,
-      debug_mode: isDevelopment
+      send_to: GA_TRACKING_ID
     };
 
     window.gtag('event', 'exception', eventData);
-    if (isDevelopment) {
-      console.log('⚠️ Exception:', eventData);
-    }
   } catch (error) {
     console.warn('⚠️ Exception logging failed:', error.message);
   }
