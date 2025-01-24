@@ -3,14 +3,26 @@ const GA_TRACKING_ID = 'G-95Y1Z3HJSF';
 const MAX_RETRIES = 3;
 const RETRY_DELAY = 1000; // 1 second
 
-const isDevelopment = window.location.hostname === 'localhost';
+// Check if we're in development or production
+const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+const domain = isDevelopment ? 'localhost' : 'jeebuddy.in';
 
 const waitForGtag = () => new Promise((resolve) => {
   let retries = 0;
   
   const check = () => {
+    // In development, we'll simulate GA being available
+    if (isDevelopment) {
+      console.log('🔧 GA simulation in development mode');
+      window.gtag = window.gtag || function(...args) {
+        console.log('GA Event (Dev):', ...args);
+      };
+      resolve(true);
+      return;
+    }
+
     if (typeof window.gtag === 'function') {
-      console.log('✅ Google Analytics found');
+      console.log('✅ Google Analytics initialized');
       resolve(true);
       return;
     }
@@ -19,31 +31,29 @@ const waitForGtag = () => new Promise((resolve) => {
       retries++;
       setTimeout(check, RETRY_DELAY);
     } else {
-      if (isDevelopment) {
-        console.log('ℹ️ GA not loaded in development');
-      } else {
-        console.warn('⚠️ GA not loaded in production');
-      }
+      console.warn('⚠️ GA not loaded in production - please check your setup');
       resolve(false);
     }
   };
   
+  // Start checking immediately
   check();
 });
 
 export const initGA = async () => {
   try {
     const isAvailable = await waitForGtag();
-    if (!isAvailable) {
+    if (!isAvailable && !isDevelopment) {
       return false;
     }
 
     window.gtag('config', GA_TRACKING_ID, {
       send_page_view: true,
-      cookie_domain: 'jeebuddy.in',
+      cookie_domain: domain,
       cookie_flags: 'SameSite=None;Secure',
       transport_type: 'beacon',
-      page_path: window.location.pathname
+      page_path: window.location.pathname,
+      debug_mode: isDevelopment
     });
 
     return true;
@@ -74,14 +84,19 @@ export const testGAEvent = async () => {
 export const logPageView = async (path = window.location.pathname) => {
   try {
     const isAvailable = await waitForGtag();
-    if (!isAvailable) return;
+    if (!isAvailable && !isDevelopment) return;
 
-    window.gtag('event', 'page_view', {
+    const eventData = {
       page_location: window.location.origin + path,
       page_path: path,
       page_title: document.title,
       send_to: GA_TRACKING_ID
-    });
+    };
+
+    window.gtag('event', 'page_view', eventData);
+    if (isDevelopment) {
+      console.log('📝 Page View (Dev):', eventData);
+    }
   } catch (error) {
     console.warn('⚠️ Error logging page view:', error.message);
   }
@@ -90,14 +105,19 @@ export const logPageView = async (path = window.location.pathname) => {
 export const logEvent = async (category, action, label = null) => {
   try {
     const isAvailable = await waitForGtag();
-    if (!isAvailable) return;
+    if (!isAvailable && !isDevelopment) return;
 
-    window.gtag('event', action, {
+    const eventData = {
       event_category: category,
       event_label: label,
       send_to: GA_TRACKING_ID,
       non_interaction: false
-    });
+    };
+
+    window.gtag('event', action, eventData);
+    if (isDevelopment) {
+      console.log('📊 Event (Dev):', { action, ...eventData });
+    }
   } catch (error) {
     console.warn('⚠️ Error logging event:', error.message);
   }
@@ -106,13 +126,18 @@ export const logEvent = async (category, action, label = null) => {
 export const logException = async (description = '', fatal = false) => {
   try {
     const isAvailable = await waitForGtag();
-    if (!isAvailable) return;
+    if (!isAvailable && !isDevelopment) return;
 
-    window.gtag('event', 'exception', {
+    const eventData = {
       description,
       fatal,
       send_to: GA_TRACKING_ID
-    });
+    };
+
+    window.gtag('event', 'exception', eventData);
+    if (isDevelopment) {
+      console.log('⚠️ Exception (Dev):', eventData);
+    }
   } catch (error) {
     console.warn('⚠️ Error logging exception:', error.message);
   }
