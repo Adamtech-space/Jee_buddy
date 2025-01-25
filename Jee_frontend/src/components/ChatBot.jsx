@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, memo } from 'react';
 import { 
   XMarkIcon, 
   ArrowsPointingOutIcon, 
@@ -31,6 +31,152 @@ const KeyboardShortcut = ({ shortcut }) => (
 KeyboardShortcut.propTypes = {
   shortcut: PropTypes.string.isRequired
 };
+
+// Move helpButtons outside component to prevent recreation
+const helpButtons = [
+  { type: 'Step-by-Step', icon: '📝', text: 'Step-by-Step' },
+  { type: 'Basics', icon: '🧠', text: 'Basics' },
+  { type: 'Test Me', icon: '🎯', text: 'Test Me' },
+  { type: 'Examples', icon: '🔄', text: 'Examples' },
+  { type: 'Solve', icon: '✨', text: 'Solve' },
+  { type: 'Key Points', icon: '🔍', text: 'Key Points' },
+  { type: 'Explain', icon: '📝', text: 'Explain' },
+  { type: 'Similar', icon: '🔄', text: 'Similar' },
+];
+
+// Memoize the HelpButton component
+const HelpButton = memo(({ button, isActive, onClick }) => (
+  <button
+    onClick={onClick}
+    className={`
+      flex items-center gap-1.5 px-3 py-1.5 rounded-lg
+      transition-all duration-300 ease-out
+      text-xs flex-shrink-0 font-medium
+      ${
+        isActive
+          ? 'bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-md shadow-blue-500/20 scale-105 hover:shadow-blue-500/30 hover:scale-110'
+          : 'bg-gray-800/80 text-gray-300 hover:bg-gray-700/90 hover:text-white hover:-translate-y-0.5 hover:shadow-md'
+      }
+    `}
+  >
+    <span className="text-sm transform transition-transform duration-300 hover:scale-110">
+      {button.icon}
+    </span>
+    <span>{button.text}</span>
+  </button>
+));
+
+HelpButton.propTypes = {
+  button: PropTypes.shape({
+    type: PropTypes.string.isRequired,
+    icon: PropTypes.string.isRequired,
+    text: PropTypes.string.isRequired,
+  }).isRequired,
+  isActive: PropTypes.bool.isRequired,
+  onClick: PropTypes.func.isRequired,
+};
+
+// Memoize the HelpCarousel component
+const HelpCarousel = memo(({ activeHelpType, handleHelpClick }) => {
+  const containerRef = useRef(null);
+  const [showControls, setShowControls] = useState(false);
+  const [scrollPosition, setScrollPosition] = useState(0);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const handleScroll = () => {
+      setScrollPosition(container.scrollLeft);
+      setShowControls(container.scrollWidth > container.clientWidth);
+    };
+
+    // Initial check
+    handleScroll();
+
+    // Add resize observer to handle container width changes
+    const resizeObserver = new ResizeObserver(handleScroll);
+    resizeObserver.observe(container);
+
+    container.addEventListener('scroll', handleScroll);
+    return () => {
+      container.removeEventListener('scroll', handleScroll);
+      resizeObserver.disconnect();
+    };
+  }, []);
+
+  const scroll = useCallback((direction) => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const scrollAmount = container.clientWidth * 0.8;
+    container.scrollBy({
+      left: direction === 'left' ? -scrollAmount : scrollAmount,
+      behavior: 'smooth',
+    });
+  }, []);
+
+  return (
+    <div className="bg-gray-900 border-b border-gray-800 relative">
+      {/* Left Control */}
+      {showControls && scrollPosition > 0 && (
+        <div className="absolute left-0 top-0 bottom-0 flex items-center">
+          <button
+            onClick={() => scroll('left')}
+            className="p-1.5 bg-gradient-to-r from-gray-900 via-gray-900 to-transparent"
+          >
+            <div className="bg-gray-800 hover:bg-gray-700 rounded-full p-2 transition-all duration-200 transform hover:scale-110 shadow-lg">
+              <ChevronLeftIcon className="w-4 h-4 text-white" />
+            </div>
+          </button>
+        </div>
+      )}
+
+      {/* Help Buttons Container */}
+      <div
+        ref={containerRef}
+        className="flex overflow-x-auto gap-1.5 py-2 px-3 hide-scrollbar scroll-smooth"
+      >
+        {helpButtons.map((button) => (
+          <HelpButton
+            key={button.type}
+            button={button}
+            isActive={activeHelpType === button.type}
+            onClick={() => handleHelpClick(button.type)}
+          />
+        ))}
+      </div>
+
+      {/* Right Control */}
+      {showControls &&
+        scrollPosition <
+          containerRef.current?.scrollWidth -
+            containerRef.current?.clientWidth && (
+        <div className="absolute right-0 top-0 bottom-0 flex items-center">
+          <button
+            onClick={() => scroll('right')}
+            className="p-1.5 bg-gradient-to-l from-gray-900 via-gray-900 to-transparent"
+          >
+            <div className="bg-gray-800 hover:bg-gray-700 rounded-full p-2 transition-all duration-200 transform hover:scale-110 shadow-lg">
+              <ChevronRightIcon className="w-4 h-4 text-white" />
+            </div>
+          </button>
+        </div>
+      )}
+    </div>
+  );
+});
+
+HelpCarousel.propTypes = {
+  activeHelpType: PropTypes.string,
+  handleHelpClick: PropTypes.func.isRequired,
+};
+
+// Add display name to HelpButton
+HelpButton.displayName = 'HelpButton';
+
+// Add display name to HelpCarousel
+HelpCarousel.displayName = 'HelpCarousel';
 
 const ChatBot = ({ 
   isOpen, 
@@ -484,17 +630,6 @@ const ChatBot = ({
     };
   }, [isOpen, setIsOpen]);
 
-  const helpButtons = [
-    { type: 'Step-by-Step', icon: '📝', text: 'Step-by-Step' },
-    { type: 'Basics', icon: '🧠', text: 'Basics' },
-    { type: 'Test Me', icon: '🎯', text: 'Test Me' },
-    { type: 'Examples', icon: '🔄', text: 'Examples' },
-    { type: 'Solve', icon: '✨', text: 'Solve' },
-    { type: 'Key Points', icon: '🔍', text: 'Key Points' },
-    { type: 'Explain', icon: '📝', text: 'Explain' },
-    { type: 'Similar', icon: '🔄', text: 'Similar' },
-  ];
-
   // Handle resize functionality
   useEffect(() => {
     const handleMouseMove = (e) => {
@@ -574,13 +709,14 @@ const ChatBot = ({
     }
   };
 
-  const handleHelpClick = (type) => {
+  // Memoize the help click handler
+  const handleHelpClick = useCallback((type) => {
     if (activeHelpType === type) {
       setActiveHelpType(null);
     } else {
       setActiveHelpType(type);
     }
-  };
+  }, [activeHelpType]);
 
   const renderMessage = (msg, index) => {
     const isLastMessage = index === messages.length - 1;
@@ -764,167 +900,6 @@ const ChatBot = ({
     </div>
   );
 
-  // Update the help buttons section with this new implementation
-  const HelpCarousel = ({ activeHelpType, handleHelpClick }) => {
-    const containerRef = useRef(null);
-    const [showControls, setShowControls] = useState(false);
-    const [scrollPosition, setScrollPosition] = useState(0);
-
-    useEffect(() => {
-      const container = containerRef.current;
-      if (!container) return;
-
-      const handleScroll = () => {
-        setScrollPosition(container.scrollLeft);
-        setShowControls(container.scrollWidth > container.clientWidth);
-      };
-
-      // Initial check
-      handleScroll();
-
-      // Add resize observer to handle container width changes
-      const resizeObserver = new ResizeObserver(handleScroll);
-      resizeObserver.observe(container);
-
-      container.addEventListener('scroll', handleScroll);
-      return () => {
-        container.removeEventListener('scroll', handleScroll);
-        resizeObserver.disconnect();
-      };
-    }, []);
-
-    const scroll = (direction) => {
-      const container = containerRef.current;
-      if (!container) return;
-
-      const scrollAmount = container.clientWidth * 0.8;
-      container.scrollBy({
-        left: direction === 'left' ? -scrollAmount : scrollAmount,
-        behavior: 'smooth',
-      });
-    };
-
-    return (
-      <div className="bg-gray-900 border-b border-gray-800 relative">
-        {/* Left Control */}
-        {showControls && scrollPosition > 0 && (
-          <div className="absolute left-0 top-0 bottom-0 flex items-center">
-            <button
-              onClick={() => scroll('left')}
-              className="p-1.5 bg-gradient-to-r from-gray-900 via-gray-900 to-transparent"
-            >
-              <div className="bg-gray-800 hover:bg-gray-700 rounded-full p-2 transition-all duration-200 transform hover:scale-110 shadow-lg">
-                <ChevronLeftIcon className="w-4 h-4 text-white" />
-              </div>
-            </button>
-          </div>
-        )}
-
-        {/* Help Buttons Container */}
-        <div
-          ref={containerRef}
-          className="flex overflow-x-auto gap-1.5 py-2 px-3 hide-scrollbar scroll-smooth"
-        >
-          {helpButtons.map((button) => (
-            <button
-              key={button.type}
-              onClick={() => handleHelpClick(button.type)}
-              className={`
-                flex items-center gap-1.5 px-3 py-1.5 rounded-lg
-                transition-all duration-300 ease-out
-                text-xs flex-shrink-0 font-medium
-                ${
-                  activeHelpType === button.type
-                    ? 'bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-md shadow-blue-500/20 scale-105 hover:shadow-blue-500/30 hover:scale-110'
-                    : 'bg-gray-800/80 text-gray-300 hover:bg-gray-700/90 hover:text-white hover:-translate-y-0.5 hover:shadow-md'
-                }
-              `}
-            >
-              <span className="text-sm transform transition-transform duration-300 hover:scale-110">
-                {button.icon}
-              </span>
-              <span>{button.text}</span>
-            </button>
-          ))}
-        </div>
-
-        {/* Right Control */}
-        {showControls &&
-          scrollPosition <
-            containerRef.current?.scrollWidth -
-              containerRef.current?.clientWidth && (
-            <div className="absolute right-0 top-0 bottom-0 flex items-center">
-              <button
-                onClick={() => scroll('right')}
-                className="p-1.5 bg-gradient-to-l from-gray-900 via-gray-900 to-transparent"
-              >
-                <div className="bg-gray-800 hover:bg-gray-700 rounded-full p-2 transition-all duration-200 transform hover:scale-110 shadow-lg">
-                  <ChevronRightIcon className="w-4 h-4 text-white" />
-                </div>
-              </button>
-            </div>
-          )}
-      </div>
-    );
-  };
-
-  HelpCarousel.propTypes = {
-    activeHelpType: PropTypes.string,
-    handleHelpClick: PropTypes.func.isRequired,
-  };
-
-  // Modify the pinned image preview component
-  const PinnedImagePreview = () => {
-    if (!pinnedImage) return null;
-
-    return (
-      <div className="mb-2 flex items-start bg-gray-800/50 rounded-lg p-2">
-        <div className="relative min-w-[100px] max-w-[150px]">
-          <img
-            src={pinnedImage.previewImageData || pinnedImage.content}
-            alt="Pinned"
-            className="w-full h-auto rounded object-contain"
-            style={{
-              maxHeight: '100px',
-            }}
-          />
-        </div>
-        <div className="ml-2 flex-1 min-w-0">
-          <div className="flex items-center gap-1 mb-1">
-            <span className="text-xs text-gray-400">Captured Image</span>
-            <span className="text-[10px] text-gray-500">•</span>
-            <span className="text-[10px] text-gray-500 truncate">
-              {pinnedImage.source}
-            </span>
-          </div>
-          <div className="text-xs text-gray-300">
-            Type your question about this image
-          </div>
-        </div>
-        <div className="flex items-center gap-1 ml-2">
-          <button
-            onClick={() => setIsPinnedImage(!isPinnedImage)}
-            className="p-1 hover:bg-gray-700/50 rounded-full transition-colors"
-            title={isPinnedImage ? 'Unpin image' : 'Pin image'}
-          >
-            <span
-              className={`text-sm ${isPinnedImage ? 'opacity-100' : 'opacity-50 hover:opacity-75'} transition-opacity`}
-            >
-              📌
-            </span>
-          </button>
-          <button
-            onClick={() => setPinnedImage(null)}
-            className="p-1 hover:bg-gray-700/50 rounded-full transition-colors"
-            title="Remove image"
-          >
-            <XMarkIcon className="h-4 w-4 text-gray-400 hover:text-white" />
-          </button>
-        </div>
-      </div>
-    );
-  };
-
   // Add function to handle new chat
   const handleNewChat = () => {
     setMessages([]);
@@ -1033,6 +1008,58 @@ const ChatBot = ({
               <p>No chat history available</p>
             </div>
           )}
+        </div>
+      </div>
+    );
+  };
+
+  // Modify the pinned image preview component
+  const PinnedImagePreview = () => {
+    if (!pinnedImage) return null;
+
+    return (
+      <div className="mb-2 flex items-start bg-gray-800/50 rounded-lg p-2">
+        <div className="relative min-w-[100px] max-w-[150px]">
+          <img
+            src={pinnedImage.previewImageData || pinnedImage.content}
+            alt="Pinned"
+            className="w-full h-auto rounded object-contain"
+            style={{
+              maxHeight: '100px',
+            }}
+          />
+        </div>
+        <div className="ml-2 flex-1 min-w-0">
+          <div className="flex items-center gap-1 mb-1">
+            <span className="text-xs text-gray-400">Captured Image</span>
+            <span className="text-[10px] text-gray-500">•</span>
+            <span className="text-[10px] text-gray-500 truncate">
+              {pinnedImage.source}
+            </span>
+          </div>
+          <div className="text-xs text-gray-300">
+            Type your question about this image
+          </div>
+        </div>
+        <div className="flex items-center gap-1 ml-2">
+          <button
+            onClick={() => setIsPinnedImage(!isPinnedImage)}
+            className="p-1 hover:bg-gray-700/50 rounded-full transition-colors"
+            title={isPinnedImage ? 'Unpin image' : 'Pin image'}
+          >
+            <span
+              className={`text-sm ${isPinnedImage ? 'opacity-100' : 'opacity-50 hover:opacity-75'} transition-opacity`}
+            >
+              📌
+            </span>
+          </button>
+          <button
+            onClick={() => setPinnedImage(null)}
+            className="p-1 hover:bg-gray-700/50 rounded-full transition-colors"
+            title="Remove image"
+          >
+            <XMarkIcon className="h-4 w-4 text-gray-400 hover:text-white" />
+          </button>
         </div>
       </div>
     );
