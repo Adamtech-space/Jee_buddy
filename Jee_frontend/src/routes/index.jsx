@@ -35,9 +35,9 @@ import PdfViewer from '../components/PdfViewer';
 const ProtectedRoute = () => {
   const { isAuthenticated, isLoading } = useLoading();
 
-  // Show nothing while checking auth
+  // Don't render anything while checking auth
   if (isLoading) {
-    return null; // AuthLoader will be shown by LoadingContext
+    return null;
   }
 
   if (!isAuthenticated) {
@@ -50,7 +50,7 @@ const ProtectedRoute = () => {
 const AppRoutes = () => {
   const { isAuthenticated, isLoading } = useLoading();
 
-  // Show nothing while checking auth
+  // Don't render anything while checking auth
   if (isLoading) {
     return null;
   }
