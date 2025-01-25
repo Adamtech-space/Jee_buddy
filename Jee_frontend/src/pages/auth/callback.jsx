@@ -1,79 +1,53 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import apiInstance from '../../interceptors/axios';
+import { useLoading } from '../../context/LoadingContext';
+import AuthLoader from '../../components/AuthLoader';
 
 const AuthCallback = () => {
   const navigate = useNavigate();
+  const { setIsLoading, setIsAuthenticated } = useLoading();
 
   useEffect(() => {
     const handleAuthCallback = async () => {
       try {
+        setIsLoading(true); // Show loader immediately
         const code = new URLSearchParams(window.location.search).get('code');
         if (!code) {
-          navigate('/login');
+          setIsLoading(false);
+          navigate('/login', { replace: true });
           return;
         }
 
+        // Clean URL before making request
         window.history.replaceState({}, document.title, window.location.pathname);
         
         const response = await apiInstance.get(`/auth/google/callback?code=${code}`);
         
         if (response.data.tokens && response.data.user) {
+          // Set auth data first
           localStorage.setItem('tokens', JSON.stringify(response.data.tokens));
           localStorage.setItem('user', JSON.stringify(response.data.user));
-          navigate('/subject-selection');
+          setIsAuthenticated(true);
+          
+          // Then navigate (this will trigger route change)
+          navigate('/subject-selection', { replace: true });
         } else {
-          navigate('/login');
+          setIsLoading(false);
+          navigate('/login', { replace: true });
         }
       } catch (error) {
         console.error('Auth error:', error.response?.data?.message || error.message);
-        navigate('/login');
+        setIsLoading(false);
+        navigate('/login', { replace: true });
       }
     };
 
     handleAuthCallback();
-  }, [navigate]);
+  }, [navigate, setIsLoading, setIsAuthenticated]);
 
-  return (
-    <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
-      <div className="eclipse-loader">
-        <style>
-          {`
-            .eclipse-loader {
-              width: 64px;
-              height: 64px;
-              position: relative;
-              background: transparent;
-              border-radius: 50%;
-              perspective: 1000px;
-            }
-
-            .eclipse-loader::before {
-              content: '';
-              position: absolute;
-              width: 16px;
-              height: 16px;
-              background: #3B82F6;
-              border-radius: 50%;
-              top: 0;
-              left: 50%;
-              transform-origin: 50% 32px;
-              animation: eclipse 0.4s linear infinite;
-            }
-
-            @keyframes eclipse {
-              0% {
-                transform: rotate(0deg) translateX(0) rotate(0deg);
-              }
-              100% {
-                transform: rotate(360deg) translateX(0) rotate(-360deg);
-              }
-            }
-          `}
-        </style>
-      </div>
-    </div>
-  );
+  // Return AuthLoader directly for faster visual feedback
+  return <AuthLoader />;
 };
 
 export default AuthCallback; 

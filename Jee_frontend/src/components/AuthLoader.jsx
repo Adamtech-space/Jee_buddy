@@ -1,21 +1,23 @@
+import React from 'react';
+
 const AuthLoader = () => {
   return (
-    <div className="fixed inset-0 bg-white z-50 transition-all duration-300 ease-in-out">
+    <div className="fixed inset-0 bg-white dark:bg-gray-900 transition-colors duration-200 z-50">
       <div className="flex flex-col items-center justify-center h-full px-4">
         {/* Logo */}
         <div className="mb-8 text-4xl text-blue-500">
           <span className="font-bold">JEE</span>
-          <span className="text-gray-900">Buddy</span>
+          <span className="text-gray-900 dark:text-white">Buddy</span>
         </div>
 
         {/* AI Neural Network Animation */}
         <div className="relative w-32 h-32 mb-8">
           <div className="absolute inset-0">
-            <div className="absolute w-3 h-3 bg-blue-500 rounded-full top-0 left-0 animate-[pulse_1s_infinite]"></div>
-            <div className="absolute w-3 h-3 bg-blue-500 rounded-full top-0 right-0 animate-[pulse_1s_infinite_0.1s]"></div>
-            <div className="absolute w-3 h-3 bg-blue-500 rounded-full bottom-0 left-0 animate-[pulse_1s_infinite_0.2s]"></div>
-            <div className="absolute w-3 h-3 bg-blue-500 rounded-full bottom-0 right-0 animate-[pulse_1s_infinite_0.3s]"></div>
-            <div className="absolute w-3 h-3 bg-blue-500 rounded-full top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 animate-[pulse_1s_infinite_0.4s]"></div>
+            <div className="absolute w-3 h-3 bg-blue-500 rounded-full top-0 left-0 animate-[pulse_1.5s_infinite]"></div>
+            <div className="absolute w-3 h-3 bg-blue-500 rounded-full top-0 right-0 animate-[pulse_1.5s_infinite_0.1s]"></div>
+            <div className="absolute w-3 h-3 bg-blue-500 rounded-full bottom-0 left-0 animate-[pulse_1.5s_infinite_0.2s]"></div>
+            <div className="absolute w-3 h-3 bg-blue-500 rounded-full bottom-0 right-0 animate-[pulse_1.5s_infinite_0.3s]"></div>
+            <div className="absolute w-3 h-3 bg-blue-500 rounded-full top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 animate-[pulse_1.5s_infinite_0.4s]"></div>
 
             {/* Connecting Lines */}
             <div className="absolute inset-0">
@@ -35,9 +37,8 @@ const AuthLoader = () => {
                     stroke="#3B82F6"
                     strokeWidth="1"
                     style={{
-                      animation: `drawLine 1.5s infinite`,
-                      animationDelay: line.delay,
-                      opacity: 0
+                      animation: `drawLine 2s infinite`,
+                      animationDelay: line.delay
                     }}
                   />
                 ))}
@@ -47,15 +48,15 @@ const AuthLoader = () => {
         </div>
 
         {/* Loading Text */}
-        <div className="text-lg font-medium text-gray-900">
-          Loading your study space...
+        <div className="text-lg font-medium text-gray-900 dark:text-white/90">
+          AI is preparing your personalized study space...
         </div>
       </div>
 
       <style>{`
         @keyframes drawLine {
           0% { opacity: 0; }
-          50% { opacity: 0.5; }
+          50% { opacity: 1; }
           100% { opacity: 0; }
         }
       `}</style>

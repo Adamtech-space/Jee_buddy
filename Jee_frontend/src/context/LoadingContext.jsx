@@ -1,76 +1,55 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import PropTypes from 'prop-types';
 import AuthLoader from '../components/AuthLoader';
 
 const LoadingContext = createContext();
 
+// Synchronous auth check function to reuse
+const checkAuthStatus = () => {
+  try {
+    return Boolean(localStorage.getItem('tokens') && localStorage.getItem('user'));
+  } catch (error) {
+    console.error('Auth check error:', error);
+    return false;
+  }
+};
+
 export const LoadingProvider = ({ children }) => {
-  const [isLoading, setIsLoading] = useState(false);
-  const [isAuthLoading, setIsAuthLoading] = useState(false);
-  const [isSubscriptionLoading, setIsSubscriptionLoading] = useState(false);
-  
-  const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    const tokens = localStorage.getItem('tokens');
-    const user = localStorage.getItem('user');
-    return Boolean(tokens && user);
-  });
+  // Initialize with precomputed auth status for faster initial load
+  const [isLoading, setIsLoading] = useState(() => !checkAuthStatus());
+  const [isAuthenticated, setIsAuthenticated] = useState(() => checkAuthStatus());
 
-  const updateAuth = (status) => {
+  // Memoized auth update function
+  const updateAuth = useCallback((status) => {
     setIsAuthenticated(status);
-    // Add a small delay before removing loader
-    setTimeout(() => setIsAuthLoading(false), 300);
-  };
-
-  // Handle loading states
-  useEffect(() => {
-    const handleLoading = (event) => {
-      const isAuthEndpoint = event.detail.url?.includes('/auth/');
-      const isSubscriptionEndpoint = event.detail.url?.includes('/subscription/');
-
-      if (isAuthEndpoint) {
-        setIsAuthLoading(event.detail.loading);
-      } else if (isSubscriptionEndpoint) {
-        setIsSubscriptionLoading(event.detail.loading);
-      } else {
-        setIsLoading(event.detail.loading);
-      }
-    };
-
-    window.addEventListener('setLoading', handleLoading);
-    return () => window.removeEventListener('setLoading', handleLoading);
+    setIsLoading(false);
   }, []);
 
-  // Handle scroll locking
+  // Optimized loading effect with debounce
   useEffect(() => {
-    const isAnyLoading = isLoading || isAuthLoading || isSubscriptionLoading;
-    
-    if (isAnyLoading) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      // Add a small delay before enabling scroll
-      setTimeout(() => {
-        document.body.style.overflow = 'unset';
-      }, 300);
+    if (!isLoading) {
+      document.body.style.overflow = 'unset';
+      return;
     }
 
+    document.body.style.overflow = 'hidden';
     return () => {
       document.body.style.overflow = 'unset';
     };
-  }, [isLoading, isAuthLoading, isSubscriptionLoading]);
+  }, [isLoading]);
+
+  // Memoized context value to prevent unnecessary re-renders
+  const contextValue = useMemo(() => ({
+    isLoading,
+    setIsLoading,
+    isAuthenticated,
+    setIsAuthenticated: updateAuth
+  }), [isLoading, isAuthenticated, updateAuth]);
 
   return (
-    <LoadingContext.Provider value={{ 
-      isLoading, 
-      setIsLoading,
-      isAuthLoading,
-      setIsAuthLoading,
-      isSubscriptionLoading,
-      setIsSubscriptionLoading,
-      isAuthenticated,
-      setIsAuthenticated: updateAuth
-    }}>
+    <LoadingContext.Provider value={contextValue}>
       {children}
-      {(isLoading || isAuthLoading || isSubscriptionLoading) && <AuthLoader />}
+      {isLoading && <AuthLoader />}
     </LoadingContext.Provider>
   );
 };
