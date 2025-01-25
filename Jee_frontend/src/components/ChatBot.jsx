@@ -5,11 +5,12 @@ import {
   ArrowsPointingInIcon,
   PaperClipIcon,
   PaperAirplaneIcon,
-  PencilIcon,
   StopIcon,
   SparklesIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  ChatBubbleLeftRightIcon,
+  PlusIcon
 } from '@heroicons/react/24/outline';
 import PropTypes from 'prop-types';
 import { aiService } from '../interceptors/ai.service';
@@ -63,6 +64,9 @@ const ChatBot = ({
   const [editingContent, setEditingContent] = useState('');
   const [abortController, setAbortController] = useState(null);
   const [activeHelpType, setActiveHelpType] = useState(null);
+  const [showHistory, setShowHistory] = useState(false);
+  const [chatHistory, setChatHistory] = useState([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
 
   // Update scroll logic for smoother control
   useEffect(() => {
@@ -921,6 +925,119 @@ const ChatBot = ({
     );
   };
 
+  // Add function to handle new chat
+  const handleNewChat = () => {
+    setMessages([]);
+    setMessage('');
+    setPinnedImage(null);
+    setSelectedTextPreview(null);
+    setIsDeepThinkEnabled(false);
+    setActiveHelpType(null);
+  };
+
+  // Fetch chat history when sidebar is opened
+  useEffect(() => {
+    const fetchChatHistory = async () => {
+      if (!showHistory) return;
+      
+      try {
+        setIsLoadingHistory(true);
+        const userData = JSON.parse(localStorage.getItem('user')) || {};
+        const sessionId = userData.current_session_id;
+
+        if (!sessionId) {
+          throw new Error('No valid session ID found');
+        }
+
+        const response = await aiService.askQuestion('', {
+          user_id: userData.id || 'anonymous',
+          session_id: sessionId,
+          subject: subject || '',
+          topic: topic || '',
+          type: 'history',
+          history_limit: 100,
+        });
+
+        if (response.chat_history) {
+          setChatHistory(response.chat_history);
+        }
+      } catch (error) {
+        console.error('Failed to fetch chat history:', error);
+      } finally {
+        setIsLoadingHistory(false);
+      }
+    };
+
+    fetchChatHistory();
+  }, [showHistory, subject, topic]);
+
+  // Function to load a specific chat
+  const loadChatFromHistory = async (historyItem) => {
+    try {
+      setIsLoading(true);
+      setMessages(historyItem.messages);
+      setShowHistory(false); // Close the sidebar after selection
+    } catch (error) {
+      console.error('Failed to load chat:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Modify the chat history sidebar
+  const ChatHistorySidebar = () => {
+    if (!showHistory) return null;
+
+    return (
+      <div className="absolute left-0 top-0 bottom-0 w-64 bg-gray-900 border-r border-gray-800 transform transition-transform duration-300 z-50">
+        <div className="p-4 border-b border-gray-800 flex justify-between items-center">
+          <h3 className="text-lg font-semibold text-white">Chat History</h3>
+          <button
+            onClick={() => setShowHistory(false)}
+            className="p-1.5 hover:bg-gray-800 rounded-lg transition-colors"
+          >
+            <XMarkIcon className="w-4 h-4 text-gray-400" />
+          </button>
+        </div>
+        <div className="overflow-y-auto h-full p-2">
+          {isLoadingHistory ? (
+            <div className="flex items-center justify-center h-32">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+            </div>
+          ) : chatHistory.length > 0 ? (
+            <div className="space-y-2">
+              {chatHistory.map((chat, index) => (
+                <button
+                  key={chat.id || index}
+                  onClick={() => loadChatFromHistory(chat)}
+                  className="w-full p-3 bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors text-left group"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-white truncate">
+                        {chat.title || 'Chat ' + (index + 1)}
+                      </p>
+                      <p className="text-xs text-gray-400 mt-1 truncate">
+                        {chat.preview || chat.messages[0]?.content || 'No messages'}
+                      </p>
+                    </div>
+                    <span className="text-xs text-gray-500 ml-2">
+                      {new Date(chat.timestamp).toLocaleDateString()}
+                    </span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center text-gray-400 mt-8">
+              <p>No chat history available</p>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div
       ref={resizeRef}
@@ -992,7 +1109,26 @@ const ChatBot = ({
             </div>
           </div>
         </div>
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-1.5">
+          {/* New Chat Button */}
+          <button
+            onClick={handleNewChat}
+            className="p-1.5 hover:bg-gray-800 rounded-lg transition-colors flex items-center gap-1 text-gray-400 hover:text-white"
+            title="New Chat"
+          >
+            <PlusIcon className="w-4 h-4 sm:w-5 sm:h-5" />
+          </button>
+
+          {/* Chat History Button */}
+          <button
+            onClick={() => setShowHistory(!showHistory)}
+            className={`p-1.5 hover:bg-gray-800 rounded-lg transition-colors flex items-center gap-1
+              ${showHistory ? 'bg-gray-800 text-white' : 'text-gray-400 hover:text-white'}`}
+            title="Chat History"
+          >
+            <ChatBubbleLeftRightIcon className="w-4 h-4 sm:w-5 sm:h-5" />
+          </button>
+
           <button
             onClick={() => setIsFullScreen(!isFullScreen)}
             className="p-1.5 hover:bg-gray-800 rounded-lg transition-colors"
@@ -1018,6 +1154,9 @@ const ChatBot = ({
           </button>
         </div>
       </div>
+
+      {/* Replace the old chat history sidebar with the new component */}
+      <ChatHistorySidebar />
 
       {/* Help Buttons - Always visible */}
       <HelpCarousel
