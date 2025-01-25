@@ -8,6 +8,7 @@ import {
   CameraOutlined,
   CheckOutlined,
   RedoOutlined,
+  CloseOutlined,
 } from '@ant-design/icons';
 import { Viewer, Worker } from '@react-pdf-viewer/core';
 import { zoomPlugin } from '@react-pdf-viewer/zoom';
@@ -363,54 +364,109 @@ const PdfViewer = () => {
       </div>
 
       {/* Zoom and Screenshot controls - Right side */}
-      <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
-        <button
-          onClick={() => setIsAreaSelecting(true)}
-          className="p-1.5 text-white hover:text-blue-500 transition-colors bg-gray-800/80 backdrop-blur rounded-lg"
-          title="Select area to ask about"
-        >
-          <CameraOutlined className={isMobile ? 'text-sm' : ''} />
-        </button>
-
-        <ZoomOutButton>
-          {(props) => (
-            <button
-              className="p-1.5 text-white hover:text-blue-500 transition-colors bg-gray-800/80 backdrop-blur rounded-lg"
-              onClick={props.onClick}
-            >
-              <ZoomOutOutlined className={isMobile ? 'text-sm' : ''} />
-            </button>
-          )}
-        </ZoomOutButton>
-
-        <ZoomPopover>
-          {(props) => (
-            <button className="px-3 py-1.5 text-white bg-gray-800/80 backdrop-blur rounded-lg hover:text-blue-500 transition-colors">
-              <span className={isMobile ? 'text-sm' : ''}>
-                {Math.round(props.scale * 100)}%
+      <div className="absolute top-2 right-2 sm:top-4 sm:right-4 z-50 flex items-center gap-2">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsAreaSelecting((prev) => !prev);
+            }}
+            className={`
+              group relative px-3 py-1.5 rounded-xl transition-all duration-300 ease-in-out
+              ${
+                isAreaSelecting
+                  ? 'bg-gradient-to-r from-blue-600 to-blue-400 shadow-lg shadow-blue-500/30'
+                  : 'bg-gray-800/90 hover:bg-gray-700/90'
+              }
+              backdrop-blur-sm border border-white/10
+            `}
+          >
+            <div className="relative flex items-center gap-2">
+              <span className="flex items-center justify-center text-blue-400">
+                <CameraOutlined className="text-base" />
               </span>
-            </button>
-          )}
-        </ZoomPopover>
+              <span className="text-sm font-medium text-white">Capture</span>
+            </div>
+            {isAreaSelecting && (
+              <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-400/20 to-blue-300/20 animate-pulse"></div>
+            )}
+          </button>
+        </div>
 
-        <ZoomInButton>
-          {(props) => (
-            <button
-              className="p-1.5 text-white hover:text-blue-500 transition-colors bg-gray-800/80 backdrop-blur rounded-lg"
-              onClick={props.onClick}
-            >
-              <ZoomInOutlined className={isMobile ? 'text-sm' : ''} />
-            </button>
-          )}
-        </ZoomInButton>
+        <div className="h-5 w-px bg-gray-700/50"></div>
+
+        {/* Zoom controls */}
+        <div className="flex items-center gap-2">
+          <ZoomOutButton>
+            {(props) => (
+              <button
+                className="p-1.5 text-white hover:text-blue-400 transition-colors bg-gray-800/90 backdrop-blur-sm rounded-lg border border-white/10"
+                onClick={props.onClick}
+              >
+                <ZoomOutOutlined className="text-sm sm:text-base" />
+              </button>
+            )}
+          </ZoomOutButton>
+
+          <ZoomPopover>
+            {(props) => (
+              <button className="px-3 py-1.5 text-white bg-gray-800/90 backdrop-blur-sm rounded-lg border border-white/10 hover:text-blue-400 transition-colors">
+                <span className="text-xs sm:text-sm">
+                  {Math.round(props.scale * 100)}%
+                </span>
+              </button>
+            )}
+          </ZoomPopover>
+
+          <ZoomInButton>
+            {(props) => (
+              <button
+                className="p-1.5 text-white hover:text-blue-400 transition-colors bg-gray-800/90 backdrop-blur-sm rounded-lg border border-white/10"
+                onClick={props.onClick}
+              >
+                <ZoomInOutlined className="text-sm sm:text-base" />
+              </button>
+            )}
+          </ZoomInButton>
+        </div>
       </div>
 
-      {/* Area Selector */}
+      {/* Area Selector with Floating Controls */}
       {isAreaSelecting && (
-        <AreaSelector
-          onAreaSelected={handleAreaSelected}
-          onCancel={handleCancelAreaSelection}
-        />
+        <>
+          <AreaSelector
+            onAreaSelected={handleAreaSelected}
+            onCancel={handleCancelAreaSelection}
+          />
+          <div
+            className="fixed top-20 left-1/2 transform -translate-x-1/2 z-50 bg-gray-900/95 backdrop-blur-sm rounded-full shadow-lg border border-gray-800"
+            style={{ maxWidth: '90vw' }}
+          >
+            <div className="flex items-center gap-2 px-1">
+              <div className="px-4 py-2 text-white/90 text-sm whitespace-nowrap">
+                Click and drag to select an area
+              </div>
+              <div className="w-px h-6 bg-gray-700/50"></div>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleCancelAreaSelection();
+                }}
+                className="
+                  px-4 py-2 text-white/90 rounded-full
+                  transition-all duration-200 ease-in-out
+                  hover:bg-red-500/90 hover:text-white
+                  flex items-center gap-2 whitespace-nowrap
+                "
+              >
+                <CloseOutlined className={isMobile ? 'text-sm' : ''} />
+                <span className={`text-sm ${isMobile ? 'hidden' : ''}`}>
+                  Cancel
+                </span>
+              </button>
+            </div>
+          </div>
+        </>
       )}
 
       {/* Error Display */}
