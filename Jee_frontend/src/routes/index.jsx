@@ -52,7 +52,7 @@ const AppRoutes = () => {
 
   // Show nothing while checking auth
   if (isLoading) {
-    return null; // AuthLoader will be shown by LoadingContext
+    return null;
   }
 
   return (
@@ -65,7 +65,7 @@ const AppRoutes = () => {
             isAuthenticated ? (
               <Navigate to="/subject-selection" replace />
             ) : (
-              <Navigate to="/login" replace />
+              <Navigate to="/register" replace />
             )
           }
         />
