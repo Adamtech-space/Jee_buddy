@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { memo, useCallback, useMemo } from 'react';
+import { memo, useCallback, useMemo, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import { useLoading } from '../context/LoadingContext';
 
@@ -81,8 +81,14 @@ const SubjectSelection = () => {
   const { setIsLoading } = useLoading();
   
   const handleSubjectClick = useCallback(async (subjectId) => {
-    setIsLoading(true);
-    navigate(`/dashboard/${subjectId}/books`, { replace: true });
+    try {
+      setIsLoading(true);
+      // Navigate with replace to prevent back button issues
+      await navigate(`/dashboard/${subjectId}/books`, { replace: true });
+    } catch (error) {
+      console.error('Navigation error:', error);
+      setIsLoading(false);
+    }
   }, [navigate, setIsLoading]);
 
   const subjectButtons = useMemo(() => (
@@ -94,6 +100,11 @@ const SubjectSelection = () => {
       />
     ))
   ), [handleSubjectClick]);
+
+  // Clear loading on unmount
+  useEffect(() => {
+    return () => setIsLoading(false);
+  }, [setIsLoading]);
 
   return (
     <div className="min-h-screen bg-black flex items-center justify-center p-4">
