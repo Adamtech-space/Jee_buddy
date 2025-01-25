@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate, Link } from 'react-router-dom';
 import { userLogin, googleSignIn } from '../interceptors/services';
-import { logEvent } from '../utils/analytics';
 import { Analytics } from '@vercel/analytics/react';
 
 const Login = () => {
@@ -31,8 +30,6 @@ const Login = () => {
       const response = await userLogin({ email, password });
       console.log('Login successful:', response);
       
-      logEvent('User', 'Login', 'Email Login Success');
-      
       // Double check that we have the necessary data
       if (response?.tokens?.access?.token && response?.user) {
         // Force a small delay to ensure state updates are processed
@@ -45,7 +42,6 @@ const Login = () => {
       }
     } catch (err) {
       console.error('Login error:', err);
-      logEvent('Error', 'Login Failed', err.message);
       
       // Handle network errors specifically
       if (err.message.includes('Unable to connect')) {
@@ -63,13 +59,11 @@ const Login = () => {
     setError('');
 
     try {
-      logEvent('User', 'Google Sign In Attempt', 'Login Page');
       const response = await googleSignIn();
       if (response.url) {
         window.location.href = response.url;
       }
     } catch (err) {
-      logEvent('Error', 'Google Sign In Failed', err.message);
       setError(err.message || 'Google sign-in failed. Please try again.');
       setIsLoading(false);
     }
