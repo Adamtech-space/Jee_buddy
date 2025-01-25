@@ -4,42 +4,27 @@ import AuthLoader from '../components/AuthLoader';
 const LoadingContext = createContext();
 
 export const LoadingProvider = ({ children }) => {
-  const [isAuthLoading, setIsAuthLoading] = useState(true); // Start with loading true
-  const [isInitialized, setIsInitialized] = useState(false);
+  const [isAuthLoading, setIsAuthLoading] = useState(false);
+  const [isSubscriptionLoading, setIsSubscriptionLoading] = useState(false);
 
   useEffect(() => {
-    // Function to check if the app is ready
-    const checkInitialization = async () => {
-      try {
-        // Check for existing auth
-        const tokens = localStorage.getItem('tokens');
-        const user = localStorage.getItem('user');
-
-        // Add any other initialization checks here
-
-        setIsInitialized(true);
-        // Only stop loading if we're not in the middle of an auth operation
-        setIsAuthLoading(false);
-      } catch (error) {
-        console.error('Initialization error:', error);
-        setIsInitialized(true);
-        setIsAuthLoading(false);
-      }
-    };
-
-    checkInitialization();
-
     const handleLoading = (event) => {
-      // Only set loading for auth-related endpoints
+      // Handle both auth and subscription endpoints
       const isAuthEndpoint = event.detail.url?.includes('/auth/');
+      const isSubscriptionEndpoint =
+        event.detail.url?.includes('/subscription/');
+
       if (isAuthEndpoint) {
         setIsAuthLoading(event.detail.loading);
-        // Prevent scrolling when loader is shown
-        if (event.detail.loading) {
-          document.body.style.overflow = 'hidden';
-        } else {
-          document.body.style.overflow = 'unset';
-        }
+      } else if (isSubscriptionEndpoint) {
+        setIsSubscriptionLoading(event.detail.loading);
+      }
+
+      // Prevent scrolling when any loader is shown
+      if (event.detail.loading) {
+        document.body.style.overflow = 'hidden';
+      } else {
+        document.body.style.overflow = 'unset';
       }
     };
 
@@ -50,14 +35,17 @@ export const LoadingProvider = ({ children }) => {
     };
   }, []);
 
-  if (!isInitialized) {
-    return <AuthLoader />;
-  }
-
   return (
-    <LoadingContext.Provider value={{ isAuthLoading, setIsAuthLoading }}>
+    <LoadingContext.Provider
+      value={{
+        isAuthLoading,
+        setIsAuthLoading,
+        isSubscriptionLoading,
+        setIsSubscriptionLoading,
+      }}
+    >
       {children}
-      {isAuthLoading && <AuthLoader />}
+      {(isAuthLoading || isSubscriptionLoading) && <AuthLoader />}
     </LoadingContext.Provider>
   );
 };
