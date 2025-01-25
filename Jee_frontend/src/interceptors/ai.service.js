@@ -220,5 +220,21 @@ export const aiService = {
       console.error('Error fetching usage data:', error);
       throw new Error(error.response?.data?.message || 'Failed to fetch usage data');
     }
+  },
+
+  // Add new method for fetching chat history
+  getChatHistory: async (userId, sessionId) => {
+    try {
+      const response = await aiInstance.get(`/api/chat/history`, {
+        params: {
+          user_id: userId,
+          session_id: sessionId
+        }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching chat history:', error);
+      throw error;
+    }
   }
 }; 

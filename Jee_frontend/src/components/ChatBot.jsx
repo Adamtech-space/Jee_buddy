@@ -910,13 +910,13 @@ const ChatBot = ({
     setActiveHelpType(null);
   };
 
-  // Fetch chat history when sidebar is opened
+  // Add effect to load today's chats automatically
   useEffect(() => {
-    const fetchChatHistory = async () => {
-      if (!showHistory) return;
+    const loadTodayChats = async () => {
+      if (!isOpen) return;
       
       try {
-        setIsLoadingHistory(true);
+        setIsLoading(true);
         const userData = JSON.parse(localStorage.getItem('user')) || {};
         const sessionId = userData.current_session_id;
 
@@ -924,33 +924,72 @@ const ChatBot = ({
           throw new Error('No valid session ID found');
         }
 
-        const response = await aiService.askQuestion('', {
-          user_id: userData.id || 'anonymous',
-          session_id: sessionId,
-          subject: subject || '',
-          topic: topic || '',
-          type: 'history',
-          history_limit: 100,
-        });
-
+        const response = await aiService.getChatHistory(userData.id, sessionId);
         if (response.chat_history) {
+          // Find today's chats
+          const todayGroup = response.chat_history.find(group => group.title === 'Today');
+          if (todayGroup && todayGroup.chats.length > 0) {
+            loadChatsFromPeriod(todayGroup.chats);
+          }
           setChatHistory(response.chat_history);
         }
       } catch (error) {
-        console.error('Failed to fetch chat history:', error);
+        console.error('Failed to load today\'s chats:', error);
       } finally {
-        setIsLoadingHistory(false);
+        setIsLoading(false);
       }
     };
 
-    fetchChatHistory();
-  }, [showHistory, subject, topic]);
+    loadTodayChats();
+  }, [isOpen]); // Reload when chat is opened
 
-  // Function to load a specific chat
-  const loadChatFromHistory = async (historyItem) => {
+  // Update loadChatsFromPeriod to handle initial load
+  const loadChatsFromPeriod = (periodChats) => {
     try {
       setIsLoading(true);
-      setMessages(historyItem.messages);
+      // Combine all messages from the period's chats
+      const allMessages = [];
+      periodChats.forEach(chat => {
+        if (chat.messages && chat.messages.length > 0) {
+          // Add each message with proper formatting
+          chat.messages.forEach(msg => {
+            allMessages.push({
+              id: `${chat.id}-${msg.sender}`,
+              sender: msg.sender,
+              content: msg.content,
+              timestamp: msg.timestamp,
+              type: 'text'
+            });
+          });
+        }
+      });
+      
+      // Sort messages by timestamp
+      allMessages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+      
+      // Update the chat display with the combined messages
+      setMessages(allMessages);
+      if (allMessages.length > 0) {
+        const lastMessage = allMessages[allMessages.length - 1];
+        setDisplayedResponse(lastMessage.content);
+        setCurrentTypingIndex(lastMessage.content.length);
+      }
+      setShowHistory(false); // Close the sidebar after selection
+    } catch (error) {
+      console.error('Failed to load chats:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Function to load a specific chat
+  const loadChatFromHistory = (historyItem) => {
+    try {
+      setIsLoading(true);
+      // Convert the history item's messages to the format expected by the chat
+      if (historyItem.messages && historyItem.messages.length > 0) {
+        setMessages(historyItem.messages);
+      }
       setShowHistory(false); // Close the sidebar after selection
     } catch (error) {
       console.error('Failed to load chat:', error);
@@ -964,50 +1003,66 @@ const ChatBot = ({
     if (!showHistory) return null;
 
     return (
-      <div className="absolute left-0 top-0 bottom-0 w-64 bg-gray-900 border-r border-gray-800 transform transition-transform duration-300 z-50">
-        <div className="p-4 border-b border-gray-800 flex justify-between items-center">
-          <h3 className="text-lg font-semibold text-white">Chat History</h3>
-          <button
-            onClick={() => setShowHistory(false)}
-            className="p-1.5 hover:bg-gray-800 rounded-lg transition-colors"
-          >
-            <XMarkIcon className="w-4 h-4 text-gray-400" />
-          </button>
-        </div>
-        <div className="overflow-y-auto h-full p-2">
-          {isLoadingHistory ? (
-            <div className="flex items-center justify-center h-32">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+      <div className="absolute left-0 top-0 bottom-0 w-72 bg-gray-900 border-r border-gray-800 transform transition-transform duration-300 z-50">
+        <div className="flex flex-col h-full">
+          {/* Header */}
+          <div className="p-3 border-b border-gray-800">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-base font-medium text-white">Chats & Composers</h3>
+              <button
+                onClick={() => setShowHistory(false)}
+                className="p-1 hover:bg-gray-800 rounded-lg transition-colors"
+              >
+                <XMarkIcon className="w-4 h-4 text-gray-400" />
+              </button>
             </div>
-          ) : chatHistory.length > 0 ? (
-            <div className="space-y-2">
-              {chatHistory.map((chat, index) => (
-                <button
-                  key={chat.id || index}
-                  onClick={() => loadChatFromHistory(chat)}
-                  className="w-full p-3 bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors text-left group"
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-white truncate">
-                        {chat.title || 'Chat ' + (index + 1)}
-                      </p>
-                      <p className="text-xs text-gray-400 mt-1 truncate">
-                        {chat.preview || chat.messages[0]?.content || 'No messages'}
-                      </p>
+            {/* Search bar */}
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Search for past chats..."
+                className="w-full bg-gray-800 text-gray-200 text-sm rounded-md px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+            </div>
+          </div>
+
+          {/* Chat List */}
+          <div className="flex-1 overflow-y-auto">
+            {isLoadingHistory ? (
+              <div className="flex items-center justify-center h-32">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+              </div>
+            ) : chatHistory.length > 0 ? (
+              <div className="space-y-1 p-2">
+                {chatHistory.map((group, groupIndex) => (
+                  <button
+                    key={groupIndex}
+                    onClick={() => loadChatsFromPeriod(group.chats)}
+                    className="w-full p-3 hover:bg-gray-800 rounded-lg text-left transition-colors group"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-gray-300 group-hover:text-white">
+                        {group.title}
+                      </span>
+                      <span className="text-xs text-gray-500 group-hover:text-gray-400">
+                        {group.chats.length} chats
+                      </span>
                     </div>
-                    <span className="text-xs text-gray-500 ml-2">
-                      {new Date(chat.timestamp).toLocaleDateString()}
-                    </span>
-                  </div>
-                </button>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center text-gray-400 mt-8">
-              <p>No chat history available</p>
-            </div>
-          )}
+                    {/* Preview of the latest chat */}
+                    {group.chats[0] && (
+                      <p className="text-xs text-gray-500 truncate mt-1 group-hover:text-gray-400">
+                        {group.chats[0].preview}
+                      </p>
+                    )}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center text-gray-400 mt-8">
+                <p>No chat history available</p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     );

@@ -21,6 +21,7 @@ from asgiref.sync import sync_to_async, async_to_sync
 from django.utils.decorators import method_decorator
 from django.http import JsonResponse
 from functools import wraps
+from django.utils import timezone
 logger = logging.getLogger(__name__)
 
 def async_view(view_func):
@@ -260,3 +261,133 @@ def solve_math_problem(request):
             'error': str(e),
             'details': 'An unexpected error occurred while processing your request.'
         }, status=500)
+
+@api_view(['GET'])
+def get_chat_history_by_user(request):
+    """Get chat history for a specific user and session"""
+    try:
+        user_id = request.GET.get('user_id')
+        session_id = request.GET.get('session_id')
+        
+        if not user_id:
+            return Response({
+                'error': 'User ID is required'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Query the chat history table with DISTINCT ON to remove duplicates
+        with connections['default'].cursor() as cursor:
+            cursor.execute("""
+                WITH unique_chats AS (
+                    SELECT DISTINCT ON (question, response) 
+                        id, user_id, session_id, question, response, context, 
+                        timestamp,
+                        DATE(timestamp) as chat_date,
+                        EXTRACT(WEEK FROM timestamp) as chat_week,
+                        EXTRACT(MONTH FROM timestamp) as chat_month,
+                        EXTRACT(YEAR FROM timestamp) as chat_year
+                    FROM main_chathistory 
+                    WHERE user_id = %s
+                    AND (%s IS NULL OR session_id = %s)
+                    ORDER BY question, response, timestamp DESC
+                )
+                SELECT * FROM unique_chats
+                ORDER BY timestamp DESC
+                LIMIT 100
+            """, [user_id, session_id, session_id])
+            
+            rows = cursor.fetchall()
+            
+            # Group chats by time periods
+            grouped_chats = {
+                'today': [],
+                'yesterday': [],
+                'this_week': [],
+                'this_month': [],
+                'older': []
+            }
+            
+            today = timezone.now().date()
+            yesterday = today - timezone.timedelta(days=1)
+            
+            for row in rows:
+                # Clean up the question content
+                cleaned_question = row[3].replace('()', '') if row[3] else ''
+                chat_date = row[7]  # chat_date from the query
+                
+                chat_entry = {
+                    'id': row[0],
+                    'user_id': row[1],
+                    'session_id': row[2],
+                    'question': cleaned_question,
+                    'response': row[4],
+                    'context': row[5],
+                    'timestamp': row[6],
+                    'preview': cleaned_question[:50] + ('...' if len(cleaned_question) > 50 else '')
+                }
+                
+                # Add messages
+                messages = []
+                if chat_entry['question']:
+                    messages.append({
+                        'sender': 'user',
+                        'content': cleaned_question,
+                        'timestamp': chat_entry['timestamp']
+                    })
+                if chat_entry['response']:
+                    messages.append({
+                        'sender': 'assistant',
+                        'content': chat_entry['response'],
+                        'timestamp': chat_entry['timestamp']
+                    })
+                chat_entry['messages'] = messages
+                
+                # Group by date
+                if chat_date == today:
+                    grouped_chats['today'].append(chat_entry)
+                elif chat_date == yesterday:
+                    grouped_chats['yesterday'].append(chat_entry)
+                elif chat_date.isocalendar()[1] == today.isocalendar()[1]:
+                    grouped_chats['this_week'].append(chat_entry)
+                elif chat_date.month == today.month and chat_date.year == today.year:
+                    grouped_chats['this_month'].append(chat_entry)
+                else:
+                    grouped_chats['older'].append(chat_entry)
+            
+            # Format the response
+            formatted_history = []
+            if grouped_chats['today']:
+                formatted_history.append({
+                    'title': 'Today',
+                    'chats': grouped_chats['today']
+                })
+            if grouped_chats['yesterday']:
+                formatted_history.append({
+                    'title': 'Yesterday',
+                    'chats': grouped_chats['yesterday']
+                })
+            if grouped_chats['this_week']:
+                formatted_history.append({
+                    'title': 'This Week',
+                    'chats': grouped_chats['this_week']
+                })
+            if grouped_chats['this_month']:
+                formatted_history.append({
+                    'title': 'This Month',
+                    'chats': grouped_chats['this_month']
+                })
+            if grouped_chats['older']:
+                formatted_history.append({
+                    'title': 'Older',
+                    'chats': grouped_chats['older']
+                })
+            
+            return Response({
+                'chat_history': formatted_history,
+                'total_count': len(rows)
+            })
+            
+    except Exception as e:
+        logger.error(f"Error in get_chat_history_by_user: {str(e)}", exc_info=True)
+        return Response({
+            'error': str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
