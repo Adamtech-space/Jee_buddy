@@ -14,12 +14,14 @@ const Register = () => {
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
+    setSuccess('');
 
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match');
@@ -30,11 +32,18 @@ const Register = () => {
     try {
       const { confirmPassword, ...registrationData } = formData;
       await userRegister(registrationData);
+      setSuccess('Account created successfully! Redirecting to login...');
       logEvent('User', 'Registration', 'Email Registration');
-      navigate('/login');
+      setTimeout(() => {
+        navigate('/login');
+      }, 2000);
     } catch (error) {
       logEvent('Error', 'Registration Failed', error.message);
-      setError(error.message || 'Registration failed. Please try again.');
+      if (error.message?.includes('profiles_pkey')) {
+        setError('An account with this email already exists. Please try logging in instead.');
+      } else {
+        setError(error.message || 'Registration failed. Please try again.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -77,6 +86,12 @@ const Register = () => {
         {error && (
           <div className="bg-red-500 bg-opacity-10 border border-red-500 text-red-500 px-4 py-3 rounded relative" role="alert">
             <span className="block sm:inline">{error}</span>
+          </div>
+        )}
+
+        {success && (
+          <div className="bg-green-500 bg-opacity-10 border border-green-500 text-green-500 px-4 py-3 rounded relative" role="alert">
+            <span className="block sm:inline">{success}</span>
           </div>
         )}
 

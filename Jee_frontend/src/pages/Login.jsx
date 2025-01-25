@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate, Link } from 'react-router-dom';
 import { userLogin, googleSignIn } from '../interceptors/services';
@@ -11,18 +11,47 @@ const Login = () => {
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
+  // Check if already authenticated
+  useEffect(() => {
+    const tokens = localStorage.getItem('tokens');
+    const user = localStorage.getItem('user');
+    if (tokens && user) {
+      navigate('/subject-selection', { replace: true });
+    }
+  }, [navigate]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
 
     try {
-      await userLogin({ email, password });
+      console.log('Submitting login form...');
+      const response = await userLogin({ email, password });
+      console.log('Login successful:', response);
+      
       logEvent('User', 'Login', 'Email Login Success');
-      navigate('/subject-selection');
+      
+      // Double check that we have the necessary data
+      if (response?.tokens?.access?.token && response?.user) {
+        // Force a small delay to ensure state updates are processed
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Use window.location for a full page refresh
+        window.location.href = '/subject-selection';
+      } else {
+        throw new Error('Invalid response from server');
+      }
     } catch (err) {
+      console.error('Login error:', err);
       logEvent('Error', 'Login Failed', err.message);
-      setError(err.message || 'Login failed. Please try again.');
+      
+      // Handle network errors specifically
+      if (err.message.includes('Unable to connect')) {
+        setError('Unable to connect to server. Please check your internet connection and try again.');
+      } else {
+        setError(err.message || 'Login failed. Please try again.');
+      }
     } finally {
       setIsLoading(false);
     }

@@ -240,97 +240,233 @@ const generateAuthTokens = async (user) => {
  * @returns {Promise<User>}
  */
 const loginUserWithEmailAndPassword = async (email, password) => {
-  // First check if the user exists in the profiles table
-  const { data: existingProfile, error: profileError } = await supabase
-    .from('profiles')
-    .select('id, email')
-    .eq('email', email)
-    .single();
-
-  if (profileError && profileError.code !== 'PGRST116') {
-    throw new ApiError(httpStatus.INTERNAL_SERVER_ERROR, 'Database error');
-  }
-
-  if (!existingProfile) {
-    throw new ApiError(httpStatus.UNAUTHORIZED, 'Account not found');
-  }
-
   try {
-    // Get the user's auth details first
-    const { data: authUser, error: authCheckError } = await supabase.auth.admin.getUserById(existingProfile.id);
-    
-    if (authCheckError) {
-      throw new ApiError(httpStatus.INTERNAL_SERVER_ERROR, 'Authentication system error');
-    }
+    console.log('Attempting login for email:', email);
 
-    // Try to authenticate with regular auth client
-    let { data: authData, error: signInError } = await authClient.auth.signInWithPassword({
+    // First try direct sign in
+    const { data: signInData, error: signInError } = await authClient.auth.signInWithPassword({
       email,
       password,
     });
 
-    if (signInError) {
-      // If regular auth fails, try to update the password and retry
-      const { error: updateError } = await supabase.auth.admin.updateUserById(
-        existingProfile.id,
-        { password }
-      );
+    if (!signInError && signInData?.user) {
+      console.log('Direct login successful');
+      
+      // Get profile data
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', signInData.user.id)
+        .single();
+
+      if (profileError) {
+        console.error('Error fetching profile:', profileError);
+        throw new ApiError(httpStatus.INTERNAL_SERVER_ERROR, 'Error fetching user profile');
+      }
+
+      // Generate new session ID
+      const sessionId = uuidv4();
+
+      // Update profile with new session ID
+      const { data: updatedProfile, error: updateError } = await supabase
+        .from('profiles')
+        .update({
+          current_session_id: sessionId,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', signInData.user.id)
+        .select()
+        .single();
 
       if (updateError) {
-        throw new ApiError(httpStatus.UNAUTHORIZED, 'Invalid password');
+        console.error('Error updating session:', updateError);
+        throw new ApiError(httpStatus.INTERNAL_SERVER_ERROR, 'Failed to update session');
       }
-      
-      // Try login again after password update
-      const retryAuth = await authClient.auth.signInWithPassword({
-        email,
-        password,
+
+      // Generate application tokens
+      const tokens = await generateAuthTokens({
+        id: updatedProfile.id,
+        email: updatedProfile.email,
+        name: updatedProfile.name
       });
 
-      if (retryAuth.error) {
-        throw new ApiError(httpStatus.UNAUTHORIZED, 'Authentication failed after password update');
-      }
+      return {
+        user: updatedProfile,
+        tokens
+      };
+    }
 
-      if (!retryAuth.data?.user) {
-        throw new ApiError(httpStatus.UNAUTHORIZED, 'No user data after password update');
-      }
+    // If direct login failed, check if user exists in profiles
+    const { data: existingProfile, error: profileError } = await supabase
+      .from('profiles')
+      .select('id, email')
+      .eq('email', email)
+      .single();
 
-      authData = retryAuth.data;
+    if (!existingProfile) {
+      console.error('Account not found');
+      throw new ApiError(httpStatus.UNAUTHORIZED, 'Account not found');
+    }
+
+    // Try to update password and retry login
+    const { error: updateError } = await supabase.auth.admin.updateUserById(
+      existingProfile.id,
+      { password }
+    );
+
+    if (updateError) {
+      console.error('Password update failed:', updateError);
+      throw new ApiError(httpStatus.UNAUTHORIZED, 'Invalid credentials');
+    }
+
+    // Retry login after password update
+    const { data: retryData, error: retryError } = await authClient.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (retryError || !retryData?.user) {
+      console.error('Login retry failed:', retryError);
+      throw new ApiError(httpStatus.UNAUTHORIZED, 'Authentication failed');
+    }
+
+    // Get full profile data
+    const { data: fullProfile, error: fullProfileError } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', retryData.user.id)
+      .single();
+
+    if (fullProfileError) {
+      console.error('Error fetching full profile:', fullProfileError);
+      throw new ApiError(httpStatus.INTERNAL_SERVER_ERROR, 'Error fetching user profile');
     }
 
     // Generate new session ID
     const sessionId = uuidv4();
 
     // Update profile with new session ID
-    const { data: profile, error: updateError } = await supabase
+    const { data: updatedProfile, error: sessionUpdateError } = await supabase
       .from('profiles')
       .update({
         current_session_id: sessionId,
         updated_at: new Date().toISOString()
       })
-      .eq('id', authData.user.id)
+      .eq('id', retryData.user.id)
       .select()
       .single();
 
-    if (updateError) {
-      throw new ApiError(httpStatus.INTERNAL_SERVER_ERROR, 'Failed to update profile');
+    if (sessionUpdateError) {
+      console.error('Error updating session:', sessionUpdateError);
+      throw new ApiError(httpStatus.INTERNAL_SERVER_ERROR, 'Failed to update session');
     }
 
     // Generate application tokens
     const tokens = await generateAuthTokens({
-      id: profile.id,
-      email: profile.email,
-      name: profile.name
+      id: updatedProfile.id,
+      email: updatedProfile.email,
+      name: updatedProfile.name
     });
 
     return {
-      user: profile,
+      user: updatedProfile,
       tokens
     };
   } catch (error) {
+    console.error('Login error:', error);
     if (error instanceof ApiError) {
       throw error;
     }
-    throw new ApiError(httpStatus.UNAUTHORIZED, 'Authentication failed');
+    throw new ApiError(
+      error.statusCode || httpStatus.UNAUTHORIZED,
+      error.message || 'Authentication failed'
+    );
+  }
+};
+
+const cleanupExistingUser = async (email) => {
+  console.log('Starting cleanup for email:', email);
+  
+  try {
+    // First check if user exists
+    const { data: existingProfiles } = await supabase
+      .from('profiles')
+      .select('id, email')
+      .eq('email', email);
+
+    const { data: { users: existingUsers } } = await supabase.auth.admin.listUsers();
+    const existingAuthUsers = existingUsers?.filter(u => u.email === email);
+
+    if (existingProfiles?.length > 0 || existingAuthUsers?.length > 0) {
+      console.log('Found existing user data, cleaning up...');
+
+      // Try hard delete first
+      try {
+        await supabase.rpc('hard_delete_user', { user_email: email });
+        console.log('Hard delete completed');
+      } catch (hardDeleteError) {
+        console.error('Hard delete failed:', hardDeleteError);
+        
+        // Fall back to manual deletion
+        console.log('Falling back to manual deletion...');
+
+        // Delete profiles one by one
+        if (existingProfiles?.length > 0) {
+          for (const profile of existingProfiles) {
+            try {
+              await supabase
+                .from('profiles')
+                .delete()
+                .eq('id', profile.id);
+              console.log('Deleted profile:', profile.id);
+            } catch (e) {
+              console.error('Error deleting profile:', e);
+            }
+          }
+        }
+
+        // Delete auth users one by one
+        if (existingAuthUsers?.length > 0) {
+          for (const user of existingAuthUsers) {
+            try {
+              await supabase.auth.admin.deleteUser(user.id);
+              console.log('Deleted auth user:', user.id);
+            } catch (e) {
+              console.error('Error deleting auth user:', e);
+            }
+          }
+        }
+      }
+
+      // Wait for deletions to complete
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      // Final verification
+      const { data: finalProfiles } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('email', email);
+
+      const { data: { users: finalUsers } } = await supabase.auth.admin.listUsers();
+      const finalAuthUsers = finalUsers?.filter(u => u.email === email);
+
+      if (finalProfiles?.length > 0 || finalAuthUsers?.length > 0) {
+        console.error('Warning: Could not completely clean up user data:', {
+          remainingProfiles: finalProfiles,
+          remainingAuthUsers: finalAuthUsers
+        });
+        // Don't throw error, just log warning
+        console.log('Continuing despite incomplete cleanup');
+      } else {
+        console.log('Cleanup completed successfully');
+      }
+    } else {
+      console.log('No existing user data found');
+    }
+  } catch (error) {
+    console.error('Cleanup error:', error);
+    // Log error but don't throw
+    console.log('Continuing despite cleanup error');
   }
 };
 
@@ -346,40 +482,17 @@ const createUser = async (userInput) => {
       name: userInput.name
     });
 
-    // First check if user exists in auth
-    const { data: existingAuthUser, error: authCheckError } = await supabase.auth.admin.listUsers();
-    const existingUser = existingAuthUser?.users?.find(u => u.email === userInput.email);
+    // Initial cleanup
+    await cleanupExistingUser(userInput.email);
 
-    if (existingUser) {
-      console.log('Found existing user, attempting to delete...');
-      
-      // Delete from profiles first (due to foreign key constraint)
-      const { error: profileDeleteError } = await supabase
-        .from('profiles')
-        .delete()
-        .eq('id', existingUser.id);
-      
-      if (profileDeleteError) {
-        console.log('Profile deletion error:', profileDeleteError);
-      }
+    // Wait a bit for cleanup to take effect
+    await new Promise(resolve => setTimeout(resolve, 2000));
 
-      // Then delete from auth
-      const { error: authDeleteError } = await supabase.auth.admin.deleteUser(existingUser.id);
-      if (authDeleteError) {
-        console.log('Auth deletion error:', authDeleteError);
-      }
-
-      // Wait a moment for deletions to complete
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      console.log('Existing user deleted successfully');
-    }
-
-    // 1. Create auth user with auto-confirm enabled
+    // Create new auth user
     const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
       email: userInput.email,
       password: userInput.password,
-      email_confirm: true,  // Auto-confirm the email
+      email_confirm: true,
       user_metadata: {
         name: userInput.name
       }
@@ -387,52 +500,83 @@ const createUser = async (userInput) => {
     
     if (authError) {
       console.error('Auth user creation error:', authError);
-      throw new ApiError(400, `Failed to create auth user: ${authError.message}`);
+      throw new ApiError(httpStatus.BAD_REQUEST, `Failed to create account: ${authError.message}`);
     }
 
     if (!authUser?.user?.id) {
       console.error('No user ID received from auth signup');
-      throw new ApiError(500, 'Invalid auth response');
+      throw new ApiError(httpStatus.INTERNAL_SERVER_ERROR, 'Failed to create account');
     }
 
     console.log('Auth user created successfully with ID:', authUser.user.id);
 
-    // Wait a moment for the auth user to be fully created
-    await new Promise(resolve => setTimeout(resolve, 1000));
-
-    // Create profile record
-    const now = new Date().toISOString();
-    const { data: profile, error: profileError } = await supabase
+    // Before creating profile, verify the ID doesn't exist
+    const { data: existingProfile } = await supabase
       .from('profiles')
-      .insert([{
-        id: authUser.user.id,
-        name: userInput.name,
-        email: userInput.email,
-        phone_number: userInput.phonenumber,
-        created_at: now,
-        updated_at: now,
-        current_session_id: null,
-        payment_status: null
-      }])
-      .select()
+      .select('id')
+      .eq('id', authUser.user.id)
       .single();
 
-    if (profileError) {
-      console.error('Profile creation error details:', {
-        error: profileError,
-        code: profileError.code,
-        message: profileError.message,
-        details: profileError.details
-      });
+    if (existingProfile) {
+      // If profile exists with this ID, delete it first
+      await supabase
+        .from('profiles')
+        .delete()
+        .eq('id', authUser.user.id);
+      
+      // Wait for deletion
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
 
-      // Delete the auth user if profile creation fails
-      try {
+    // Create profile record with retries
+    let profile = null;
+    let retryCount = 0;
+    const maxRetries = 3;
+
+    while (!profile && retryCount < maxRetries) {
+      const now = new Date().toISOString();
+      const { data: newProfile, error: insertError } = await supabase
+        .from('profiles')
+        .insert([{
+          id: authUser.user.id,
+          name: userInput.name,
+          email: userInput.email,
+          phone_number: userInput.phonenumber,
+          created_at: now,
+          updated_at: now,
+          current_session_id: null,
+          payment_status: null,
+          total_tokens: '0'
+        }])
+        .select()
+        .single();
+
+      if (insertError) {
+        console.error(`Profile creation attempt ${retryCount + 1} failed:`, insertError);
+        
+        if (insertError.code === '23505' && retryCount < maxRetries - 1) {
+          // On conflict, try to delete the conflicting profile
+          await supabase
+            .from('profiles')
+            .delete()
+            .eq('id', authUser.user.id);
+          
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          retryCount++;
+          continue;
+        }
+
+        // If we've exhausted retries or got a different error, clean up and throw
         await supabase.auth.admin.deleteUser(authUser.user.id);
-      } catch (deleteError) {
-        console.error('Failed to cleanup auth user after profile creation failure:', deleteError);
+        throw new ApiError(httpStatus.CONFLICT, 'Account creation conflict. Please try again.');
       }
 
-      throw new ApiError(500, `Failed to create user profile: ${profileError.message}`);
+      profile = newProfile;
+    }
+
+    if (!profile) {
+      await supabase.auth.admin.deleteUser(authUser.user.id);
+      throw new ApiError(httpStatus.INTERNAL_SERVER_ERROR, 'Failed to create profile after multiple attempts');
     }
 
     console.log('Profile created successfully');
@@ -454,7 +598,10 @@ const createUser = async (userInput) => {
       message: error.message,
       stack: error.stack
     });
-    throw error instanceof ApiError ? error : new ApiError(500, error.message);
+    throw error instanceof ApiError ? error : new ApiError(
+      error.statusCode || httpStatus.INTERNAL_SERVER_ERROR,
+      error.message || 'Failed to create account'
+    );
   }
 };
 
