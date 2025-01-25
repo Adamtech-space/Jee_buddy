@@ -17,18 +17,30 @@ const checkAuthStatus = () => {
 
 export const LoadingProvider = ({ children }) => {
   const location = useLocation();
-  // Initialize with precomputed auth status for faster initial load
-  const [isLoading, setIsLoading] = useState(() => !checkAuthStatus());
+  // Initialize with true to show loader during initial auth check
+  const [isLoading, setIsLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(() => checkAuthStatus());
 
-  // Clear loading state on route changes
+  // Initial auth check with loader
   useEffect(() => {
+    const initialAuthCheck = async () => {
+      // Show loader for at least 1 second for better UX
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      setIsLoading(false);
+    };
+    initialAuthCheck();
+  }, []);
+
+  // Clear loading state on route changes, but not during initial load
+  useEffect(() => {
+    if (!isLoading) return; // Skip if already not loading
+    
     const timeoutId = setTimeout(() => {
       setIsLoading(false);
-    }, 300); // Small delay to ensure smooth transitions
+    }, 300);
 
     return () => clearTimeout(timeoutId);
-  }, [location.pathname]);
+  }, [location.pathname, isLoading]);
 
   // Memoized auth update function
   const updateAuth = useCallback((status) => {
@@ -50,8 +62,9 @@ export const LoadingProvider = ({ children }) => {
     
     // Auto-clear loading state after maximum timeout
     const maxLoadingTimeout = setTimeout(() => {
+      console.warn('Loading timeout reached - forcing state clear');
       setIsLoading(false);
-    }, 5000); // 5 second maximum loading time
+    }, 8000); // Increased to 8 seconds for better reliability
 
     return () => {
       document.body.style.overflow = 'unset';
@@ -63,12 +76,11 @@ export const LoadingProvider = ({ children }) => {
   const contextValue = useMemo(() => ({
     isLoading,
     setIsLoading: (value) => {
-      // If setting to true, allow it
-      // If setting to false, add small delay for smooth transition
       if (value) {
         setIsLoading(true);
       } else {
-        setTimeout(() => setIsLoading(false), 100);
+        // Small delay when hiding loader for smooth transition
+        setTimeout(() => setIsLoading(false), 300);
       }
     },
     isAuthenticated,
