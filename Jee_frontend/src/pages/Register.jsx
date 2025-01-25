@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate, Link } from 'react-router-dom';
 import { userRegister, googleSignIn } from '../interceptors/services';
-import { logEvent } from '../utils/analytics';
+import { Analytics } from '@vercel/analytics/react';
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -30,15 +30,13 @@ const Register = () => {
     }
 
     try {
-      const { confirmPassword, ...registrationData } = formData;
+      const { confirmPassword: _, ...registrationData } = formData;
       await userRegister(registrationData);
       setSuccess('Account created successfully! Redirecting to login...');
-      logEvent('User', 'Registration', 'Email Registration');
       setTimeout(() => {
         navigate('/login');
       }, 2000);
     } catch (error) {
-      logEvent('Error', 'Registration Failed', error.message);
       if (error.message?.includes('profiles_pkey')) {
         setError('An account with this email already exists. Please try logging in instead.');
       } else {
@@ -54,13 +52,11 @@ const Register = () => {
     setError('');
 
     try {
-      logEvent('User', 'Google Sign In Attempt', 'Registration Page');
       const response = await googleSignIn();
       if (response.url) {
         window.location.href = response.url;
       }
     } catch (err) {
-      logEvent('Error', 'Google Sign In Failed', err.message);
       setError(err.message || 'Google sign-in failed. Please try again.');
       setIsLoading(false);
     }
@@ -72,6 +68,7 @@ const Register = () => {
 
   return (
     <div className="min-h-screen bg-black flex items-center justify-center p-4">
+      <Analytics />
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}

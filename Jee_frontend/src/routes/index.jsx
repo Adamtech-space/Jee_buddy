@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { useLoading } from '../context/LoadingContext';
+import { Analytics } from '@vercel/analytics/react';
 
 // Layout
 import DefaultLayout from '../components/layouts/DefaultLayout';
@@ -55,98 +56,101 @@ const AppRoutes = () => {
   }
 
   return (
-    <Routes>
-      {/* Public Routes - Only accessible when not logged in */}
-      <Route
-        path="/"
-        element={
-          isAuthenticated ? (
-            <Navigate to="/subject-selection" replace />
-          ) : (
-            <Navigate to="/login" replace />
-          )
-        }
-      />
-
-      {/* Auth Routes - Only accessible when not logged in */}
-      <Route
-        path="/login"
-        element={
-          isAuthenticated ? (
-            <Navigate to="/subject-selection" replace />
-          ) : (
-            <Login />
-          )
-        }
-      />
-      <Route
-        path="/register"
-        element={
-          isAuthenticated ? (
-            <Navigate to="/subject-selection" replace />
-          ) : (
-            <Register />
-          )
-        }
-      />
-      <Route
-        path="/forgot-password"
-        element={
-          isAuthenticated ? (
-            <Navigate to="/subject-selection" replace />
-          ) : (
-            <ForgotPassword />
-          )
-        }
-      />
-      <Route path="/auth/callback" element={<AuthCallback />} />
-
-      {/* Protected Routes - Only accessible when logged in */}
-      <Route element={<ProtectedRoute />}>
+    <>
+      <Routes>
+        {/* Public Routes - Only accessible when not logged in */}
         <Route
-          path="/subject-selection"
+          path="/"
           element={
-            <DefaultLayout>
-              <SubjectSelection />
-            </DefaultLayout>
-          }
-        />
-        <Route
-          path="/settings"
-          element={
-            <DefaultLayout>
-              <Settings />
-            </DefaultLayout>
+            isAuthenticated ? (
+              <Navigate to="/subject-selection" replace />
+            ) : (
+              <Navigate to="/login" replace />
+            )
           }
         />
 
+        {/* Auth Routes - Only accessible when not logged in */}
         <Route
-          path="/dashboard/:subject"
+          path="/login"
           element={
-            <DefaultLayout>
-              <Outlet />
-            </DefaultLayout>
+            isAuthenticated ? (
+              <Navigate to="/subject-selection" replace />
+            ) : (
+              <Login />
+            )
           }
-        >
-          <Route index element={<BooksList />} />
-          <Route path="books" element={<BooksList />} />
-          <Route path="books/:topicId" element={<TopicContent />} />
-          <Route path="flashcards" element={<FlashCards />} />
-          <Route path="materials" element={<StudyMaterials />} />
-          <Route path="question-bank" element={<QuestionBank />} />
-          <Route path="pdf/:pdfUrl" element={<PdfViewer />} />
-          <Route path="topic/:topicId" element={<TopicContent />} />
-          <Route path="settings" element={<Settings />} />
+        />
+        <Route
+          path="/register"
+          element={
+            isAuthenticated ? (
+              <Navigate to="/subject-selection" replace />
+            ) : (
+              <Register />
+            )
+          }
+        />
+        <Route
+          path="/forgot-password"
+          element={
+            isAuthenticated ? (
+              <Navigate to="/subject-selection" replace />
+            ) : (
+              <ForgotPassword />
+            )
+          }
+        />
+        <Route path="/auth/callback" element={<AuthCallback />} />
+
+        {/* Protected Routes - Only accessible when logged in */}
+        <Route element={<ProtectedRoute />}>
+          <Route
+            path="/subject-selection"
+            element={
+              <DefaultLayout>
+                <SubjectSelection />
+              </DefaultLayout>
+            }
+          />
+          <Route
+            path="/settings"
+            element={
+              <DefaultLayout>
+                <Settings />
+              </DefaultLayout>
+            }
+          />
+
+          <Route
+            path="/dashboard/:subject"
+            element={
+              <DefaultLayout>
+                <Outlet />
+              </DefaultLayout>
+            }
+          >
+            <Route index element={<BooksList />} />
+            <Route path="books" element={<BooksList />} />
+            <Route path="books/:topicId" element={<TopicContent />} />
+            <Route path="flashcards" element={<FlashCards />} />
+            <Route path="materials" element={<StudyMaterials />} />
+            <Route path="question-bank" element={<QuestionBank />} />
+            <Route path="pdf/:pdfUrl" element={<PdfViewer />} />
+            <Route path="topic/:topicId" element={<TopicContent />} />
+            <Route path="settings" element={<Settings />} />
+          </Route>
         </Route>
-      </Route>
 
-      {/* Redirects */}
-      <Route
-        path="/dashboard"
-        element={<Navigate to="/subject-selection" replace />}
-      />
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+        {/* Redirects */}
+        <Route
+          path="/dashboard"
+          element={<Navigate to="/subject-selection" replace />}
+        />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+      <Analytics />
+    </>
   );
 };
 

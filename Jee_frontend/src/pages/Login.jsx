@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { useNavigate, Link } from 'react-router-dom';
 import { userLogin, googleSignIn } from '../interceptors/services';
 import { logEvent } from '../utils/analytics';
+import { Analytics } from '@vercel/analytics/react';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -76,6 +77,7 @@ const Login = () => {
 
   return (
     <div className="min-h-screen bg-black flex items-center justify-center p-4">
+      <Analytics />
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
