@@ -1299,10 +1299,12 @@ const ChatBot = ({
           onSubmit={handleSubmit}
           className="relative pb-[env(safe-area-inset-bottom,0px)]"
         >
-          <textarea
+          <input
             ref={inputRef}
             value={chatMessage}
-            onChange={(e) => setMessage(e.target.value)}
+            onChange={(e) => {
+              setMessage(e.target.value);
+            }}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
@@ -1318,6 +1320,8 @@ const ChatBot = ({
               lineHeight: '1.5',
             }}
             rows={1}
+            spellCheck="false"
+            autoComplete="off"
           />
           <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-0.5">
             <button
