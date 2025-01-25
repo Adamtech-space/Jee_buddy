@@ -1299,16 +1299,25 @@ const ChatBot = ({
           onSubmit={handleSubmit}
           className="relative pb-[env(safe-area-inset-bottom,0px)]"
         >
-          <input
+          <textarea
             ref={inputRef}
-            type="text"
             value={chatMessage}
             onChange={(e) => setMessage(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                if (chatMessage.trim() || pinnedImage || selectedTextPreview) {
+                  handleSubmit(e);
+                }
+              }
+            }}
             placeholder="Ask a question..."
-            className="w-full bg-gray-800 text-white text-sm rounded-lg pl-3 pr-24 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="w-full bg-gray-800 text-white text-sm rounded-lg pl-3 pr-24 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none min-h-[40px] max-h-[120px] overflow-y-auto"
             style={{
               fontSize: '16px',
+              lineHeight: '1.5',
             }}
+            rows={1}
           />
           <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-0.5">
             <button
