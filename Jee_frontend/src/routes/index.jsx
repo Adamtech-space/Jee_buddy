@@ -1,9 +1,8 @@
 import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { useLoading } from '../context/LoadingContext';
 
 // Layout
 import DefaultLayout from '../components/layouts/DefaultLayout';
-import AuthLoader from '../components/AuthLoader';
 // Ram landing page
 // import Jeebuddy from '../landingPage/JeeBuddy'
 
@@ -33,25 +32,9 @@ import PdfViewer from '../components/PdfViewer';
 
 // Protected Route Component
 const ProtectedRoute = () => {
-  const [isLoading, setIsLoading] = useState(true);
-  const [isAuth, setIsAuth] = useState(false);
+  const { isAuthenticated } = useLoading();
 
-  useEffect(() => {
-    const checkAuth = () => {
-      const hasTokens = localStorage.getItem('tokens');
-      const hasUser = localStorage.getItem('user');
-      setIsAuth(hasTokens && hasUser);
-      setIsLoading(false);
-    };
-
-    checkAuth();
-  }, []);
-
-  if (isLoading) {
-    return <AuthLoader />;
-  }
-
-  if (!isAuth) {
+  if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
 
