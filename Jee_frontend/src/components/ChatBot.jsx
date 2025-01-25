@@ -433,15 +433,17 @@ const ChatBot = ({
   // Listen for AI questions from other components
   useEffect(() => {
     const handleAIQuestion = (event) => {
-      if (event.detail?.question) {
-        const text = event.detail.question;
-        const source = event.detail.source || 'Selected Text';
-
-        // Set the selected text preview
-        setSelectedTextPreview({
-          content: text,
-          source: source,
+      // Handle captured image
+      if (event.detail?.imageData) {
+        // Pin the image instead of sending immediately
+        setPinnedImage({
+          content: event.detail.imageData,
+          previewImageData: event.detail.previewImageData,
+          imageWidth: event.detail.imageWidth,
+          imageHeight: event.detail.imageHeight,
+          source: event.detail.source,
         });
+        setIsPinnedImage(true); // Auto-pin the image
 
         // Open chat if not already open
         if (!isOpen) {
@@ -449,6 +451,23 @@ const ChatBot = ({
         }
 
         // Focus the input for user to type their question
+        if (inputRef.current) {
+          inputRef.current.focus();
+        }
+      }
+      // Handle text selection
+      else if (event.detail?.question) {
+        setSelectedTextPreview({
+          content: event.detail.question,
+          source: event.detail.source || 'Selected Text',
+        });
+
+        // Open chat if not already open
+        if (!isOpen) {
+          setIsOpen(true);
+        }
+
+        // Focus the input for text questions
         if (inputRef.current) {
           inputRef.current.focus();
         }
@@ -590,18 +609,6 @@ const ChatBot = ({
           </div>
         )}
 
-        {/* Edit button for user messages */}
-        {msg.sender === 'user' && !isEditing && (
-          <div className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 mr-2">
-            <button
-              onClick={() => handleEditMessage(msg.id, msg.content)}
-              className="p-1.5 rounded-lg hover:bg-gray-800 transition-colors"
-            >
-              <PencilIcon className="w-4 h-4 text-gray-400" />
-            </button>
-          </div>
-        )}
-
         <div
           className={`flex flex-col ${msg.sender === 'user' ? 'items-end' : 'items-start'} max-w-[75%]`}
         >
@@ -639,16 +646,20 @@ const ChatBot = ({
               <div className="space-y-2">
                 <div className="relative bg-gray-800/50 rounded p-2">
                   <img
-                    src={msg.content}
-                    alt="Uploaded content"
-                    className="w-32 h-32 object-cover rounded"
+                    src={msg.previewImageData || msg.content}
+                    alt="Captured content"
+                    className="max-w-full rounded"
+                    style={{
+                      width: msg.imageWidth || 'auto',
+                      height: msg.imageHeight || 'auto',
+                      maxHeight: '200px',
+                      objectFit: 'contain',
+                    }}
                   />
-                  {msg.fileName && (
-                    <div className="flex items-center gap-1 text-xs text-gray-300 mt-1">
-                      <span className="inline-block w-1 h-1 bg-gray-400 rounded-full"></span>
-                      <span>{msg.fileName}</span>
-                    </div>
-                  )}
+                  <div className="flex items-center gap-1 text-xs text-gray-300 mt-1">
+                    <span className="inline-block w-1 h-1 bg-gray-400 rounded-full"></span>
+                    <span>{msg.source}</span>
+                  </div>
                 </div>
                 {msg.question && (
                   <div className="text-[15px]">{msg.question}</div>
@@ -855,7 +866,59 @@ const ChatBot = ({
 
   HelpCarousel.propTypes = {
     activeHelpType: PropTypes.string,
-    handleHelpClick: PropTypes.func.isRequired
+    handleHelpClick: PropTypes.func.isRequired,
+  };
+
+  // Modify the pinned image preview component
+  const PinnedImagePreview = () => {
+    if (!pinnedImage) return null;
+
+    return (
+      <div className="mb-2 flex items-start bg-gray-800/50 rounded-lg p-2">
+        <div className="relative min-w-[100px] max-w-[150px]">
+          <img
+            src={pinnedImage.previewImageData || pinnedImage.content}
+            alt="Pinned"
+            className="w-full h-auto rounded object-contain"
+            style={{
+              maxHeight: '100px',
+            }}
+          />
+        </div>
+        <div className="ml-2 flex-1 min-w-0">
+          <div className="flex items-center gap-1 mb-1">
+            <span className="text-xs text-gray-400">Captured Image</span>
+            <span className="text-[10px] text-gray-500">•</span>
+            <span className="text-[10px] text-gray-500 truncate">
+              {pinnedImage.source}
+            </span>
+          </div>
+          <div className="text-xs text-gray-300">
+            Type your question about this image
+          </div>
+        </div>
+        <div className="flex items-center gap-1 ml-2">
+          <button
+            onClick={() => setIsPinnedImage(!isPinnedImage)}
+            className="p-1 hover:bg-gray-700/50 rounded-full transition-colors"
+            title={isPinnedImage ? 'Unpin image' : 'Pin image'}
+          >
+            <span
+              className={`text-sm ${isPinnedImage ? 'opacity-100' : 'opacity-50 hover:opacity-75'} transition-opacity`}
+            >
+              📌
+            </span>
+          </button>
+          <button
+            onClick={() => setPinnedImage(null)}
+            className="p-1 hover:bg-gray-700/50 rounded-full transition-colors"
+            title="Remove image"
+          >
+            <XMarkIcon className="h-4 w-4 text-gray-400 hover:text-white" />
+          </button>
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -991,7 +1054,9 @@ const ChatBot = ({
                 onClick={() => setIsPinnedText(!isPinnedText)}
                 className="p-1 hover:bg-gray-700/50 rounded-full transition-colors flex-shrink-0"
               >
-                <span className={`text-sm ${isPinnedText ? 'opacity-100' : 'opacity-50 hover:opacity-75'} transition-opacity`}>
+                <span
+                  className={`text-sm ${isPinnedText ? 'opacity-100' : 'opacity-50 hover:opacity-75'} transition-opacity`}
+                >
                   📌
                 </span>
               </button>
@@ -1006,39 +1071,13 @@ const ChatBot = ({
         )}
 
         {/* Pinned Image Preview */}
-        {pinnedImage && (
-          <div className="mb-2 flex items-center bg-gray-800/50 rounded-lg p-2">
-            <div className="relative w-12 h-12 flex-shrink-0">
-              <img
-                src={pinnedImage.content}
-                alt="Pinned"
-                className="w-full h-full object-cover rounded"
-              />
-            </div>
-            <div className="ml-2 flex-1 text-sm text-gray-300 truncate">
-              {pinnedImage.fileName}
-            </div>
-            <div className="flex items-center gap-1">
-              <button
-                onClick={() => setIsPinnedImage(!isPinnedImage)}
-                className="p-1 hover:bg-gray-700/50 rounded-full transition-colors"
-              >
-                <span className={`text-sm ${isPinnedImage ? 'opacity-100' : 'opacity-5 hover:opacity-75'} transition-opacity`}>
-                  📌
-                </span>
-              </button>
-              <button
-                onClick={() => setPinnedImage(null)}
-                className="p-1 hover:bg-gray-700/50 rounded-full transition-colors"
-              >
-                <XMarkIcon className="h-4 w-4 text-gray-400 hover:text-white" />
-              </button>
-            </div>
-          </div>
-        )}
+        <PinnedImagePreview />
 
         {/* Input Form */}
-        <form onSubmit={handleSubmit} className="relative pb-[env(safe-area-inset-bottom,0px)]">
+        <form
+          onSubmit={handleSubmit}
+          className="relative pb-[env(safe-area-inset-bottom,0px)]"
+        >
           <input
             ref={inputRef}
             type="text"
