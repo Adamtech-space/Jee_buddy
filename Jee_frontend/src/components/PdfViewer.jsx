@@ -3,15 +3,12 @@ import { useParams, useLocation, useNavigate, useOutletContext } from 'react-rou
 import { message, Modal } from 'antd';
 import {
   ArrowLeftOutlined,
-  ZoomInOutlined,
-  ZoomOutOutlined,
   CameraOutlined,
   CheckOutlined,
   RedoOutlined,
   CloseOutlined,
 } from '@ant-design/icons';
 import { Viewer, Worker } from '@react-pdf-viewer/core';
-import { zoomPlugin } from '@react-pdf-viewer/zoom';
 import { saveFlashCard } from '../interceptors/services';
 import SelectionPopup from './SelectionPopup';
 import AreaSelector from './AreaSelector';
@@ -21,7 +18,6 @@ import html2canvas from 'html2canvas';
 
 // Import styles
 import '@react-pdf-viewer/core/lib/styles/index.css';
-import '@react-pdf-viewer/zoom/lib/styles/index.css';
 
 const PdfViewer = () => {
   const { pdfUrl: encodedUrl, subject } = useParams();
@@ -36,48 +32,6 @@ const PdfViewer = () => {
   const [viewerContainerRef, setViewerContainerRef] = useState(null);
   const [capturedImage, setCapturedImage] = useState(null);
   const [showConfirmation, setShowConfirmation] = useState(false);
-
-  // Initialize MathJax
-  useEffect(() => {
-    // Configure MathJax
-    window.MathJax = {
-      tex: {
-        inlineMath: [
-          ['$', '$'],
-          ['\\(', '\\)'],
-        ],
-        displayMath: [
-          ['$$', '$$'],
-          ['\\[', '\\]'],
-        ],
-        processEscapes: true,
-      },
-      options: {
-        skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
-      },
-      startup: {
-        typeset: false, // Prevent automatic typesetting on startup
-      },
-    };
-
-    // Load MathJax script
-    const script = document.createElement('script');
-    script.src = 'https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js';
-    script.async = true;
-    document.head.appendChild(script);
-
-    return () => {
-      if (document.head.contains(script)) {
-        document.head.removeChild(script);
-      }
-    };
-  }, []);
-
-  // Initialize zoom plugin with custom levels
-  const zoomPluginInstance = zoomPlugin({
-    levels: [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 2.5, 3],
-  });
-  const { ZoomInButton, ZoomOutButton, ZoomPopover } = zoomPluginInstance;
 
   // Get the actual URL from either state or params
   const pdfUrl = location.state?.pdfUrl || decodeURIComponent(encodedUrl);
@@ -363,124 +317,157 @@ const PdfViewer = () => {
         </button>
       </div>
 
-      {/* Zoom and Screenshot controls - Right side */}
-      <div className="absolute top-2 right-2 sm:top-4 sm:right-4 z-50 flex items-center gap-2">
-        <div className="flex items-center gap-2">
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setIsAreaSelecting((prev) => !prev);
-            }}
-            className={`
-              group relative px-3 py-1.5 rounded-xl transition-all duration-300 ease-in-out
-              ${
-                isAreaSelecting
-                  ? 'bg-gradient-to-r from-blue-600 to-blue-400 shadow-lg shadow-blue-500/30'
-                  : 'bg-gray-800/90 hover:bg-gray-700/90'
-              }
-              backdrop-blur-sm border border-white/10
-            `}
-          >
-            <div className="relative flex items-center gap-2">
-              <span className="flex items-center justify-center text-blue-400">
-                <CameraOutlined className="text-base" />
-              </span>
-              <span className="text-sm font-medium text-white">Capture</span>
-            </div>
-            {isAreaSelecting && (
-              <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-400/20 to-blue-300/20 animate-pulse"></div>
-            )}
-          </button>
-        </div>
-
-        <div className="h-5 w-px bg-gray-700/50"></div>
-
-        {/* Zoom controls */}
-        <div className="flex items-center gap-2">
-          <ZoomOutButton>
-            {(props) => (
-              <button
-                className="p-1.5 text-white hover:text-blue-400 transition-colors bg-gray-800/90 backdrop-blur-sm rounded-lg border border-white/10"
-                onClick={props.onClick}
-              >
-                <ZoomOutOutlined className="text-sm sm:text-base" />
-              </button>
-            )}
-          </ZoomOutButton>
-
-          <ZoomPopover>
-            {(props) => (
-              <button className="px-3 py-1.5 text-white bg-gray-800/90 backdrop-blur-sm rounded-lg border border-white/10 hover:text-blue-400 transition-colors">
-                <span className="text-xs sm:text-sm">
-                  {Math.round(props.scale * 100)}%
-                </span>
-              </button>
-            )}
-          </ZoomPopover>
-
-          <ZoomInButton>
-            {(props) => (
-              <button
-                className="p-1.5 text-white hover:text-blue-400 transition-colors bg-gray-800/90 backdrop-blur-sm rounded-lg border border-white/10"
-                onClick={props.onClick}
-              >
-                <ZoomInOutlined className="text-sm sm:text-base" />
-              </button>
-            )}
-          </ZoomInButton>
-        </div>
+      {/* Desktop Capture Button (Top Right) */}
+      <div className="absolute top-2 right-2 sm:top-4 sm:right-4 z-50 md:flex hidden">
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            if (isAreaSelecting) {
+              handleCancelAreaSelection();
+            } else {
+              setIsAreaSelecting(true);
+            }
+          }}
+          className={`
+            group relative px-4 py-2 rounded-xl transition-all duration-300 ease-in-out
+            ${
+              isAreaSelecting
+                ? 'bg-red-500/90 hover:bg-red-600/90 shadow-lg shadow-red-500/30'
+                : 'bg-gray-800/90 hover:bg-gray-700/90'
+            }
+            backdrop-blur-sm border border-white/10
+          `}
+        >
+          <div className="relative flex items-center gap-3">
+            <span
+              className={`flex items-center justify-center ${isAreaSelecting ? 'text-white' : 'text-blue-400'}`}
+            >
+              {isAreaSelecting ? (
+                <CloseOutlined className="text-base" />
+              ) : (
+                <div className="relative">
+                  <CameraOutlined className="text-base" />
+                  <div className="absolute -right-1 -bottom-1 text-[10px] group-hover:translate-x-0.5 group-hover:translate-y-0.5 transition-transform duration-300">
+                    <svg
+                      width="8"
+                      height="8"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        d="M14 5L21 12M21 12L14 19M21 12H3"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </div>
+                </div>
+              )}
+            </span>
+            <span
+              className={`text-sm font-medium flex items-center gap-1 ${isAreaSelecting ? 'text-white' : 'text-gray-300 group-hover:text-white'}`}
+            >
+              {isAreaSelecting ? (
+                'Cancel'
+              ) : (
+                <>
+                  Drag to capture
+                  <span className="text-[10px] opacity-60 bg-white/10 px-1.5 py-0.5 rounded">
+                    Click
+                  </span>
+                </>
+              )}
+            </span>
+          </div>
+        </button>
       </div>
 
-      {/* Area Selector with Floating Controls */}
+      {/* Mobile Capture Button (Bottom) */}
+      <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50 md:hidden">
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            if (isAreaSelecting) {
+              handleCancelAreaSelection();
+            } else {
+              setIsAreaSelecting(true);
+            }
+          }}
+          className={`
+            group relative px-4 py-2 rounded-full transition-all duration-300 ease-in-out
+            ${
+              isAreaSelecting
+                ? 'bg-red-500/90 hover:bg-red-600/90 shadow-lg shadow-red-500/30'
+                : 'bg-gray-800/90 hover:bg-gray-700/90'
+            }
+            backdrop-blur-sm border border-white/10 shadow-lg
+          `}
+        >
+          <div className="relative flex items-center gap-3">
+            <span
+              className={`flex items-center justify-center ${isAreaSelecting ? 'text-white' : 'text-blue-400'}`}
+            >
+              {isAreaSelecting ? (
+                <CloseOutlined className="text-lg" />
+              ) : (
+                <div className="relative">
+                  <CameraOutlined className="text-lg" />
+                  <div className="absolute -right-1 -bottom-1 text-xs group-hover:translate-x-0.5 group-hover:translate-y-0.5 transition-transform duration-300">
+                    <svg
+                      width="8"
+                      height="8"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        d="M14 5L21 12M21 12L14 19M21 12H3"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </div>
+                </div>
+              )}
+            </span>
+            <span
+              className={`text-sm font-medium flex items-center gap-1 ${isAreaSelecting ? 'text-white' : 'text-gray-300 group-hover:text-white'}`}
+            >
+              {isAreaSelecting ? (
+                'Cancel'
+              ) : (
+                <>
+                  Drag to capture
+                  <span className="text-[10px] opacity-60 bg-white/10 px-1.5 py-0.5 rounded">
+                    Click
+                  </span>
+                </>
+              )}
+            </span>
+          </div>
+        </button>
+      </div>
+
+      {/* Area Selector */}
       {isAreaSelecting && (
-        <>
+        <div className="fixed inset-0" style={{ zIndex: 40 }}>
           <AreaSelector
             onAreaSelected={handleAreaSelected}
             onCancel={handleCancelAreaSelection}
           />
-          <div
-            className="fixed top-20 left-1/2 transform -translate-x-1/2 z-50 bg-gray-900/95 backdrop-blur-sm rounded-full shadow-lg border border-gray-800"
-            style={{ maxWidth: '90vw' }}
-          >
-            <div className="flex items-center gap-2 px-1">
-              <div className="px-4 py-2 text-white/90 text-sm whitespace-nowrap">
-                Click and drag to select an area
-              </div>
-              <div className="w-px h-6 bg-gray-700/50"></div>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleCancelAreaSelection();
-                }}
-                className="
-                  px-4 py-2 text-white/90 rounded-full
-                  transition-all duration-200 ease-in-out
-                  hover:bg-red-500/90 hover:text-white
-                  flex items-center gap-2 whitespace-nowrap
-                "
-              >
-                <CloseOutlined className={isMobile ? 'text-sm' : ''} />
-                <span className={`text-sm ${isMobile ? 'hidden' : ''}`}>
-                  Cancel
-                </span>
-              </button>
-            </div>
-          </div>
-        </>
+        </div>
       )}
 
       {/* Error Display */}
       {error && (
-        <div className="text-red-500 bg-red-100 border border-red-400 rounded p-4 m-4">
+        <div className="absolute top-[72px] left-4 right-4 z-[110] text-red-500 bg-red-100 border border-red-400 rounded p-4">
           <p className="font-bold">Error:</p>
           <p>{error}</p>
-        </div>
-      )}
-
-      {/* Loading Display */}
-      {loading && (
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-blue-500"></div>
         </div>
       )}
 
@@ -494,7 +481,6 @@ const PdfViewer = () => {
             fileUrl={pdfUrl}
             defaultScale={isMobile ? 1 : 'PageWidth'}
             theme="dark"
-            plugins={[zoomPluginInstance]}
             className="h-full"
             renderLoader={(percentages) => (
               <div className="flex items-center justify-center h-full">

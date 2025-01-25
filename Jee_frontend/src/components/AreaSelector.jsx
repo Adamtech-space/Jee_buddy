@@ -1,71 +1,53 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import PropTypes from 'prop-types';
 
 const AreaSelector = ({ onAreaSelected, onCancel }) => {
   const [isSelecting, setIsSelecting] = useState(false);
   const [startPos, setStartPos] = useState({ x: 0, y: 0 });
   const [currentPos, setCurrentPos] = useState({ x: 0, y: 0 });
-  const [showMagnifier, setShowMagnifier] = useState(false);
+  const [showHint, setShowHint] = useState(true);
 
-  const getPosition = (e) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
-    const y = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
-    return { x, y };
-  };
+  const handleMouseDown = useCallback((e) => {
+    // Only handle left mouse button
+    if (e.button !== 0) return;
 
-  const handleStart = useCallback((e) => {
-    // Only handle left mouse button or touch
-    if (e.type === 'mousedown' && e.button !== 0) return;
-    e.preventDefault();
-
-    const pos = getPosition(e);
-    setStartPos(pos);
-    setCurrentPos(pos);
+    const x = e.clientX;
+    const y = e.clientY;
+    setStartPos({ x, y });
+    setCurrentPos({ x, y });
     setIsSelecting(true);
-    setShowMagnifier(true);
   }, []);
 
-  const handleMove = useCallback(
+  const handleMouseMove = useCallback(
     (e) => {
       if (!isSelecting) return;
-      e.preventDefault();
-
-      const pos = getPosition(e);
-      setCurrentPos(pos);
+      setCurrentPos({ x: e.clientX, y: e.clientY });
     },
     [isSelecting]
   );
 
-  const handleEnd = useCallback(
-    (e) => {
-      if (!isSelecting) return;
-      e.preventDefault();
+  const handleMouseUp = useCallback(() => {
+    if (!isSelecting) return;
 
-      setIsSelecting(false);
-      setShowMagnifier(false);
+    const rect = {
+      x: Math.min(startPos.x, currentPos.x),
+      y: Math.min(startPos.y, currentPos.y),
+      width: Math.abs(currentPos.x - startPos.x),
+      height: Math.abs(currentPos.y - startPos.y),
+    };
 
-      // Calculate the selection rectangle
-      const rect = {
-        x: Math.min(startPos.x, currentPos.x),
-        y: Math.min(startPos.y, currentPos.y),
-        width: Math.abs(currentPos.x - startPos.x),
-        height: Math.abs(currentPos.y - startPos.y),
-      };
+    // Only trigger if area is large enough
+    if (rect.width > 10 && rect.height > 10) {
+      onAreaSelected(rect);
+    }
 
-      // Only trigger if the area is large enough
-      if (rect.width > 10 && rect.height > 10) {
-        onAreaSelected(rect);
-      }
-    },
-    [isSelecting, startPos, currentPos, onAreaSelected]
-  );
+    setIsSelecting(false);
+  }, [isSelecting, startPos, currentPos, onAreaSelected]);
 
   const handleKeyDown = useCallback(
     (e) => {
       if (e.key === 'Escape') {
         setIsSelecting(false);
-        setShowMagnifier(false);
         onCancel();
       }
     },
@@ -74,70 +56,52 @@ const AreaSelector = ({ onAreaSelected, onCancel }) => {
 
   useEffect(() => {
     document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [handleKeyDown]);
+  }, [handleKeyDown, handleMouseMove, handleMouseUp]);
 
-  const selectionStyle = {
-    position: 'absolute',
-    left: Math.min(startPos.x, currentPos.x),
-    top: Math.min(startPos.y, currentPos.y),
-    width: Math.abs(currentPos.x - startPos.x),
-    height: Math.abs(currentPos.y - startPos.y),
-    border: '2px solid #3B82F6',
-    backgroundColor: 'rgba(59, 130, 246, 0.1)',
-    pointerEvents: 'none',
-  };
+  useEffect(() => {
+    if (isSelecting) {
+      setShowHint(false);
+    }
+  }, [isSelecting]);
 
-  const magnifierStyle = showMagnifier
+  const selectionStyle = isSelecting
     ? {
-        position: 'absolute',
-        left: currentPos.x + 20,
-        top: currentPos.y - 60,
-        width: '120px',
-        height: '120px',
-        border: '2px solid #3B82F6',
-        borderRadius: '50%',
-        backgroundColor: 'white',
-        pointerEvents: 'none',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontSize: '12px',
-        color: '#666',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
-        zIndex: 1000,
+        left: Math.min(startPos.x, currentPos.x),
+        top: Math.min(startPos.y, currentPos.y),
+        width: Math.abs(currentPos.x - startPos.x),
+        height: Math.abs(currentPos.y - startPos.y),
       }
     : null;
 
   return (
     <div
-      className="fixed inset-0 cursor-crosshair bg-black bg-opacity-30 z-50"
-      onMouseDown={handleStart}
-      onMouseMove={handleMove}
-      onMouseUp={handleEnd}
-      onTouchStart={handleStart}
-      onTouchMove={handleMove}
-      onTouchEnd={handleEnd}
+      className="fixed inset-0 cursor-crosshair bg-black/20"
+      onMouseDown={handleMouseDown}
     >
-      <div className="absolute inset-0 flex items-center justify-center text-white pointer-events-none">
-        <p>Click and drag to select an area</p>
-        {isSelecting && (
-          <p className="absolute bottom-4 left-1/2 transform -translate-x-1/2">
-            Size: {Math.round(Math.abs(currentPos.x - startPos.x))} x{' '}
-            {Math.round(Math.abs(currentPos.y - startPos.y))}
-          </p>
-        )}
-      </div>
-      {isSelecting && <div style={selectionStyle} />}
-      {magnifierStyle && (
-        <div style={magnifierStyle}>
-          <span>
-            {Math.round(Math.abs(currentPos.x - startPos.x))} x{' '}
-            {Math.round(Math.abs(currentPos.y - startPos.y))}
-          </span>
+      {/* Simple top instruction */}
+      {showHint && !isSelecting && (
+        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 pointer-events-none">
+          <div className="px-4 py-2 bg-gray-900/80 backdrop-blur-sm rounded-lg shadow-lg">
+            <p className="text-white/90 text-xs sm:text-sm font-medium whitespace-nowrap">
+              Click and drag to select
+            </p>
+          </div>
         </div>
+      )}
+
+      {isSelecting && selectionStyle && (
+        <div
+          className="absolute border-2 border-blue-500 bg-blue-500/10"
+          style={selectionStyle}
+        />
       )}
     </div>
   );
