@@ -1,7 +1,7 @@
 // Google Analytics utility functions
 const GA_TRACKING_ID = 'G-95Y1Z3HJSF';
-const MAX_RETRIES = 5;  // Increased retries
-const RETRY_DELAY = 1000; // Increased delay
+const MAX_RETRIES = 10;  // Increased retries
+const RETRY_DELAY = 500; // Decreased delay for faster checking
 
 // Environment detection
 const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
@@ -23,13 +23,7 @@ const isGALoaded = () => {
     return true;
   }
   
-  // Check for load error
-  if (window.gaLoadError) {
-    console.error('❌ GA failed to load (script error)');
-    return false;
-  }
-  
-  return window.gaLoaded === true && typeof window.gtag === 'function';
+  return typeof window.gtag === 'function';
 };
 
 // Wait for GA to be available
@@ -51,13 +45,6 @@ const waitForGtag = () => new Promise((resolve) => {
 
   let retries = 0;
   const check = () => {
-    // Check for load error
-    if (window.gaLoadError) {
-      console.error('❌ GA script failed to load');
-      resolve(false);
-      return;
-    }
-
     if (isGALoaded()) {
       console.log('✅ GA initialized successfully');
       resolve(true);
@@ -69,8 +56,8 @@ const waitForGtag = () => new Promise((resolve) => {
       console.log(`⏳ Waiting for GA (${retries}/${MAX_RETRIES})`);
       setTimeout(check, RETRY_DELAY);
     } else {
-      console.error('❌ GA initialization timeout');
-      resolve(false);
+      console.warn('⚠️ GA initialization timeout - continuing without analytics');
+      resolve(isDevelopment); // Resolve true in development, false in production
     }
   };
 
@@ -87,25 +74,11 @@ export const initGA = async () => {
 
   try {
     const isAvailable = await waitForGtag();
-    
-    if (!isAvailable && !isDevelopment) {
-      return false;
-    }
-
-    // Send initial pageview
-    const eventData = {
-      page_title: document.title,
-      page_location: window.location.href,
-      page_path: window.location.pathname,
-      send_to: GA_TRACKING_ID
-    };
-
-    window.gtag('event', 'page_view', eventData);
-    isInitialized = true;
-    return true;
+    isInitialized = isAvailable;
+    return isAvailable;
   } catch (error) {
-    console.error('❌ GA initialization error:', error);
-    return false;
+    console.warn('⚠️ GA initialization error:', error);
+    return isDevelopment;
   }
 };
 
@@ -132,13 +105,12 @@ export const testGAEvent = async () => {
 
 // Log page view
 export const logPageView = async (path = window.location.pathname) => {
-  try {
-    const isAvailable = await waitForGtag();
-    if (!isAvailable && !isDevelopment) {
-      console.warn('⚠️ Skipping page view - GA not available');
-      return;
-    }
+  if (!isGALoaded() && !isDevelopment) {
+    console.warn('⚠️ Skipping page view - GA not available');
+    return;
+  }
 
+  try {
     const eventData = {
       page_location: window.location.origin + path,
       page_path: path,
@@ -148,19 +120,18 @@ export const logPageView = async (path = window.location.pathname) => {
 
     window.gtag('event', 'page_view', eventData);
   } catch (error) {
-    console.error('❌ Page view logging failed:', error);
+    console.warn('⚠️ Page view logging failed:', error);
   }
 };
 
 // Log custom event
 export const logEvent = async (category, action, label = null) => {
-  try {
-    const isAvailable = await waitForGtag();
-    if (!isAvailable && !isDevelopment) {
-      console.warn('⚠️ Skipping event - GA not available');
-      return;
-    }
+  if (!isGALoaded() && !isDevelopment) {
+    console.warn('⚠️ Skipping event - GA not available');
+    return;
+  }
 
+  try {
     const eventData = {
       event_category: category,
       event_label: label,
@@ -169,7 +140,7 @@ export const logEvent = async (category, action, label = null) => {
 
     window.gtag('event', action, eventData);
   } catch (error) {
-    console.error('❌ Event logging failed:', error);
+    console.warn('⚠️ Event logging failed:', error);
   }
 };
 
