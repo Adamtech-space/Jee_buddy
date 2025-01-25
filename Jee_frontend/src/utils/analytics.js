@@ -6,8 +6,8 @@ const RETRY_DELAY = 1000; // Increased delay
 // Environment detection
 const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 
-// Track if we've shown init message
-let hasShownInitMessage = false;
+// Track initialization status
+let isInitialized = false;
 
 // Development mode mock implementation
 const mockGtag = (...args) => {
@@ -80,6 +80,11 @@ const waitForGtag = () => new Promise((resolve) => {
 
 // Initialize GA
 export const initGA = async () => {
+  // Prevent multiple initializations
+  if (isInitialized) {
+    return true;
+  }
+
   try {
     const isAvailable = await waitForGtag();
     
@@ -96,6 +101,7 @@ export const initGA = async () => {
     };
 
     window.gtag('event', 'page_view', eventData);
+    isInitialized = true;
     return true;
   } catch (error) {
     console.error('❌ GA initialization error:', error);
