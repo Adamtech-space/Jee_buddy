@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useParams, useLocation, useNavigate, useOutletContext } from 'react-router-dom';
-import { message } from 'antd';
+import { message, Modal } from 'antd';
 import {
   ArrowLeftOutlined,
   ZoomInOutlined,
   ZoomOutOutlined,
   CameraOutlined,
+  CheckOutlined,
+  RedoOutlined,
 } from '@ant-design/icons';
 import { Viewer, Worker } from '@react-pdf-viewer/core';
 import { zoomPlugin } from '@react-pdf-viewer/zoom';
@@ -31,6 +33,8 @@ const PdfViewer = () => {
   const { handleTextSelection } = useSelection();
   const [isAreaSelecting, setIsAreaSelecting] = useState(false);
   const [viewerContainerRef, setViewerContainerRef] = useState(null);
+  const [capturedImage, setCapturedImage] = useState(null);
+  const [showConfirmation, setShowConfirmation] = useState(false);
 
   // Initialize MathJax
   useEffect(() => {
@@ -206,32 +210,50 @@ const PdfViewer = () => {
       const ctx = previewCanvas.getContext('2d');
       ctx.drawImage(canvas, 0, 0, previewWidth, previewHeight);
 
-      // Convert to base64
-      const imageData = canvas.toDataURL('image/png'); // Original size for AI
-      const previewImageData = previewCanvas.toDataURL('image/png'); // Preview size for chat
+      // Store captured image data
+      setCapturedImage({
+        imageData: canvas.toDataURL('image/png'),
+        previewImageData: previewCanvas.toDataURL('image/png'),
+        width: previewWidth,
+        height: previewHeight,
+      });
 
-      // Open chat with the image
-      setIsChatOpen(true);
-      setTimeout(() => {
-        const eventData = {
-          detail: {
-            source: `PDF: ${pdfTitle}`,
-            imageData: imageData, // Full size for AI processing
-            previewImageData: previewImageData, // Small size for chat display
-            imageWidth: previewWidth,
-            imageHeight: previewHeight,
-          },
-        };
-        window.dispatchEvent(new CustomEvent('setAIQuestion', eventData));
-      }, 100);
-
-      message.success('Image captured - Ask your question in the chat');
+      // Show confirmation dialog
+      setShowConfirmation(true);
     } catch (err) {
       console.error('Error capturing area:', err);
       message.error('Failed to capture the selected area');
     } finally {
       setIsAreaSelecting(false);
     }
+  };
+
+  const handleConfirm = () => {
+    if (!capturedImage) return;
+
+    setIsChatOpen(true);
+    setTimeout(() => {
+      const eventData = {
+        detail: {
+          source: `PDF: ${pdfTitle}`,
+          imageData: capturedImage.imageData,
+          previewImageData: capturedImage.previewImageData,
+          imageWidth: capturedImage.width,
+          imageHeight: capturedImage.height,
+        },
+      };
+      window.dispatchEvent(new CustomEvent('setAIQuestion', eventData));
+    }, 100);
+
+    setShowConfirmation(false);
+    setCapturedImage(null);
+    message.success('Image captured - Ask your question in the chat');
+  };
+
+  const handleReselect = () => {
+    setShowConfirmation(false);
+    setCapturedImage(null);
+    setIsAreaSelecting(true);
   };
 
   const handleCancelAreaSelection = () => {
@@ -435,6 +457,47 @@ const PdfViewer = () => {
         onSaveToFlashCard={handleSaveToFlashCard}
         onAskAI={handleAskAI}
       />
+
+      {/* Confirmation Modal */}
+      <Modal
+        title="Confirm Selection"
+        open={showConfirmation}
+        footer={null}
+        closable={false}
+        centered
+        className="confirmation-modal"
+      >
+        <div className="space-y-4">
+          {capturedImage && (
+            <div className="relative bg-gray-800/50 rounded-lg p-2">
+              <img
+                src={capturedImage.imageData}
+                alt="Selected area"
+                className="w-full h-auto rounded-lg"
+                style={{
+                  maxHeight: '300px',
+                  objectFit: 'contain',
+                  maxWidth: '100%',
+                }}
+              />
+            </div>
+          )}
+          <div className="flex justify-end gap-2 mt-4">
+            <button
+              onClick={handleReselect}
+              className="flex items-center gap-1.5 px-4 py-2 text-sm bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
+            >
+              <RedoOutlined /> Reselect
+            </button>
+            <button
+              onClick={handleConfirm}
+              className="flex items-center gap-1.5 px-4 py-2 text-sm bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors"
+            >
+              <CheckOutlined /> Confirm
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };
