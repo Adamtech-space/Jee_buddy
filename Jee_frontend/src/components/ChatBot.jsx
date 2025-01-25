@@ -214,6 +214,17 @@ const ChatBot = ({
   const [chatHistory, setChatHistory] = useState([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
 
+  // Add focus management effect
+  useEffect(() => {
+    if (isOpen && inputRef.current) {
+      // Small delay to ensure the component is fully mounted
+      const timer = setTimeout(() => {
+        inputRef.current.focus();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen]);
+
   // Update scroll logic for smoother control
   useEffect(() => {
     const container = document.querySelector('.overflow-y-auto');
@@ -710,13 +721,16 @@ const ChatBot = ({
   };
 
   // Memoize the help click handler
-  const handleHelpClick = useCallback((type) => {
-    if (activeHelpType === type) {
-      setActiveHelpType(null);
-    } else {
-      setActiveHelpType(type);
-    }
-  }, [activeHelpType]);
+  const handleHelpClick = useCallback(
+    (type) => {
+      if (activeHelpType === type) {
+        setActiveHelpType(null);
+      } else {
+        setActiveHelpType(type);
+      }
+    },
+    [activeHelpType]
+  );
 
   const renderMessage = (msg, index) => {
     const isLastMessage = index === messages.length - 1;
@@ -914,7 +928,7 @@ const ChatBot = ({
   useEffect(() => {
     const loadTodayChats = async () => {
       if (!isOpen) return;
-      
+
       try {
         setIsLoading(true);
         const userData = JSON.parse(localStorage.getItem('user')) || {};
@@ -927,14 +941,16 @@ const ChatBot = ({
         const response = await aiService.getChatHistory(userData.id, sessionId);
         if (response.chat_history) {
           // Find today's chats
-          const todayGroup = response.chat_history.find(group => group.title === 'Today');
+          const todayGroup = response.chat_history.find(
+            (group) => group.title === 'Today'
+          );
           if (todayGroup && todayGroup.chats.length > 0) {
             loadChatsFromPeriod(todayGroup.chats);
           }
           setChatHistory(response.chat_history);
         }
       } catch (error) {
-        console.error('Failed to load today\'s chats:', error);
+        console.error("Failed to load today's chats:", error);
       } finally {
         setIsLoading(false);
       }
@@ -949,24 +965,24 @@ const ChatBot = ({
       setIsLoading(true);
       // Combine all messages from the period's chats
       const allMessages = [];
-      periodChats.forEach(chat => {
+      periodChats.forEach((chat) => {
         if (chat.messages && chat.messages.length > 0) {
           // Add each message with proper formatting
-          chat.messages.forEach(msg => {
+          chat.messages.forEach((msg) => {
             allMessages.push({
               id: `${chat.id}-${msg.sender}`,
               sender: msg.sender,
               content: msg.content,
               timestamp: msg.timestamp,
-              type: 'text'
+              type: 'text',
             });
           });
         }
       });
-      
+
       // Sort messages by timestamp
       allMessages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-      
+
       // Update the chat display with the combined messages
       setMessages(allMessages);
       if (allMessages.length > 0) {
@@ -1008,7 +1024,9 @@ const ChatBot = ({
           {/* Header */}
           <div className="p-3 border-b border-gray-800">
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-base font-medium text-white">Chats & Composers</h3>
+              <h3 className="text-base font-medium text-white">
+                Chats & Composers
+              </h3>
               <button
                 onClick={() => setShowHistory(false)}
                 className="p-1 hover:bg-gray-800 rounded-lg transition-colors"
@@ -1136,7 +1154,8 @@ const ChatBot = ({
       onMouseUp={(e) => {
         if (
           !(e.target instanceof HTMLButtonElement) &&
-          !(e.target instanceof HTMLInputElement)
+          !(e.target instanceof HTMLInputElement) &&
+          !(e.target instanceof HTMLTextAreaElement)
         ) {
           handleTextSelection(e);
         }
@@ -1144,7 +1163,8 @@ const ChatBot = ({
       onTouchEnd={(e) => {
         if (
           !(e.target instanceof HTMLButtonElement) &&
-          !(e.target instanceof HTMLInputElement)
+          !(e.target instanceof HTMLInputElement) &&
+          !(e.target instanceof HTMLTextAreaElement)
         ) {
           handleTextSelection(e);
         }
@@ -1303,6 +1323,11 @@ const ChatBot = ({
             ref={inputRef}
             value={chatMessage}
             onChange={(e) => setMessage(e.target.value)}
+            onClick={() => {
+              if (inputRef.current) {
+                inputRef.current.focus();
+              }
+            }}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
