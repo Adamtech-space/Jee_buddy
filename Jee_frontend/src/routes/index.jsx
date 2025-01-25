@@ -32,7 +32,12 @@ import PdfViewer from '../components/PdfViewer';
 
 // Protected Route Component
 const ProtectedRoute = () => {
-  const { isAuthenticated } = useLoading();
+  const { isAuthenticated, isLoading } = useLoading();
+
+  // Show nothing while checking auth
+  if (isLoading) {
+    return null; // AuthLoader will be shown by LoadingContext
+  }
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
@@ -42,8 +47,12 @@ const ProtectedRoute = () => {
 };
 
 const AppRoutes = () => {
-  const isAuthenticated =
-    localStorage.getItem('tokens') && localStorage.getItem('user');
+  const { isAuthenticated, isLoading } = useLoading();
+
+  // Show nothing while checking auth
+  if (isLoading) {
+    return null; // AuthLoader will be shown by LoadingContext
+  }
 
   return (
     <Routes>
