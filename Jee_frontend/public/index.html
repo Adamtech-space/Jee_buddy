@@ -10,47 +10,6 @@
       content="JEE Buddy - Your AI-powered JEE preparation companion"
     />
     
-    <!-- Google Analytics -->
-    <script>
-      // Initialize dataLayer and gtag
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){
-        dataLayer.push(arguments);
-      }
-      window.gtag = gtag;
-      
-      // GA Load handler
-      window.gaLoaded = false;
-      window.gaLoadError = false;
-      
-      // Initialize immediately
-      gtag('js', new Date());
-      gtag('config', 'G-95Y1Z3HJSF', {
-        send_page_view: true, // Enable automatic page views
-        cookie_domain: 'jeebuddy.in',
-        cookie_flags: 'SameSite=Lax;Secure',
-        debug_mode: true // Enable debug mode temporarily
-      });
-      
-      function onGaLoad() {
-        window.gaLoaded = true;
-        console.log('✅ GA script loaded');
-      }
-      
-      function onGaError(error) {
-        window.gaLoadError = true;
-        console.error('❌ GA Script load error:', error);
-      }
-    </script>
-    
-    <!-- Load GA script - Place this before any other scripts -->
-    <script 
-      async 
-      src="https://www.googletagmanager.com/gtag/js?id=G-95Y1Z3HJSF"
-      onload="onGaLoad()"
-      onerror="onGaError(event)"
-    ></script>
-    
     <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
     <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
     <title>JEE Buddy</title>
