@@ -30,9 +30,10 @@
         // Initialize GA
         gtag('js', new Date());
         gtag('config', 'G-95Y1Z3HJSF', {
-          send_page_view: false,
-          cookie_domain: 'auto',
+          send_page_view: false, // We'll handle this manually
+          cookie_domain: 'jeebuddy.in',
           cookie_flags: 'SameSite=Lax;Secure',
+          debug_mode: true, // Enable debug mode temporarily
           custom_map: {
             dimension1: 'page_path',
             dimension2: 'client_id'
