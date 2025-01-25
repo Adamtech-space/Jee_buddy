@@ -1,4 +1,12 @@
-import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  useRef,
+} from 'react';
 import PropTypes from 'prop-types';
 import AuthLoader from '../components/AuthLoader';
 import { useLocation } from 'react-router-dom';
@@ -8,7 +16,9 @@ const LoadingContext = createContext();
 // Synchronous auth check function to reuse
 const checkAuthStatus = () => {
   try {
-    return Boolean(localStorage.getItem('tokens') && localStorage.getItem('user'));
+    return Boolean(
+      localStorage.getItem('tokens') && localStorage.getItem('user')
+    );
   } catch (error) {
     console.error('Auth check error:', error);
     return false;
@@ -17,75 +27,97 @@ const checkAuthStatus = () => {
 
 export const LoadingProvider = ({ children }) => {
   const location = useLocation();
-  // Initialize with true to show loader during initial auth check
   const [isLoading, setIsLoading] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(() => checkAuthStatus());
+  const [isAuthenticated, setIsAuthenticated] = useState(() =>
+    checkAuthStatus()
+  );
+  const loadingTimeoutRef = useRef(null);
 
-  // Initial auth check with loader
-  useEffect(() => {
-    const initialAuthCheck = async () => {
-      // Show loader for at least 1 second for better UX
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setIsLoading(false);
-    };
-    initialAuthCheck();
+  // Super quick loading setter
+  const debouncedSetLoading = useCallback((value) => {
+    if (loadingTimeoutRef.current) {
+      clearTimeout(loadingTimeoutRef.current);
+    }
+    if (value) {
+      setIsLoading(true);
+    } else {
+      loadingTimeoutRef.current = setTimeout(() => setIsLoading(false), 20);
+    }
   }, []);
 
-  // Clear loading state on route changes, but not during initial load
+  // Quick initial auth check
   useEffect(() => {
-    if (!isLoading) return; // Skip if already not loading
-    
-    const timeoutId = setTimeout(() => {
-      setIsLoading(false);
-    }, 300);
+    debouncedSetLoading(false);
+    return () =>
+      loadingTimeoutRef.current && clearTimeout(loadingTimeoutRef.current);
+  }, [debouncedSetLoading]);
 
-    return () => clearTimeout(timeoutId);
-  }, [location.pathname, isLoading]);
+  // Quick route change loader
+  useEffect(() => {
+    if (!isAuthenticated) return;
 
-  // Memoized auth update function
-  const updateAuth = useCallback((status) => {
-    setIsAuthenticated(status);
-    // Use RAF for smoother state updates
-    requestAnimationFrame(() => {
-      setIsLoading(false);
-    });
-  }, []);
+    const majorRoutePaths = [
+      '/login',
+      '/register',
+      '/subject-selection',
+      '/settings',
+    ];
+    if (majorRoutePaths.some((path) => location.pathname.startsWith(path))) {
+      debouncedSetLoading(true);
+      loadingTimeoutRef.current = setTimeout(
+        () => debouncedSetLoading(false),
+        50
+      );
+    }
 
-  // Optimized loading effect with cleanup
+    return () =>
+      loadingTimeoutRef.current && clearTimeout(loadingTimeoutRef.current);
+  }, [location.pathname, isAuthenticated, debouncedSetLoading]);
+
+  // Global loading events
+  useEffect(() => {
+    const handleGlobalLoading = (event) =>
+      debouncedSetLoading(event.detail.loading);
+    window.addEventListener('setLoading', handleGlobalLoading);
+    return () => window.removeEventListener('setLoading', handleGlobalLoading);
+  }, [debouncedSetLoading]);
+
+  // Quick auth update
+  const updateAuth = useCallback(
+    (status) => {
+      setIsAuthenticated(status);
+      debouncedSetLoading(true);
+      loadingTimeoutRef.current = setTimeout(
+        () => debouncedSetLoading(false),
+        50
+      );
+    },
+    [debouncedSetLoading]
+  );
+
+  // Prevent scroll during loading with short timeout
   useEffect(() => {
     if (!isLoading) {
       document.body.style.overflow = 'unset';
       return;
     }
-
     document.body.style.overflow = 'hidden';
-    
-    // Auto-clear loading state after maximum timeout
-    const maxLoadingTimeout = setTimeout(() => {
-      console.warn('Loading timeout reached - forcing state clear');
-      setIsLoading(false);
-    }, 8000); // Increased to 8 seconds for better reliability
-
+    const maxTimeout = setTimeout(() => debouncedSetLoading(false), 500);
     return () => {
       document.body.style.overflow = 'unset';
-      clearTimeout(maxLoadingTimeout);
+      clearTimeout(maxTimeout);
     };
-  }, [isLoading]);
+  }, [isLoading, debouncedSetLoading]);
 
-  // Memoized context value to prevent unnecessary re-renders
-  const contextValue = useMemo(() => ({
-    isLoading,
-    setIsLoading: (value) => {
-      if (value) {
-        setIsLoading(true);
-      } else {
-        // Small delay when hiding loader for smooth transition
-        setTimeout(() => setIsLoading(false), 300);
-      }
-    },
-    isAuthenticated,
-    setIsAuthenticated: updateAuth
-  }), [isLoading, isAuthenticated, updateAuth]);
+  const contextValue = useMemo(
+    () => ({
+      isLoading,
+      setIsLoading: debouncedSetLoading,
+      isAuthenticated,
+      setIsAuthenticated: updateAuth,
+    }),
+    [isLoading, debouncedSetLoading, isAuthenticated, updateAuth]
+  );
 
   return (
     <LoadingContext.Provider value={contextValue}>
