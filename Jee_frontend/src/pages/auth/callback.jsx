@@ -23,13 +23,13 @@ const AuthCallback = () => {
         window.history.replaceState({}, document.title, window.location.pathname);
         
         const response = await apiInstance.get(`/auth/google/callback?code=${code}`);
-        
+
         if (response.data.tokens && response.data.user) {
           // Set auth data first
           localStorage.setItem('tokens', JSON.stringify(response.data.tokens));
           localStorage.setItem('user', JSON.stringify(response.data.user));
           setIsAuthenticated(true);
-          
+
           // Then navigate (this will trigger route change)
           navigate('/subject-selection', { replace: true });
         } else {

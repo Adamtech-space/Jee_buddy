@@ -11,6 +11,14 @@ const apiInstance = axios.create({
 
 // Get loading state setter from context
 const setGlobalLoading = (loading, url) => {
+  // Only show loader for auth-related operations
+  const authPaths = ['/auth/login', '/auth/register', '/auth/refresh-token'];
+  
+  // Skip loader for all internal requests except auth
+  if (!url || !authPaths.some(path => url.includes(path))) {
+    return;
+  }
+
   window.setGlobalLoading?.({ loading, url });
 };
 
