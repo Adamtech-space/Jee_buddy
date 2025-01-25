@@ -5,8 +5,28 @@ const config = require('../config/config');
 const ApiError = require('../utils/ApiError');
 
 const register = catchAsync(async (req, res) => {
-  const user = await authService.createUser(req.body);
-  res.status(httpStatus.CREATED).send(user);
+  try {
+    const user = await authService.createUser(req.body);
+    res.status(httpStatus.CREATED).send({
+      success: true,
+      message: 'User registered successfully',
+      data: user
+    });
+  } catch (error) {
+    if (error.message.includes('profiles_pkey')) {
+      res.status(httpStatus.CONFLICT).send({
+        success: false,
+        message: 'An account with this email already exists',
+        error: 'DUPLICATE_EMAIL'
+      });
+    } else {
+      res.status(error.statusCode || httpStatus.INTERNAL_SERVER_ERROR).send({
+        success: false,
+        message: error.message || 'Registration failed',
+        error: error.code || 'REGISTRATION_FAILED'
+      });
+    }
+  }
 });
 
 const login = catchAsync(async (req, res) => {

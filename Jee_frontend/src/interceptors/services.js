@@ -3,14 +3,36 @@ import apiInstance from "./axios.jsx";
 // User authentication services
 export const userLogin = async (data) => {
   try {
+    console.log('Attempting login with:', { email: data.email });
+    
     const response = await apiInstance.post("/auth/login", data);
-    if (response.data.tokens) {
+    console.log('Login response:', response.data);
+    
+    if (response.data.tokens && response.data.user) {
+      // Store tokens and user data
       localStorage.setItem("tokens", JSON.stringify(response.data.tokens));
       localStorage.setItem("user", JSON.stringify(response.data.user));
+      
+      // Set the auth header for subsequent requests
+      apiInstance.defaults.headers.common['Authorization'] = 
+        `Bearer ${response.data.tokens.access.token}`;
+      
+      return response.data;
     }
-    return response.data;
+    throw new Error('Invalid response from server');
   } catch (error) {
-    throw error.response?.data || { message: "Login failed" };
+    console.error('Login error:', {
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status
+    });
+    
+    if (error.response?.data) {
+      throw error.response.data;
+    } else if (error.message.includes('Network Error')) {
+      throw { message: 'Unable to connect to server. Please check your internet connection.' };
+    }
+    throw { message: error.message || "Login failed. Please try again." };
   }
 };
 
