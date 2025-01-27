@@ -10,7 +10,9 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   ChatBubbleLeftRightIcon,
-  PlusIcon
+  PlusIcon,
+  PencilIcon,
+  CheckIcon
 } from '@heroicons/react/24/outline';
 import PropTypes from 'prop-types';
 import { aiService } from '../interceptors/ai.service';
@@ -440,30 +442,29 @@ const ChatBot = ({
   };
 
   // Save edited message and regenerate response
-  const handleSaveEdit = async (messageId) => {
-    // Find the edited message and its index
-    const messageIndex = messages.findIndex((msg) => msg.id === messageId);
+  const handleSaveEdit = async () => {
+    if (!editingContent.trim()) return;
+    
+    // Find the index of the message being edited
+    const editIndex = messages.findIndex(m => m.id === editingMessageId);
+    if (editIndex === -1) return;
 
-    // Update the edited message
-    const updatedMessages = messages
-      .slice(0, messageIndex + 1)
-      .map((msg) =>
-        msg.id === messageId ? { ...msg, content: editingContent } : msg
-      );
-
+    // Keep only messages up to the edited message
+    const updatedMessages = messages.slice(0, editIndex + 1).map(m => 
+      m.id === editingMessageId 
+        ? { ...m, content: editingContent }
+        : m
+    );
+    
     setMessages(updatedMessages);
     setEditingMessageId(null);
     setEditingContent('');
 
-    // Regenerate response
+    // Generate new response
     setIsLoading(true);
     try {
       const userData = JSON.parse(localStorage.getItem('user')) || {};
       const sessionId = userData.current_session_id;
-
-      if (!sessionId) {
-        throw new Error('No valid session ID found');
-      }
 
       const response = await aiService.askQuestion(editingContent, {
         user_id: userData.id || 'anonymous',
@@ -471,35 +472,31 @@ const ChatBot = ({
         subject: subject || '',
         topic: topic || '',
         type: activeHelpType || '',
-        pinnedText: '',
-        selectedText: '',
-        source: 'Chat',
         Deep_think: isDeepThinkEnabled,
       });
 
+      // Add new AI response
       const aiMessage = {
         id: Date.now(),
         sender: 'assistant',
         type: 'text',
         content: response.solution,
       };
-
+      
       setMessages([...updatedMessages, aiMessage]);
       setDisplayedResponse('');
       setCurrentTypingIndex(0);
       setIsTyping(true);
     } catch (error) {
-      console.error('ChatBot - Error regenerating response:', error);
-      const errorMessage = `Failed to regenerate response: ${error?.message || 'Please try again'}`;
-      setMessages([
-        ...updatedMessages,
-        {
-          id: Date.now(),
-          sender: 'assistant',
-          type: 'text',
-          content: errorMessage,
-        },
-      ]);
+      console.error('Error regenerating response:', error);
+      // Show error message if regeneration fails
+      const errorMessage = {
+        id: Date.now(),
+        sender: 'assistant',
+        type: 'text',
+        content: `Failed to regenerate response: ${error?.message || 'Please try again'}`,
+      };
+      setMessages([...updatedMessages, errorMessage]);
     } finally {
       setIsLoading(false);
     }
@@ -852,7 +849,8 @@ const ChatBot = ({
 
     // Helper function to format headings and subheadings
     const formatContent = (text) => {
-      return text.replace(
+      // First handle headings with bold
+      let formattedText = text.replace(
         /(#{1,6})\s+\*\*([^*]+)\*\*/g,
         (match, hashes, content) => {
           const level = hashes.length;
@@ -860,6 +858,14 @@ const ChatBot = ({
           return `<h${level} class="${className}">${content}</h${level}>`;
         }
       );
+
+      // Then handle remaining bold text
+      formattedText = formattedText.replace(
+        /\*\*([^*]+)\*\*/g,
+        '<span class="font-bold text-white">$1</span>'
+      );
+
+      return formattedText;
     };
 
     const formattedContent = formatContent(content);
@@ -888,7 +894,7 @@ const ChatBot = ({
         )}
 
         <div
-          className={`flex flex-col ${msg.sender === 'user' ? 'items-end' : 'items-start'} max-w-[75%]`}
+          className={`flex flex-col ${msg.sender === 'user' ? 'items-end' : 'items-start'} max-w-[75%] relative group`}
         >
           <div
             className={`rounded-lg p-3 break-words w-full ${
@@ -897,26 +903,39 @@ const ChatBot = ({
                 : 'bg-gradient-to-r from-gray-800 to-gray-900 text-white shadow-xl'
             }`}
           >
-            {isEditing ? (
-              <div className="flex flex-col gap-2 w-full">
+            {isEditing && msg.sender === 'user' ? (
+              <div className="flex flex-col gap-2">
                 <textarea
                   value={editingContent}
                   onChange={(e) => setEditingContent(e.target.value)}
-                  className="w-full bg-gray-700 text-white rounded p-2 min-h-[100px] resize-none"
+                  className="w-full bg-blue-600 text-white rounded p-2 min-h-[60px] resize-none focus:outline-none focus:ring-2 focus:ring-blue-300"
                   autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSaveEdit();
+                    } else if (e.key === 'Escape') {
+                      setEditingMessageId(null);
+                      setEditingContent('');
+                    }
+                  }}
                 />
-                <div className="flex justify-end gap-2">
+                <div className="flex justify-end gap-2 text-xs">
                   <button
-                    onClick={() => setEditingMessageId(null)}
-                    className="px-2 py-1 text-sm bg-gray-700 hover:bg-gray-600 rounded"
+                    onClick={() => {
+                      setEditingMessageId(null);
+                      setEditingContent('');
+                    }}
+                    className="px-2 py-1 hover:bg-blue-600 rounded transition-colors"
                   >
                     Cancel
                   </button>
                   <button
-                    onClick={() => handleSaveEdit(msg.id)}
-                    className="px-2 py-1 text-sm bg-blue-500 hover:bg-blue-600 rounded"
+                    onClick={handleSaveEdit}
+                    className="px-2 py-1 bg-blue-600 hover:bg-blue-700 rounded transition-colors flex items-center gap-1"
                   >
-                    Save
+                    <CheckIcon className="w-3 h-3" />
+                    Save & Submit
                   </button>
                 </div>
               </div>
@@ -971,6 +990,17 @@ const ChatBot = ({
               </div>
             )}
           </div>
+
+          {/* Edit button for user messages */}
+          {msg.sender === 'user' && !isEditing && (
+            <button
+              onClick={() => handleEditMessage(msg.id, msg.content)}
+              className="absolute -left-8 top-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+              title="Edit message"
+            >
+              <PencilIcon className="w-4 h-4 text-gray-400 hover:text-white" />
+            </button>
+          )}
         </div>
 
         {msg.sender === 'user' && userProfile?.picture && (
