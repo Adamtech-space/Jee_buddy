@@ -15,6 +15,7 @@ import {
 import PropTypes from 'prop-types';
 import { aiService } from '../interceptors/ai.service';
 import { useSelection } from '../hooks/useSelection';
+import { MathJax, MathJaxContext } from 'better-react-mathjax';
 
 const KeyboardShortcut = ({ shortcut }) => (
   <span className="inline-flex items-center text-[9px] text-gray-500 mt-0.5">
@@ -831,14 +832,18 @@ const ChatBot = ({
                 <div className="text-[15px] break-words">{content}</div>
               </div>
             ) : (
-              <div className="text-[15px] leading-relaxed whitespace-pre-wrap break-words">
-                {content}
-                {isLastMessage && msg.sender === 'assistant' && isTyping && (
-                  <span className="inline-block w-2 h-5 bg-blue-400 animate-pulse ml-1">
-                    |
-                  </span>
-                )}
-              </div>
+              <MathJaxContext>
+                <MathJax>
+                  <div className="text-[15px] leading-relaxed whitespace-pre-wrap break-words">
+                    {content}
+                    {isLastMessage && msg.sender === 'assistant' && isTyping && (
+                      <span className="inline-block w-2 h-5 bg-blue-400 animate-pulse ml-1">
+                        |
+                      </span>
+                    )}
+                  </div>
+                </MathJax>
+              </MathJaxContext>
             )}
           </div>
         </div>
