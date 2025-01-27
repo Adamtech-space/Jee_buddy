@@ -311,43 +311,28 @@ const ChatBot = ({
     const container = document.querySelector('.overflow-y-auto');
     if (!container) return;
 
-    let userScrolling = false;
+    let userScrolled = false;
     let lastScrollTop = container.scrollTop;
-    let touchStartY = 0; // Track touch start position
 
     const handleScroll = () => {
       const isAtBottom =
         Math.abs(
-          container.scrollHeight - container.scrollTop - container.clientHeight
+          container.scrollHeight -
+          container.scrollTop -
+          container.clientHeight
         ) < 100;
       const isScrollingDown = container.scrollTop > lastScrollTop;
       lastScrollTop = container.scrollTop;
 
       if (isScrollingDown && isAtBottom) {
-        userScrolling = false;
+        userScrolled = false;
       } else {
-        userScrolling = !isAtBottom;
+        userScrolled = !isAtBottom;
       }
-    };
-
-    // Add touch event handlers for better mobile support
-    const handleTouchStart = (e) => {
-      touchStartY = e.touches[0].clientY;
-    };
-
-    const handleTouchMove = (e) => {
-      const touchY = e.touches[0].clientY;
-      const isScrollingUp = touchY > touchStartY;
-
-      if (isScrollingUp) {
-        userScrolling = true; // User is actively scrolling up
-      }
-
-      touchStartY = touchY;
     };
 
     const observer = new MutationObserver(() => {
-      if (!userScrolling) {
+      if (!userScrolled) {
         requestAnimationFrame(() => {
           container.scrollTo({
             top: container.scrollHeight,
@@ -364,74 +349,75 @@ const ChatBot = ({
       characterDataOldValue: true,
     });
 
-    // Add event listeners
     container.addEventListener('scroll', handleScroll, { passive: true });
-    container.addEventListener('touchstart', handleTouchStart, {
-      passive: true,
-    });
-    container.addEventListener('touchmove', handleTouchMove, { passive: true });
-
-    // Mouse wheel event for more precise control
-    container.addEventListener(
-      'wheel',
-      () => {
-        userScrolling = true;
-      },
-      { passive: true }
-    );
 
     return () => {
       observer.disconnect();
       container.removeEventListener('scroll', handleScroll);
-      container.removeEventListener('touchstart', handleTouchStart);
-      container.removeEventListener('touchmove', handleTouchMove);
-      container.removeEventListener('wheel', () => {
-        userScrolling = true;
-      });
     };
   }, [messages]);
 
-  // Modify typing effect to allow free scrolling
+  // Update the typing effect useEffect
   useEffect(() => {
     let timer;
     const currentMessage = messages[messages.length - 1];
     const container = document.querySelector('.overflow-y-auto');
+    let userScrolled = false;
+
+    // Track user scroll
+    const handleScroll = () => {
+      if (container) {
+        const isAtBottom =
+          Math.abs(
+            container.scrollHeight -
+            container.scrollTop -
+            container.clientHeight
+          ) < 100;
+        userScrolled = !isAtBottom;
+      }
+    };
+
+    if (container) {
+      container.addEventListener('scroll', handleScroll);
+    }
 
     if (
       isTyping &&
       currentMessage?.sender === 'assistant' &&
       currentTypingIndex < currentMessage.content.length
     ) {
+      // Increase typing speed by processing more characters at once
+      const charsPerTick = 3; // Process 3 characters per tick
       timer = setTimeout(() => {
         if (!isTyping) return;
 
-        setDisplayedResponse(
-          currentMessage.content.slice(0, currentTypingIndex + 1)
+        const nextIndex = Math.min(
+          currentMessage.content.length,
+          currentTypingIndex + charsPerTick
         );
-        setCurrentTypingIndex((prev) => prev + 1);
 
-        // Only auto-scroll if user is already at the bottom
-        if (container) {
-          const isAtBottom =
-            Math.abs(
-              container.scrollHeight -
-                container.scrollTop -
-                container.clientHeight
-            ) < 100;
-          if (isAtBottom) {
-            messagesEndRef.current?.scrollIntoView({
-              behavior: 'smooth',
-              block: 'end',
-            });
-          }
+        setDisplayedResponse(
+          currentMessage.content.slice(0, nextIndex)
+        );
+        setCurrentTypingIndex(nextIndex);
+
+        // Only auto-scroll if user hasn't scrolled up
+        if (container && !userScrolled) {
+          messagesEndRef.current?.scrollIntoView({
+            behavior: 'smooth',
+            block: 'end',
+          });
         }
-      }, 1);
+      }, 10); // Reduced delay to 10ms
     } else if (isTyping && currentMessage?.sender === 'assistant') {
       setIsTyping(false);
     }
 
     return () => {
       if (timer) clearTimeout(timer);
+      if (container) {
+        container.removeEventListener('scroll', handleScroll);
+      }
     };
   }, [isTyping, currentTypingIndex, messages]);
 
@@ -831,12 +817,31 @@ const ChatBot = ({
   // Update deep think toggle
   const toggleDeepThink = useCallback(() => {
     setIsDeepThinkEnabled(prev => !prev);
+    const newState = !isDeepThinkEnabled;
+    
     setShowNotification({
       id: Date.now().toString(),
       type: 'deep-think',
       message: 'Deep Think Mode',
-      isEnabled: !isDeepThinkEnabled
+      isEnabled: newState
     });
+
+    // Auto-disable after successful response
+    if (newState) {
+      const disableAfterResponse = (e) => {
+        if (e.detail?.success) {
+          setIsDeepThinkEnabled(false);
+          setShowNotification({
+            id: Date.now().toString(),
+            type: 'deep-think',
+            message: 'Deep Think Mode',
+            isEnabled: false
+          });
+          window.removeEventListener('aiResponse', disableAfterResponse);
+        }
+      };
+      window.addEventListener('aiResponse', disableAfterResponse);
+    }
   }, [isDeepThinkEnabled]);
 
   const renderMessage = (msg, index) => {
