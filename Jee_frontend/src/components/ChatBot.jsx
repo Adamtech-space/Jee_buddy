@@ -312,41 +312,161 @@ const ChatBot = ({
     };
   }, [messages]);
 
-  // Modify typing effect to allow free scrolling
+  // Memoize the message rendering function
+  const renderMessage = useCallback((msg, index) => {
+    const isLastMessage = index === messages.length - 1;
+    const content = isLastMessage && msg.sender === 'assistant' ? displayedResponse : msg.content;
+    const isEditing = msg.id === editingMessageId;
+    
+    return (
+      <div
+        key={msg.id || index}
+        className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'} mb-4 group items-start relative`}
+      >
+        <div className={`flex flex-col ${msg.sender === 'user' ? 'items-end' : 'items-start'} max-w-[75%] relative group`}>
+          {/* Edit button for user messages - Now inside the message container */}
+          {msg.sender === 'user' && !isEditing && (
+            <button
+              onClick={() => handleEditMessage(msg.id, msg.content)}
+              className="absolute -left-8 top-2 opacity-0 group-hover:opacity-100 transition-all duration-200 p-1.5 hover:bg-gray-700/50 rounded"
+              title="Edit message"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400 hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+            </button>
+          )}
+          
+          <div className={`rounded-lg p-3 break-words w-full ${
+            msg.sender === 'user'
+              ? 'bg-blue-500 text-white hover:bg-blue-600 transition-colors'
+              : 'bg-gradient-to-r from-gray-800 to-gray-900 text-white shadow-xl'
+          }`}>
+            {isEditing ? (
+              <div className="flex flex-col gap-2 w-full">
+                <textarea
+                  value={editingContent}
+                  onChange={(e) => setEditingContent(e.target.value)}
+                  className="w-full bg-gray-700 text-white rounded p-2 min-h-[100px] resize-none focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSaveEdit(msg.id);
+                    } else if (e.key === 'Escape') {
+                      setEditingMessageId(null);
+                    }
+                  }}
+                />
+                <div className="flex justify-end gap-2">
+                  <button
+                    onClick={() => setEditingMessageId(null)}
+                    className="px-3 py-1.5 text-sm bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => handleSaveEdit(msg.id)}
+                    className="px-3 py-1.5 text-sm bg-blue-500 hover:bg-blue-600 rounded-lg transition-colors"
+                  >
+                    Save & Send
+                  </button>
+                </div>
+              </div>
+            ) : msg.type === 'image' ? (
+              <div className="space-y-2">
+                <div className="relative bg-gray-800/50 rounded p-2">
+                  <img
+                    src={msg.previewImageData || msg.content}
+                    alt="Captured content"
+                    className="max-w-full rounded"
+                    style={{
+                      width: msg.imageWidth || 'auto',
+                      height: msg.imageHeight || 'auto',
+                      maxHeight: '200px',
+                      objectFit: 'contain',
+                    }}
+                  />
+                  <div className="flex items-center gap-1 text-xs text-gray-300 mt-1">
+                    <span className="inline-block w-1 h-1 bg-gray-400 rounded-full"></span>
+                    <span>{msg.source}</span>
+                  </div>
+                </div>
+                {msg.question && (
+                  <div className="text-[15px]">{msg.question}</div>
+                )}
+              </div>
+            ) : msg.type === 'selected-text' ? (
+              <div className="space-y-2">
+                <div className="text-xs bg-gray-800/50 rounded p-2 break-words">
+                  {msg.selectedText}
+                </div>
+                <div className="flex items-center gap-1 text-xs text-gray-300">
+                  <span className="inline-block w-1 h-1 bg-gray-400 rounded-full"></span>
+                  <span>{msg.source}</span>
+                </div>
+                <div className="text-[15px] break-words">{content}</div>
+              </div>
+            ) : (
+              <MathJaxContext>
+                <MathJax>
+                  <div className="text-[15px] leading-relaxed whitespace-pre-wrap break-words">
+                    {content}
+                    {isLastMessage && msg.sender === 'assistant' && isTyping && (
+                      <span className="inline-block w-2 h-5 bg-blue-400 animate-pulse ml-1">
+                        |
+                      </span>
+                    )}
+                  </div>
+                </MathJax>
+              </MathJaxContext>
+            )}
+          </div>
+        </div>
+
+        {msg.sender === 'user' && userProfile?.picture && (
+          <div className="flex-shrink-0 w-8 h-8 rounded-full overflow-hidden ml-2">
+            <img
+              src={userProfile.picture}
+              alt={userProfile.name}
+              className="w-full h-full object-cover"
+            />
+          </div>
+        )}
+      </div>
+    );
+  }, [messages.length, displayedResponse, editingMessageId]);
+
+  // Optimize input handling
+  const handleMessageChange = useCallback((e) => {
+    setMessage(e.target.value);
+  }, []);
+
+  // Optimize typing effect
   useEffect(() => {
     let timer;
     const currentMessage = messages[messages.length - 1];
     const container = document.querySelector('.overflow-y-auto');
 
-    if (
-      isTyping &&
-      currentMessage?.sender === 'assistant' &&
-      currentTypingIndex < currentMessage.content.length
-    ) {
+    if (isTyping && currentMessage?.sender === 'assistant' && currentTypingIndex < currentMessage.content.length) {
+      const chunkSize = 5; // Process 5 characters at a time
       timer = setTimeout(() => {
         if (!isTyping) return;
 
-        setDisplayedResponse(
-          currentMessage.content.slice(0, currentTypingIndex + 1)
-        );
-        setCurrentTypingIndex((prev) => prev + 1);
+        const nextIndex = Math.min(currentTypingIndex + chunkSize, currentMessage.content.length);
+        setDisplayedResponse(currentMessage.content.slice(0, nextIndex));
+        setCurrentTypingIndex(nextIndex);
 
-        // Only auto-scroll if user is already at the bottom
+        // Only auto-scroll if user is already at bottom
         if (container) {
-          const isAtBottom =
-            Math.abs(
-              container.scrollHeight -
-                container.scrollTop -
-                container.clientHeight
-            ) < 100;
+          const isAtBottom = Math.abs(
+            container.scrollHeight - container.scrollTop - container.clientHeight
+          ) < 100;
           if (isAtBottom) {
-            messagesEndRef.current?.scrollIntoView({
-              behavior: 'smooth',
-              block: 'end',
-            });
+            messagesEndRef.current?.scrollIntoView({ behavior: 'instant' });
           }
         }
-      }, 1);
+      }, 10); // Faster typing speed
     } else if (isTyping && currentMessage?.sender === 'assistant') {
       setIsTyping(false);
     }
@@ -736,134 +856,6 @@ const ChatBot = ({
     },
     [activeHelpType]
   );
-
-  const renderMessage = (msg, index) => {
-    const isLastMessage = index === messages.length - 1;
-    const content =
-      isLastMessage && msg.sender === 'assistant'
-        ? displayedResponse
-        : msg.content;
-    const isEditing = msg.id === editingMessageId;
-
-    return (
-      <div
-        key={msg.id || index}
-        className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'} mb-4 group items-start`}
-      >
-        {msg.sender === 'assistant' && (
-          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-r from-purple-500 to-indigo-500 flex items-center justify-center mr-2">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-5 w-5 text-white"
-              viewBox="0 0 20 20"
-              fill="currentColor"
-            >
-              <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
-              <path
-                fillRule="evenodd"
-                d="M10 18a8 8 0 100-16 8 8 0 000 16zm0-2a6 6 0 100-12 6 6 0 000 12z"
-                clipRule="evenodd"
-              />
-            </svg>
-          </div>
-        )}
-
-        <div
-          className={`flex flex-col ${msg.sender === 'user' ? 'items-end' : 'items-start'} max-w-[75%]`}
-        >
-          <div
-            className={`rounded-lg p-3 break-words w-full ${
-              msg.sender === 'user'
-                ? 'bg-blue-500 text-white'
-                : 'bg-gradient-to-r from-gray-800 to-gray-900 text-white shadow-xl'
-            }`}
-          >
-            {isEditing ? (
-              <div className="flex flex-col gap-2 w-full">
-                <textarea
-                  value={editingContent}
-                  onChange={(e) => setEditingContent(e.target.value)}
-                  className="w-full bg-gray-700 text-white rounded p-2 min-h-[100px] resize-none"
-                  autoFocus
-                />
-                <div className="flex justify-end gap-2">
-                  <button
-                    onClick={() => setEditingMessageId(null)}
-                    className="px-2 py-1 text-sm bg-gray-700 hover:bg-gray-600 rounded"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={() => handleSaveEdit(msg.id)}
-                    className="px-2 py-1 text-sm bg-blue-500 hover:bg-blue-600 rounded"
-                  >
-                    Save
-                  </button>
-                </div>
-              </div>
-            ) : msg.type === 'image' ? (
-              <div className="space-y-2">
-                <div className="relative bg-gray-800/50 rounded p-2">
-                  <img
-                    src={msg.previewImageData || msg.content}
-                    alt="Captured content"
-                    className="max-w-full rounded"
-                    style={{
-                      width: msg.imageWidth || 'auto',
-                      height: msg.imageHeight || 'auto',
-                      maxHeight: '200px',
-                      objectFit: 'contain',
-                    }}
-                  />
-                  <div className="flex items-center gap-1 text-xs text-gray-300 mt-1">
-                    <span className="inline-block w-1 h-1 bg-gray-400 rounded-full"></span>
-                    <span>{msg.source}</span>
-                  </div>
-                </div>
-                {msg.question && (
-                  <div className="text-[15px]">{msg.question}</div>
-                )}
-              </div>
-            ) : msg.type === 'selected-text' ? (
-              <div className="space-y-2">
-                <div className="text-xs bg-gray-800/50 rounded p-2 break-words">
-                  {msg.selectedText}
-                </div>
-                <div className="flex items-center gap-1 text-xs text-gray-300">
-                  <span className="inline-block w-1 h-1 bg-gray-400 rounded-full"></span>
-                  <span>{msg.source}</span>
-                </div>
-                <div className="text-[15px] break-words">{content}</div>
-              </div>
-            ) : (
-              <MathJaxContext>
-                <MathJax>
-                  <div className="text-[15px] leading-relaxed whitespace-pre-wrap break-words">
-                    {content}
-                    {isLastMessage && msg.sender === 'assistant' && isTyping && (
-                      <span className="inline-block w-2 h-5 bg-blue-400 animate-pulse ml-1">
-                        |
-                      </span>
-                    )}
-                  </div>
-                </MathJax>
-              </MathJaxContext>
-            )}
-          </div>
-        </div>
-
-        {msg.sender === 'user' && userProfile?.picture && (
-          <div className="flex-shrink-0 w-8 h-8 rounded-full overflow-hidden ml-2">
-            <img
-              src={userProfile.picture}
-              alt={userProfile.name}
-              className="w-full h-full object-cover"
-            />
-          </div>
-        )}
-      </div>
-    );
-  };
 
   // Update initial width based on screen size
   useEffect(() => {
@@ -1356,7 +1348,7 @@ const ChatBot = ({
           <textarea
             ref={inputRef}
             value={chatMessage}
-            onChange={(e) => setMessage(e.target.value)}
+            onChange={handleMessageChange}
             onClick={() => {
               if (inputRef.current) {
                 inputRef.current.focus();
