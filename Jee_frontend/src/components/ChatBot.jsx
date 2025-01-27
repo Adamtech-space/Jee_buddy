@@ -214,6 +214,7 @@ const ChatBot = ({
   const [showHistory, setShowHistory] = useState(false);
   const [chatHistory, setChatHistory] = useState([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [showDeepThinkNotice, setShowDeepThinkNotice] = useState(false);
 
   // Add focus management effect
   useEffect(() => {
@@ -410,6 +411,8 @@ const ChatBot = ({
       setDisplayedResponse('');
       setCurrentTypingIndex(0);
       setIsTyping(true);
+      setIsDeepThinkEnabled(false);
+      setActiveHelpType(null);
     } catch (error) {
       console.error('ChatBot - Error regenerating response:', error);
       const errorMessage = `Failed to regenerate response: ${error?.message || 'Please try again'}`;
@@ -543,6 +546,7 @@ const ChatBot = ({
         setCurrentTypingIndex(0);
         setIsTyping(true);
         setIsDeepThinkEnabled(false);
+        setActiveHelpType(null);
       } catch (error) {
         if (error.name === 'AbortError') {
           console.log('Request was cancelled');
@@ -1143,6 +1147,15 @@ const ChatBot = ({
     );
   };
 
+  // Add effect to handle Deep Think notice
+  useEffect(() => {
+    setShowDeepThinkNotice(true);
+    const timer = setTimeout(() => {
+      setShowDeepThinkNotice(false);
+    }, 2000); // Notice will fade out after 2 seconds
+    return () => clearTimeout(timer);
+  }, [isDeepThinkEnabled]);
+
   return (
     <div
       ref={resizeRef}
@@ -1273,6 +1286,22 @@ const ChatBot = ({
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-2 sm:p-3 md:p-4 bg-gray-900 hide-scrollbar">
+        {showDeepThinkNotice && (
+          <div className={`fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 
+            flex items-center justify-center p-6 rounded-xl
+            ${isDeepThinkEnabled 
+              ? 'bg-blue-500/20 border-2 border-blue-500/30' 
+              : 'bg-gray-800/20 border-2 border-gray-700/30'} 
+            backdrop-blur-sm transition-opacity duration-500 z-50`}
+          >
+            <div className="flex flex-col items-center gap-3">
+              <span className="text-4xl">{isDeepThinkEnabled ? '🧠' : '🤔'}</span>
+              <span className={`text-lg font-medium ${isDeepThinkEnabled ? 'text-blue-400' : 'text-gray-400'}`}>
+                Deep Think Mode {isDeepThinkEnabled ? 'Activated' : 'Deactivated'}
+              </span>
+            </div>
+          </div>
+        )}
         {messages.map(renderMessage)}
         {isLoading && renderLoadingState()}
         <div ref={messagesEndRef} />
