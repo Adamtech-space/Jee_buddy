@@ -15,7 +15,7 @@ import {
 import PropTypes from 'prop-types';
 import { aiService } from '../interceptors/ai.service';
 import { useSelection } from '../hooks/useSelection';
-import { MathJax, MathJaxContext } from 'better-react-mathjax';
+import { MathJax } from 'better-react-mathjax';
 
 const KeyboardShortcut = ({ shortcut }) => (
   <span className="inline-flex items-center text-[9px] text-gray-500 mt-0.5">
@@ -179,6 +179,83 @@ HelpButton.displayName = 'HelpButton';
 // Add display name to HelpCarousel
 HelpCarousel.displayName = 'HelpCarousel';
 
+// Add this memoized message component outside the main ChatBot component
+const Message = memo(({ content, className }) => {
+  return (
+    <MathJax>
+      <div 
+        className={className}
+        dangerouslySetInnerHTML={{ 
+          __html: content 
+        }} 
+      />
+    </MathJax>
+  );
+});
+
+Message.propTypes = {
+  content: PropTypes.string.isRequired,
+  className: PropTypes.string
+};
+
+Message.displayName = 'Message';
+
+const FadeNotification = memo(({ message, type, isEnabled, id }) => {
+  const [isVisible, setIsVisible] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsVisible(false);
+    }, 2000);
+
+    return () => clearTimeout(timer);
+  }, [id]);
+
+  if (!isVisible) return null;
+
+  return (
+    <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50 animate-fade-in">
+      <div className={`
+        px-6 py-4 rounded-xl shadow-2xl backdrop-blur-md
+        ${type === 'deep-think' 
+          ? 'bg-gradient-to-r from-blue-600/90 to-blue-500/90 text-white ring-1 ring-blue-400/30' 
+          : 'bg-gradient-to-r from-gray-900/95 to-gray-800/95 text-white ring-1 ring-white/10'
+        }
+        flex items-center gap-3 min-w-[200px] justify-center
+      `}>
+        <div className="flex items-center justify-center w-8 h-8">
+          {type === 'deep-think' ? (
+            <span className={`text-2xl transform transition-transform duration-300 ${isEnabled ? 'scale-110' : 'scale-90 opacity-80'}`}>
+              🧠
+            </span>
+          ) : (
+            <span className={`text-2xl transform transition-transform duration-300 ${isEnabled ? 'scale-110' : 'scale-90 opacity-80'}`}>
+              💡
+            </span>
+          )}
+        </div>
+        <div className="flex flex-col">
+          <div className="text-sm font-medium">
+            {message}
+          </div>
+          <div className="text-xs opacity-80">
+            {isEnabled ? 'Enabled' : 'Disabled'}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+});
+
+FadeNotification.propTypes = {
+  message: PropTypes.string.isRequired,
+  type: PropTypes.oneOf(['deep-think', 'help']).isRequired,
+  isEnabled: PropTypes.bool,
+  id: PropTypes.string.isRequired
+};
+
+FadeNotification.displayName = 'FadeNotification';
+
 const ChatBot = ({ 
   isOpen, 
   setIsOpen, 
@@ -214,7 +291,7 @@ const ChatBot = ({
   const [showHistory, setShowHistory] = useState(false);
   const [chatHistory, setChatHistory] = useState([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
-  const [showDeepThinkNotice, setShowDeepThinkNotice] = useState(false);
+  const [showNotification, setShowNotification] = useState(null);
 
   // Add focus management effect
   useEffect(() => {
@@ -312,161 +389,41 @@ const ChatBot = ({
     };
   }, [messages]);
 
-  // Memoize the message rendering function
-  const renderMessage = useCallback((msg, index) => {
-    const isLastMessage = index === messages.length - 1;
-    const content = isLastMessage && msg.sender === 'assistant' ? displayedResponse : msg.content;
-    const isEditing = msg.id === editingMessageId;
-    
-    return (
-      <div
-        key={msg.id || index}
-        className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'} mb-4 group items-start relative`}
-      >
-        <div className={`flex flex-col ${msg.sender === 'user' ? 'items-end' : 'items-start'} max-w-[75%] relative group`}>
-          {/* Edit button for user messages - Now inside the message container */}
-          {msg.sender === 'user' && !isEditing && (
-            <button
-              onClick={() => handleEditMessage(msg.id, msg.content)}
-              className="absolute -left-8 top-2 opacity-0 group-hover:opacity-100 transition-all duration-200 p-1.5 hover:bg-gray-700/50 rounded"
-              title="Edit message"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400 hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-              </svg>
-            </button>
-          )}
-          
-          <div className={`rounded-lg p-3 break-words w-full ${
-            msg.sender === 'user'
-              ? 'bg-blue-500 text-white hover:bg-blue-600 transition-colors'
-              : 'bg-gradient-to-r from-gray-800 to-gray-900 text-white shadow-xl'
-          }`}>
-            {isEditing ? (
-              <div className="flex flex-col gap-2 w-full">
-                <textarea
-                  value={editingContent}
-                  onChange={(e) => setEditingContent(e.target.value)}
-                  className="w-full bg-gray-700 text-white rounded p-2 min-h-[100px] resize-none focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  autoFocus
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      handleSaveEdit(msg.id);
-                    } else if (e.key === 'Escape') {
-                      setEditingMessageId(null);
-                    }
-                  }}
-                />
-                <div className="flex justify-end gap-2">
-                  <button
-                    onClick={() => setEditingMessageId(null)}
-                    className="px-3 py-1.5 text-sm bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={() => handleSaveEdit(msg.id)}
-                    className="px-3 py-1.5 text-sm bg-blue-500 hover:bg-blue-600 rounded-lg transition-colors"
-                  >
-                    Save & Send
-                  </button>
-                </div>
-              </div>
-            ) : msg.type === 'image' ? (
-              <div className="space-y-2">
-                <div className="relative bg-gray-800/50 rounded p-2">
-                  <img
-                    src={msg.previewImageData || msg.content}
-                    alt="Captured content"
-                    className="max-w-full rounded"
-                    style={{
-                      width: msg.imageWidth || 'auto',
-                      height: msg.imageHeight || 'auto',
-                      maxHeight: '200px',
-                      objectFit: 'contain',
-                    }}
-                  />
-                  <div className="flex items-center gap-1 text-xs text-gray-300 mt-1">
-                    <span className="inline-block w-1 h-1 bg-gray-400 rounded-full"></span>
-                    <span>{msg.source}</span>
-                  </div>
-                </div>
-                {msg.question && (
-                  <div className="text-[15px]">{msg.question}</div>
-                )}
-              </div>
-            ) : msg.type === 'selected-text' ? (
-              <div className="space-y-2">
-                <div className="text-xs bg-gray-800/50 rounded p-2 break-words">
-                  {msg.selectedText}
-                </div>
-                <div className="flex items-center gap-1 text-xs text-gray-300">
-                  <span className="inline-block w-1 h-1 bg-gray-400 rounded-full"></span>
-                  <span>{msg.source}</span>
-                </div>
-                <div className="text-[15px] break-words">{content}</div>
-              </div>
-            ) : (
-              <MathJaxContext>
-                <MathJax>
-                  <div className="text-[15px] leading-relaxed whitespace-pre-wrap break-words">
-                    {content}
-                    {isLastMessage && msg.sender === 'assistant' && isTyping && (
-                      <span className="inline-block w-2 h-5 bg-blue-400 animate-pulse ml-1">
-                        |
-                      </span>
-                    )}
-                  </div>
-                </MathJax>
-              </MathJaxContext>
-            )}
-          </div>
-        </div>
-
-        {msg.sender === 'user' && userProfile?.picture && (
-          <div className="flex-shrink-0 w-8 h-8 rounded-full overflow-hidden ml-2">
-            <img
-              src={userProfile.picture}
-              alt={userProfile.name}
-              className="w-full h-full object-cover"
-            />
-          </div>
-        )}
-      </div>
-    );
-  }, [messages.length, displayedResponse, editingMessageId]);
-
-  // Optimize input handling
-  const handleMessageChange = useCallback((e) => {
-    setMessage(e.target.value);
-  }, []);
-
-  // Optimize typing effect
+  // Modify typing effect to allow free scrolling
   useEffect(() => {
     let timer;
     const currentMessage = messages[messages.length - 1];
     const container = document.querySelector('.overflow-y-auto');
 
-    if (isTyping && currentMessage?.sender === 'assistant' && currentTypingIndex < currentMessage.content.length) {
-      const chunkSize = 5; // Process 5 characters at a time
+    if (
+      isTyping &&
+      currentMessage?.sender === 'assistant' &&
+      currentTypingIndex < currentMessage.content.length
+    ) {
       timer = setTimeout(() => {
         if (!isTyping) return;
 
-        const nextIndex = Math.min(currentTypingIndex + chunkSize, currentMessage.content.length);
-        setDisplayedResponse(currentMessage.content.slice(0, nextIndex));
-        setCurrentTypingIndex(nextIndex);
+        setDisplayedResponse(
+          currentMessage.content.slice(0, currentTypingIndex + 1)
+        );
+        setCurrentTypingIndex((prev) => prev + 1);
 
-        // Only auto-scroll if user is already at bottom
+        // Only auto-scroll if user is already at the bottom
         if (container) {
-          const isAtBottom = Math.abs(
-            container.scrollHeight - container.scrollTop - container.clientHeight
-          ) < 100;
+          const isAtBottom =
+            Math.abs(
+              container.scrollHeight -
+                container.scrollTop -
+                container.clientHeight
+            ) < 100;
           if (isAtBottom) {
-            messagesEndRef.current?.scrollIntoView({ behavior: 'instant' });
+            messagesEndRef.current?.scrollIntoView({
+              behavior: 'smooth',
+              block: 'end',
+            });
           }
         }
-      }, 10); // Faster typing speed
+      }, 1);
     } else if (isTyping && currentMessage?.sender === 'assistant') {
       setIsTyping(false);
     }
@@ -531,8 +488,6 @@ const ChatBot = ({
       setDisplayedResponse('');
       setCurrentTypingIndex(0);
       setIsTyping(true);
-      setIsDeepThinkEnabled(false);
-      setActiveHelpType(null);
     } catch (error) {
       console.error('ChatBot - Error regenerating response:', error);
       const errorMessage = `Failed to regenerate response: ${error?.message || 'Please try again'}`;
@@ -666,7 +621,6 @@ const ChatBot = ({
         setCurrentTypingIndex(0);
         setIsTyping(true);
         setIsDeepThinkEnabled(false);
-        setActiveHelpType(null);
       } catch (error) {
         if (error.name === 'AbortError') {
           console.log('Request was cancelled');
@@ -848,14 +802,189 @@ const ChatBot = ({
   // Memoize the help click handler
   const handleHelpClick = useCallback(
     (type) => {
-      if (activeHelpType === type) {
-        setActiveHelpType(null);
-      } else {
-        setActiveHelpType(type);
+      const newState = activeHelpType === type ? null : type;
+      setActiveHelpType(newState);
+      setShowNotification({
+        id: Date.now().toString(),
+        type: 'help',
+        message: `${type} Mode`,
+        isEnabled: newState !== null
+      });
+      
+      // Auto-disable after successful response
+      if (newState !== null) {
+        const disableAfterResponse = (e) => {
+          if (e.detail?.success) {
+            setActiveHelpType(null);
+            setShowNotification({
+              id: Date.now().toString(),
+              type: 'help',
+              message: `${type} Mode`,
+              isEnabled: false
+            });
+            window.removeEventListener('aiResponse', disableAfterResponse);
+          }
+        };
+        window.addEventListener('aiResponse', disableAfterResponse);
       }
     },
     [activeHelpType]
   );
+
+  // Update deep think toggle
+  const toggleDeepThink = useCallback(() => {
+    setIsDeepThinkEnabled(prev => !prev);
+    setShowNotification({
+      id: Date.now().toString(),
+      type: 'deep-think',
+      message: 'Deep Think Mode',
+      isEnabled: !isDeepThinkEnabled
+    });
+  }, [isDeepThinkEnabled]);
+
+  const renderMessage = (msg, index) => {
+    const isLastMessage = index === messages.length - 1;
+    const content =
+      isLastMessage && msg.sender === 'assistant'
+        ? displayedResponse
+        : msg.content;
+    const isEditing = msg.id === editingMessageId;
+
+    // Helper function to format headings and subheadings
+    const formatContent = (text) => {
+      return text.replace(
+        /(#{1,6})\s+\*\*([^*]+)\*\*/g,
+        (match, hashes, content) => {
+          const level = hashes.length;
+          const className = `text-${level === 1 ? 'xl' : level === 2 ? 'lg' : 'base'} font-bold my-2`;
+          return `<h${level} class="${className}">${content}</h${level}>`;
+        }
+      );
+    };
+
+    const formattedContent = formatContent(content);
+
+    return (
+      <div
+        key={msg.id || index}
+        className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'} mb-4 group items-start`}
+      >
+        {msg.sender === 'assistant' && (
+          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-r from-purple-500 to-indigo-500 flex items-center justify-center mr-2">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-5 w-5 text-white"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+            >
+              <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+              <path
+                fillRule="evenodd"
+                d="M10 18a8 8 0 100-16 8 8 0 000 16zm0-2a6 6 0 100-12 6 6 0 000 12z"
+                clipRule="evenodd"
+              />
+            </svg>
+          </div>
+        )}
+
+        <div
+          className={`flex flex-col ${msg.sender === 'user' ? 'items-end' : 'items-start'} max-w-[75%]`}
+        >
+          <div
+            className={`rounded-lg p-3 break-words w-full ${
+              msg.sender === 'user'
+                ? 'bg-blue-500 text-white'
+                : 'bg-gradient-to-r from-gray-800 to-gray-900 text-white shadow-xl'
+            }`}
+          >
+            {isEditing ? (
+              <div className="flex flex-col gap-2 w-full">
+                <textarea
+                  value={editingContent}
+                  onChange={(e) => setEditingContent(e.target.value)}
+                  className="w-full bg-gray-700 text-white rounded p-2 min-h-[100px] resize-none"
+                  autoFocus
+                />
+                <div className="flex justify-end gap-2">
+                  <button
+                    onClick={() => setEditingMessageId(null)}
+                    className="px-2 py-1 text-sm bg-gray-700 hover:bg-gray-600 rounded"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => handleSaveEdit(msg.id)}
+                    className="px-2 py-1 text-sm bg-blue-500 hover:bg-blue-600 rounded"
+                  >
+                    Save
+                  </button>
+                </div>
+              </div>
+            ) : msg.type === 'image' ? (
+              <div className="space-y-2">
+                <div className="relative bg-gray-800/50 rounded p-2">
+                  <img
+                    src={msg.previewImageData || msg.content}
+                    alt="Captured content"
+                    className="max-w-full rounded"
+                    style={{
+                      width: msg.imageWidth || 'auto',
+                      height: msg.imageHeight || 'auto',
+                      maxHeight: '200px',
+                      objectFit: 'contain',
+                    }}
+                  />
+                  <div className="flex items-center gap-1 text-xs text-gray-300 mt-1">
+                    <span className="inline-block w-1 h-1 bg-gray-400 rounded-full"></span>
+                    <span>{msg.source}</span>
+                  </div>
+                </div>
+                {msg.question && (
+                  <div className="text-[15px]">{msg.question}</div>
+                )}
+              </div>
+            ) : msg.type === 'selected-text' ? (
+              <div className="space-y-2">
+                <div className="text-xs bg-gray-800/50 rounded p-2 break-words">
+                  {msg.selectedText}
+                </div>
+                <div className="flex items-center gap-1 text-xs text-gray-300">
+                  <span className="inline-block w-1 h-1 bg-gray-400 rounded-full"></span>
+                  <span>{msg.source}</span>
+                </div>
+                <Message 
+                  content={formattedContent}
+                  className="text-[15px] break-words"
+                />
+              </div>
+            ) : (
+              <div className="text-[15px] leading-relaxed whitespace-pre-wrap break-words">
+                <Message 
+                  content={formattedContent}
+                  className="text-[15px] leading-relaxed whitespace-pre-wrap break-words"
+                />
+                {isLastMessage && msg.sender === 'assistant' && isTyping && (
+                  <span className="inline-block w-2 h-5 bg-blue-400 animate-pulse ml-1">
+                    |
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {msg.sender === 'user' && userProfile?.picture && (
+          <div className="flex-shrink-0 w-8 h-8 rounded-full overflow-hidden ml-2">
+            <img
+              src={userProfile.picture}
+              alt={userProfile.name}
+              className="w-full h-full object-cover"
+            />
+          </div>
+        )}
+      </div>
+    );
+  };
 
   // Update initial width based on screen size
   useEffect(() => {
@@ -1139,15 +1268,6 @@ const ChatBot = ({
     );
   };
 
-  // Add effect to handle Deep Think notice
-  useEffect(() => {
-    setShowDeepThinkNotice(true);
-    const timer = setTimeout(() => {
-      setShowDeepThinkNotice(false);
-    }, 2000); // Notice will fade out after 2 seconds
-    return () => clearTimeout(timer);
-  }, [isDeepThinkEnabled]);
-
   return (
     <div
       ref={resizeRef}
@@ -1278,22 +1398,6 @@ const ChatBot = ({
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-2 sm:p-3 md:p-4 bg-gray-900 hide-scrollbar">
-        {showDeepThinkNotice && (
-          <div className={`fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 
-            flex items-center justify-center p-6 rounded-xl
-            ${isDeepThinkEnabled 
-              ? 'bg-blue-500/20 border-2 border-blue-500/30' 
-              : 'bg-gray-800/20 border-2 border-gray-700/30'} 
-            backdrop-blur-sm transition-opacity duration-500 z-50`}
-          >
-            <div className="flex flex-col items-center gap-3">
-              <span className="text-4xl">{isDeepThinkEnabled ? '🧠' : '🤔'}</span>
-              <span className={`text-lg font-medium ${isDeepThinkEnabled ? 'text-blue-400' : 'text-gray-400'}`}>
-                Deep Think Mode {isDeepThinkEnabled ? 'Activated' : 'Deactivated'}
-              </span>
-            </div>
-          </div>
-        )}
         {messages.map(renderMessage)}
         {isLoading && renderLoadingState()}
         <div ref={messagesEndRef} />
@@ -1348,7 +1452,7 @@ const ChatBot = ({
           <textarea
             ref={inputRef}
             value={chatMessage}
-            onChange={handleMessageChange}
+            onChange={(e) => setMessage(e.target.value)}
             onClick={() => {
               if (inputRef.current) {
                 inputRef.current.focus();
@@ -1373,7 +1477,7 @@ const ChatBot = ({
           <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-0.5">
             <button
               type="button"
-              onClick={() => setIsDeepThinkEnabled(!isDeepThinkEnabled)}
+              onClick={toggleDeepThink}
               className={`p-1.5 rounded-full transition-all duration-200 ${
                 isDeepThinkEnabled
                   ? 'bg-blue-500/20 hover:bg-blue-500/30 animate-pulse'
@@ -1426,6 +1530,17 @@ const ChatBot = ({
           />
         </form>
       </div>
+
+      {/* Add notification */}
+      {showNotification && (
+        <FadeNotification
+          key={showNotification.id}
+          message={showNotification.message}
+          type={showNotification.type}
+          isEnabled={showNotification.isEnabled}
+          id={showNotification.id}
+        />
+      )}
     </div>
   );
 };
