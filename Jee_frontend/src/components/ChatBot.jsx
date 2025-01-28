@@ -404,7 +404,7 @@ const ChatBot = ({
         // Only auto-scroll if user hasn't scrolled up
         if (container && !userScrolled) {
           messagesEndRef.current?.scrollIntoView({
-            behavior: 'smooth',
+        behavior: 'smooth',
             block: 'end',
           });
         }
@@ -708,9 +708,9 @@ const ChatBot = ({
     const handleMouseMove = (e) => {
       if (!isResizing) return;
       e.preventDefault();
-
+      
       const newWidth = window.innerWidth - e.clientX;
-
+      
       if (newWidth >= 350 && newWidth <= 800) {
         requestAnimationFrame(() => {
           setWidth(newWidth);
@@ -769,15 +769,15 @@ const ChatBot = ({
         setMessages((prev) => [
           ...prev,
           {
-            sender: 'assistant',
-            type: 'text',
+          sender: 'assistant',
+          type: 'text',
             content: errorMessage,
           },
         ]);
         setDisplayedResponse(errorMessage);
         setCurrentTypingIndex(errorMessage.length);
-        // Reset file input to allow selecting the same file again
-        e.target.value = '';
+      // Reset file input to allow selecting the same file again
+      e.target.value = '';
       }
     }
   };
@@ -876,7 +876,7 @@ const ChatBot = ({
     const formattedContent = formatContent(content);
 
     return (
-      <div
+      <div 
         key={msg.id || index}
         className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'} mb-4 group items-start`}
       >
@@ -897,17 +897,17 @@ const ChatBot = ({
             </svg>
           </div>
         )}
-
-        <div
+        
+        <div 
           className={`flex flex-col ${msg.sender === 'user' ? 'items-end' : 'items-start'} max-w-[75%] relative group`}
         >
           <div
             className={`rounded-lg p-3 break-words w-full ${
-              msg.sender === 'user'
+            msg.sender === 'user' 
                 ? 'bg-blue-500 text-white'
-                : 'bg-gradient-to-r from-gray-800 to-gray-900 text-white shadow-xl'
-            }`}
-          >
+              : 'bg-gradient-to-r from-gray-800 to-gray-900 text-white shadow-xl'
+          }`}
+        >
             {isEditing && msg.sender === 'user' ? (
               <div className="flex flex-col gap-2">
                 <textarea
@@ -961,7 +961,7 @@ const ChatBot = ({
                   <div className="flex items-center gap-1 text-xs text-gray-300 mt-1">
                     <span className="inline-block w-1 h-1 bg-gray-400 rounded-full"></span>
                     <span>{msg.source}</span>
-                  </div>
+              </div>
                 </div>
                 {msg.question && (
                   <div className="text-[15px]">{msg.question}</div>
@@ -980,14 +980,14 @@ const ChatBot = ({
                   content={formattedContent}
                   className="text-[15px] break-words"
                 />
-              </div>
-            ) : (
+            </div>
+          ) : (
               <div className="text-[15px] leading-relaxed whitespace-pre-wrap break-words">
                 <Message 
                   content={formattedContent}
                   className="text-[15px] leading-relaxed whitespace-pre-wrap break-words"
                 />
-                {isLastMessage && msg.sender === 'assistant' && isTyping && (
+              {isLastMessage && msg.sender === 'assistant' && isTyping && (
                   <span className="inline-block w-2 h-5 bg-blue-400 animate-pulse ml-1">
                     |
                   </span>
@@ -1010,8 +1010,8 @@ const ChatBot = ({
 
         {msg.sender === 'user' && userProfile?.picture && (
           <div className="flex-shrink-0 w-8 h-8 rounded-full overflow-hidden ml-2">
-            <img
-              src={userProfile.picture}
+            <img 
+              src={userProfile.picture} 
               alt={userProfile.name}
               className="w-full h-full object-cover"
             />
@@ -1318,11 +1318,11 @@ const ChatBot = ({
     <div
       ref={resizeRef}
       className={`fixed flex flex-col bg-gray-900 text-white shadow-2xl transform transition-all duration-300 ease-in-out ${
-        isFullScreen
-          ? 'inset-0 rounded-none'
+        isFullScreen 
+          ? 'inset-0 rounded-none' 
           : 'top-0 bottom-0 right-0 rounded-tl-xl'
       } ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}
-      style={{
+      style={{ 
         width: isFullScreen || window.innerWidth < 640 ? '100%' : `${width}px`,
         zIndex: isFullScreen ? 60 : 40,
         paddingBottom: 'env(safe-area-inset-bottom, 16px)',
@@ -1461,13 +1461,13 @@ const ChatBot = ({
                 <span className="text-[10px] text-gray-500 truncate">
                   {selectedTextPreview.source}
                 </span>
-              </div>
+            </div>
               <div className="text-xs text-gray-300 line-clamp-2">
                 {selectedTextPreview.content}
               </div>
             </div>
             <div className="flex items-center gap-1">
-              <button
+            <button
                 onClick={() => setIsPinnedText(!isPinnedText)}
                 className="p-1 hover:bg-gray-700/50 rounded-full transition-colors flex-shrink-0"
               >
@@ -1480,9 +1480,9 @@ const ChatBot = ({
               <button
                 onClick={() => setSelectedTextPreview(null)}
                 className="p-1 hover:bg-gray-700/50 rounded-full transition-colors flex-shrink-0"
-              >
-                <XMarkIcon className="h-4 w-4 text-gray-400 hover:text-white" />
-              </button>
+            >
+              <XMarkIcon className="h-4 w-4 text-gray-400 hover:text-white" />
+            </button>
             </div>
           </div>
         )}
@@ -1563,7 +1563,7 @@ const ChatBot = ({
               {isLoading || isTyping ? (
                 <StopIcon className="h-4 w-4" />
               ) : (
-                <PaperAirplaneIcon className="h-4 w-4 text-gray-400 hover:text-white" />
+              <PaperAirplaneIcon className="h-4 w-4 text-gray-400 hover:text-white" />
               )}
             </button>
           </div>
@@ -1601,7 +1601,7 @@ ChatBot.propTypes = {
   onResize: PropTypes.func
 };
 
-export default ChatBot;
+export default ChatBot; 
 
 // Add this at the end of the file, before the export
 const wave = `
