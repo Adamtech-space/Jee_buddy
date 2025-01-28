@@ -1,0 +1,22 @@
+{
+    "prod": {
+        "aws_region": "ap-south-1",
+        "django_settings": "core.settings",
+        "profile_name": "default",
+        "project_name": "jee-buddy-ai",
+        "runtime": "python3.9",
+        "s3_bucket": "zappa-jee-buddy-lambda",
+        "timeout_seconds": 900,
+        "memory_size": 1024,
+        "manage_roles": false,
+        "role_name": "jee-buddy-lambda-role",
+        "role_arn": "YOUR-ROLE-ARN-HERE",
+        "vpc_config": {
+            "SubnetIds": [],
+            "SecurityGroupIds": []
+        },
+        "environment_variables": {
+            "DJANGO_SETTINGS_MODULE": "core.settings"
+        }
+    }
+} 
