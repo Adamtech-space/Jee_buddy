@@ -311,48 +311,13 @@ const ChatBot = ({
     const container = document.querySelector('.overflow-y-auto');
     if (!container) return;
 
-    let userScrolled = false;
-    let lastScrollTop = container.scrollTop;
-
     const handleScroll = () => {
-      const isAtBottom =
-        Math.abs(
-          container.scrollHeight -
-          container.scrollTop -
-          container.clientHeight
-        ) < 100;
-      const isScrollingDown = container.scrollTop > lastScrollTop;
-      lastScrollTop = container.scrollTop;
-
-      if (isScrollingDown && isAtBottom) {
-        userScrolled = false;
-      } else {
-        userScrolled = !isAtBottom;
-      }
+      // Basic scroll handler with no auto-scroll behavior
     };
-
-    const observer = new MutationObserver(() => {
-      if (!userScrolled) {
-        requestAnimationFrame(() => {
-          container.scrollTo({
-            top: container.scrollHeight,
-            behavior: 'smooth',
-          });
-        });
-      }
-    });
-
-    observer.observe(container, {
-      childList: true,
-      subtree: true,
-      characterData: true,
-      characterDataOldValue: true,
-    });
 
     container.addEventListener('scroll', handleScroll, { passive: true });
 
     return () => {
-      observer.disconnect();
       container.removeEventListener('scroll', handleScroll);
     };
   }, [messages]);
@@ -361,25 +326,6 @@ const ChatBot = ({
   useEffect(() => {
     let timer;
     const currentMessage = messages[messages.length - 1];
-    const container = document.querySelector('.overflow-y-auto');
-    let userScrolled = false;
-
-    // Track user scroll
-    const handleScroll = () => {
-      if (container) {
-        const isAtBottom =
-          Math.abs(
-            container.scrollHeight -
-            container.scrollTop -
-            container.clientHeight
-          ) < 100;
-        userScrolled = !isAtBottom;
-      }
-    };
-
-    if (container) {
-      container.addEventListener('scroll', handleScroll);
-    }
 
     if (
       isTyping &&
@@ -400,14 +346,6 @@ const ChatBot = ({
           currentMessage.content.slice(0, nextIndex)
         );
         setCurrentTypingIndex(nextIndex);
-
-        // Only auto-scroll if user hasn't scrolled up
-        if (container && !userScrolled) {
-          messagesEndRef.current?.scrollIntoView({
-            behavior: 'smooth',
-            block: 'end',
-          });
-        }
       }, 10); // Reduced delay to 10ms
     } else if (isTyping && currentMessage?.sender === 'assistant') {
       setIsTyping(false);
@@ -415,9 +353,6 @@ const ChatBot = ({
 
     return () => {
       if (timer) clearTimeout(timer);
-      if (container) {
-        container.removeEventListener('scroll', handleScroll);
-      }
     };
   }, [isTyping, currentTypingIndex, messages]);
 

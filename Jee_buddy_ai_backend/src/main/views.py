@@ -391,3 +391,10 @@ def get_chat_history_by_user(request):
         return Response({
             'error': str(e)
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+def handler(event, context):
+    """AWS Lambda handler function"""
+    from src.core.wsgi import application
+    import awsgi
+    
+    return awsgi.response(application, event, context)

@@ -1,0 +1,45 @@
+service: jee-buddy-ai-backend
+
+provider:
+  name: aws
+  runtime: python3.9
+  region: ap-south-1  # Mumbai region
+  timeout: 900  # Maximum timeout (15 minutes)
+  memorySize: 1024  # 1GB RAM
+  environment:
+    STAGE: ${opt:stage, 'dev'}
+    # Add your environment variables from .env here
+    
+package:
+  patterns:
+    - '!venv/**'
+    - '!.venv/**'
+    - '!node_modules/**'
+    - '!tests/**'
+    - 'src/**'
+    - 'requirements.txt'
+
+functions:
+  api:
+    handler: src.main.views.handler  # Update this to your main handler function
+    events:
+      - http:
+          path: /{proxy+}
+          method: ANY
+          cors: true
+    environment:
+      PYTHONPATH: ./src
+    
+plugins:
+  - serverless-python-requirements
+  - serverless-wsgi
+
+custom:
+  pythonRequirements:
+    dockerizePip: true
+    layer:
+      name: python-deps
+      description: Python dependencies for Jee Buddy AI
+  wsgi:
+    app: src.core.asgi.application
+    packRequirements: false 
