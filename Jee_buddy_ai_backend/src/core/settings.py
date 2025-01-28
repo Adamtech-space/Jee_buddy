@@ -81,13 +81,7 @@ REST_FRAMEWORK = {
 CORS_ALLOW_ALL_ORIGINS = True  # Change this to False
 CORS_ALLOW_CREDENTIALS = True
 
-# CORS_ALLOWED_ORIGINS = [
-#     "http://localhost:5173",
-#     "http://127.0.0.1:5173",
-#     "http://localhost:3000",
-#     "https://jee-buddy-yugandhar0609s-projects.vercel.app",  # Add your Vercel frontend domain
-#     "https://jee-buddy.vercel.app"  # Add any other production domains
-# ]
+
 
 CORS_ALLOW_METHODS = [
     'DELETE',
@@ -134,16 +128,6 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'core.wsgi.application'
 
-
-INSTALLED_APPS += ['channels']
-
-ASGI_APPLICATION = 'core.asgi.application'
-
-CHANNEL_LAYERS = {
-    'default': {
-        'BACKEND': 'channels.layers.InMemoryChannelLayer'
-    }
-}
 
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
@@ -202,7 +186,6 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
 
 
 
