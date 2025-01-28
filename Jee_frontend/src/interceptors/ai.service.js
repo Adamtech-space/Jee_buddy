@@ -1,96 +1,11 @@
 import aiInstance from './aiAxios';
 
-class WebSocketService {
-  constructor() {
-    this.ws = null;
-    this.messageCallbacks = new Map();
-    this.reconnectAttempts = 0;
-    this.maxReconnectAttempts = 5;
-    const baseUrl = import.meta.env.VITE_AI_URL;
-    this.baseUrl = baseUrl.replace(/\/$/, '').replace('http://', 'ws://').replace('https://', 'wss://');
-  }
-
-  connect() {
-    if (this.ws?.readyState === WebSocket.OPEN) return;
-
-    const tokens = localStorage.getItem('tokens');
-    const accessToken = tokens ? JSON.parse(tokens).access.token : '';
-    
-    const wsUrl = `${this.baseUrl}/ws/chat/?token=${accessToken}`;
-    console.log('WebSocket Base URL:', this.baseUrl);
-    console.log('Connecting to WebSocket:', wsUrl);
-    
-    this.ws = new WebSocket(wsUrl);
-
-    this.ws.onopen = () => {
-      console.log('WebSocket Connected');
-      this.reconnectAttempts = 0;
-      window.dispatchEvent(new CustomEvent('wsConnected'));
-    };
-
-    this.ws.onclose = () => {
-      console.log('WebSocket Disconnected');
-      this.handleReconnect();
-      window.dispatchEvent(new CustomEvent('wsDisconnected'));
-    };
-
-    this.ws.onerror = (error) => {
-      console.error('WebSocket Error:', error);
-    };
-
-    this.ws.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        if (data.message_id && this.messageCallbacks.has(data.message_id)) {
-          const { resolve, reject } = this.messageCallbacks.get(data.message_id);
-          if (data.error) {
-            reject(new Error(data.error));
-          } else {
-            // Dispatch success event for auto-disabling features
-            window.dispatchEvent(new CustomEvent('aiResponse', { 
-              detail: { success: true } 
-            }));
-            resolve(data);
-          }
-          this.messageCallbacks.delete(data.message_id);
-        }
-      } catch (error) {
-        console.error('Error processing WebSocket message:', error);
-      }
-    };
-  }
-
-  handleReconnect() {
-    if (this.reconnectAttempts < this.maxReconnectAttempts) {
-      this.reconnectAttempts++;
-      const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts), 10000);
-      setTimeout(() => this.connect(), delay);
-    }
-  }
-
-  disconnect() {
-    if (this.ws) {
-      this.ws.close();
-      this.ws = null;
-    }
-  }
-
-  async sendMessage(message, context) {
-    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-      await new Promise((resolve) => {
-        const checkConnection = setInterval(() => {
-          if (this.ws?.readyState === WebSocket.OPEN) {
-            clearInterval(checkConnection);
-            resolve();
-          }
-        }, 100);
-      });
-    }
-
-    return new Promise((resolve, reject) => {
-      const messageId = Date.now().toString();
-      const payload = {
-        message_id: messageId,
+export const aiService = {
+  async askQuestion(message, context) {
+    try {
+      console.log('Sending request with data:', { message, context });
+      
+      const requestData = {
         question: message,
         context: {
           user_id: context.user_id,
@@ -102,74 +17,63 @@ class WebSocketService {
           image: context.image || null,
           Deep_think: context.Deep_think || false,
           history_limit: 100,
+          chat_history: [] // The backend will fetch history based on user_id
+        }
+      };
+
+      console.log('Final request payload:', requestData);
+
+      const response = await aiInstance.post('api/solve-math/', requestData);
+      console.log('AI response:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('AI request failed:', error);
+      console.error('Error details:', {
+        status: error.response?.status,
+        data: error.response?.data,
+        message: error.message
+      });
+      throw error.response?.data || { message: 'Failed to get AI response' };
+    }
+  },
+
+  async getHelpResponse(type, context) {
+    try {
+      console.log('Sending help request with data:', { type, context });
+      
+      const requestData = {
+        question: context.question ? `${context.question} (${type})` : `Help me with: ${type}`,
+        context: {
+          user_id: context.user_id,
+          session_id: context.session_id,
+          subject: context.subject || '',
+          topic: context.topic || '',
+          interaction_type: type,
+          pinnedText: context.pinnedText || '',
+          selectedText: context.selectedText || '',
+          image: context.image || null,
+          Deep_think: context.Deep_think || false,
+          history_limit: 100,
           chat_history: []
         }
       };
 
-      this.messageCallbacks.set(messageId, { resolve, reject });
-      this.ws.send(JSON.stringify(payload));
+      console.log('Final help request payload:', requestData);
 
-      // Set timeout for response
-      setTimeout(() => {
-        if (this.messageCallbacks.has(messageId)) {
-          this.messageCallbacks.delete(messageId);
-          reject(new Error('WebSocket response timeout'));
-        }
-      }, 30000);
-    });
-  }
-}
-
-// Create WebSocket instance
-const wsService = new WebSocketService();
-
-export const aiService = {
-  // Initialize WebSocket connection
-  initializeWebSocket() {
-    wsService.connect();
-  },
-
-  // Close WebSocket connection
-  closeWebSocket() {
-    wsService.disconnect();
-  },
-
-  // Modified askQuestion to use WebSocket
-  async askQuestion(message, context) {
-    try {
-      console.log('Sending WebSocket message:', { message, context });
-      const response = await wsService.sendMessage(message, context);
-      console.log('WebSocket response:', response);
-      return response;
-    } catch (error) {
-      console.error('WebSocket request failed:', error);
-      console.error('Error details:', {
-        message: error.message
-      });
-      throw { message: error.message || 'Failed to get response' };
-    }
-  },
-
-  // Keep the rest of the methods using HTTP for now
-  async getHelpResponse(type, context) {
-    try {
-      console.log('Sending help request with data:', { type, context });
-      const response = await wsService.sendMessage(
-        context.question ? `${context.question} (${type})` : `Help me with: ${type}`,
-        {
-          ...context,
-          interaction_type: type
-        }
-      );
-      console.log('Help response:', response);
-      return response;
+      const response = await aiInstance.post('api/solve-math/', requestData);
+      console.log('Help response:', response.data);
+      return response.data;
     } catch (error) {
       console.error('Help request failed:', error);
-      throw { message: error.message || 'Failed to get help response' };
+      console.error('Error details:', {
+        status: error.response?.status,
+        data: error.response?.data,
+        message: error.message
+      });
+      throw error.response?.data || { message: 'Failed to get help response' };
     }
   },
 
-  // Keep existing HTTP methods
   async analyzeFile(file, context) {
     try {
       console.log('Analyzing file:', { fileName: file.name, context });
@@ -191,10 +95,18 @@ export const aiService = {
         }
       };
 
+      console.log('Final analyze request payload:', requestData);
+
       const response = await aiInstance.post('api/solve-math/', requestData);
+      console.log('Analysis response:', response.data);
       return response.data;
     } catch (error) {
       console.error('File analysis failed:', error);
+      console.error('Error details:', {
+        status: error.response?.status,
+        data: error.response?.data,
+        message: error.message
+      });
       throw error.response?.data || { message: 'Failed to analyze file' };
     }
   },
@@ -211,50 +123,117 @@ export const aiService = {
     });
   },
 
-  // Keep other HTTP methods
+  // Subscription related methods
   async checkSubscriptionStatus(userId) {
     try {
+      console.log('Checking subscription status for user:', userId);
+      if (!userId) {
+        throw new Error('User ID is required');
+      }
       const response = await aiInstance.get(`api/subscription/status/?user_id=${userId}`);
+      console.log('Subscription status response:', response.data);
       return response.data;
     } catch (error) {
-      throw error.response?.data || { message: 'Failed to check subscription status' };
+      console.error('Subscription status check failed:', error);
+      console.error('Error details:', {
+        status: error.response?.status,
+        data: error.response?.data,
+        message: error.message
+      });
+      throw error.response?.data || { message: error.message || 'Failed to check subscription status' };
     }
   },
 
   async createSubscription(subscriptionData) {
     try {
+      console.log('Creating subscription with data:', subscriptionData);
+      
+      // Validate required fields
+      if (!subscriptionData.price || !subscriptionData.product_name || !subscriptionData.plan_id || !subscriptionData.user_id) {
+        throw new Error('Missing required subscription data');
+      }
+
       const response = await aiInstance.post('api/subscription/create/', subscriptionData);
+      console.log('Subscription creation response:', response.data);
+      
+      if (!response.data) {
+        throw new Error('Empty response from server');
+      }
+      
       return response.data;
     } catch (error) {
-      throw error.response?.data || { message: 'Failed to create subscription' };
+      console.error('Subscription creation failed:', error);
+      console.error('Error details:', {
+        status: error.response?.status,
+        data: error.response?.data,
+        message: error.message,
+        stack: error.stack
+      });
+      if (error.response?.data) {
+        throw error.response.data;
+      } else if (error.message) {
+        throw { message: error.message };
+      } else {
+        throw { message: 'Failed to create subscription' };
+      }
     }
   },
 
   async verifySubscription(verificationData) {
     try {
+      console.log('Verifying subscription with data:', verificationData);
+      
+      // Validate required fields
+      if (!verificationData.razorpay_payment_id || !verificationData.razorpay_subscription_id || 
+          !verificationData.razorpay_signature || !verificationData.user_id) {
+        throw new Error('Missing required verification data');
+      }
+
       const response = await aiInstance.post('api/subscription/callback/', verificationData);
+      console.log('Subscription verification response:', response.data);
       return response.data;
     } catch (error) {
-      throw error.response?.data || { message: 'Failed to verify subscription' };
+      console.error('Subscription verification failed:', error);
+      console.error('Error details:', {
+        status: error.response?.status,
+        data: error.response?.data,
+        message: error.message,
+        stack: error.stack
+      });
+      if (error.response?.data) {
+        throw error.response.data;
+      } else if (error.message) {
+        throw { message: error.message };
+      } else {
+        throw { message: 'Failed to verify subscription' };
+      }
     }
   },
 
   async getUserUsage(userId) {
     try {
+      console.log('Fetching usage data for user:', userId);
       const response = await aiInstance.get(`/api/usage/stats/?user_id=${userId}`);
+      console.log('Usage data response:', response.data);
       return response.data;
     } catch (error) {
+      console.error('Error fetching usage data:', error);
       throw new Error(error.response?.data?.message || 'Failed to fetch usage data');
     }
   },
 
-  async getChatHistory(userId, sessionId) {
+  // Add new method for fetching chat history
+  getChatHistory: async (userId, sessionId) => {
     try {
       const response = await aiInstance.get(`/api/chat/history`, {
-        params: { user_id: userId, session_id: sessionId }
+        params: {
+          user_id: userId,
+          session_id: sessionId
+        }
       });
       return response.data;
     } catch (error) {
+      console.error('Error fetching chat history:', error);
       throw error;
     }
   }
