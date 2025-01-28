@@ -62,13 +62,13 @@ const PdfViewer = () => {
           if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
           }
-          setLoading(false);
-        })
+        setLoading(false);
+      })
         .catch((err) => {
-          console.error('Error checking PDF URL:', err);
-          setError(`Failed to access PDF: ${err.message}`);
-          setLoading(false);
-        });
+        console.error('Error checking PDF URL:', err);
+        setError(`Failed to access PDF: ${err.message}`);
+        setLoading(false);
+      });
     }
   }, [pdfUrl, navigate, subject]);
 
@@ -477,21 +477,21 @@ const PdfViewer = () => {
         style={{ top: isMobile ? '56px' : 0 }}
       >
         <Worker workerUrl="https://unpkg.com/pdfjs-dist@3.4.120/build/pdf.worker.min.js">
-          <Viewer
-            fileUrl={pdfUrl}
+            <Viewer
+              fileUrl={pdfUrl}
             defaultScale={isMobile ? 1 : 'PageWidth'}
             theme="dark"
             className="h-full"
-            renderLoader={(percentages) => (
-              <div className="flex items-center justify-center h-full">
+              renderLoader={(percentages) => (
+                <div className="flex items-center justify-center h-full">
                 <div className="text-center text-white">
-                  <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-500 mb-4"></div>
+                    <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-500 mb-4"></div>
                   <p>Loading PDF... {Math.round(percentages)}%</p>
                 </div>
-              </div>
-            )}
-          />
-        </Worker>
+                </div>
+              )}
+            />
+          </Worker>
       </div>
 
       {/* Selection Popup */}
@@ -522,8 +522,8 @@ const PdfViewer = () => {
                   maxWidth: '100%',
                 }}
               />
-            </div>
-          )}
+        </div>
+      )}
           <div className="flex justify-end gap-2 mt-4">
             <button
               onClick={handleReselect}
