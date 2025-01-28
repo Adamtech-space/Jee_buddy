@@ -31,19 +31,19 @@ const BooksList = () => {
     });
   };
 
-  const getRandomColor = () => {
-    const colors = [
-      'from-blue-500 to-blue-700',
-      'from-indigo-500 to-indigo-700',
-      'from-purple-500 to-purple-700',
-      'from-pink-500 to-pink-700',
-      'from-red-500 to-red-700',
-      'from-orange-500 to-orange-700',
-      'from-yellow-500 to-yellow-700',
-      'from-green-500 to-green-700',
-    ];
-    return colors[Math.floor(Math.random() * colors.length)];
-  };
+  // const getRandomColor = () => {
+  //   const colors = [
+  //     'from-blue-500 to-blue-700',
+  //     'from-indigo-500 to-indigo-700',
+  //     'from-purple-500 to-purple-700',
+  //     'from-pink-500 to-pink-700',
+  //     'from-red-500 to-red-700',
+  //     'from-orange-500 to-orange-700',
+  //     'from-yellow-500 to-yellow-700',
+  //     'from-green-500 to-green-700',
+  //   ];
+  //   return colors[Math.floor(Math.random() * colors.length)];
+  // };
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -103,19 +103,37 @@ const BooksList = () => {
                 <motion.div
                   key={book.id}
                   variants={itemVariants}
-                  className={`bg-gray-900 rounded-xl p-6 transition-all duration-300 ${
+                  className={`bg-gray-900 rounded-xl p-2 transition-all duration-300 ${
                     selectedBook?.id === book.id ? 'ring-2 ring-blue-500' : ''
                   }`}
                 >
                   <div
-                    className="cursor-pointer"
-                    onClick={() => handleBookClick(book)}
+                    className="cursor-pointer relative overflow-hidden"
+                    onClick={(e) => {
+                      const container = e.currentTarget;
+                      const rect = container.getBoundingClientRect();
+                      const x = e.clientX - rect.left;
+                      const y = e.clientY - rect.top;
+
+                      const ripple = document.createElement('div');
+                      ripple.style.left = `${x}px`;
+                      ripple.style.top = `${y}px`;
+                      ripple.className = 'ripple-effect';
+
+                      container.appendChild(ripple);
+
+                      ripple.addEventListener('animationend', () => {
+                        ripple.remove();
+                      });
+
+                      handleBookClick(book);
+                    }}
                   >
-                    <h3 className="text-2xl font-bold text-white mb-2">
+                    <h3 className="text-2xl p-4 font-bold text-white">
                       {book.displayName[0]}
                     </h3>
                     {book.displayName[1] && (
-                      <p className="text-gray-400 text-sm mb-4">
+                      <p className="text-gray-400 p-4 text-sm">
                         Unit: {book.displayName[1]}
                       </p>
                     )}
@@ -135,12 +153,28 @@ const BooksList = () => {
                   >
                     <div className="mt-4">
                       <motion.button
-                        onClick={() => handlePdfClick(book.storage_url)}
-                        className={`w-full p-6 rounded-xl shadow-lg hover:shadow-2xl 
-                                  transition-all duration-300 bg-gradient-to-r ${getRandomColor()}
-                                  flex items-center justify-between group`}
-                        whileHover={{ scale: 1.03 }}
-                        whileTap={{ scale: 0.98 }}
+                        onClick={(e) => {
+                          const button = e.currentTarget;
+                          const rect = button.getBoundingClientRect();
+                          const x = e.clientX - rect.left;
+                          const y = e.clientY - rect.top;
+
+                          const ripple = document.createElement('div');
+                          ripple.style.left = `${x}px`;
+                          ripple.style.top = `${y}px`;
+                          ripple.className = 'ripple-effect';
+
+                          button.appendChild(ripple);
+
+                          ripple.addEventListener('animationend', () => {
+                            ripple.remove();
+                          });
+
+                          handlePdfClick(book.storage_url);
+                        }}
+                        className={`w-full p-6 rounded-xl relative overflow-hidden
+                                    transition-all duration-300 bg-gradient-to-r from-blue-500 to-blue-700
+                                    flex items-center justify-between group`}
                       >
                         <div className="flex items-center">
                           <span className="text-4xl mr-4 group-hover:scale-110 transition-transform">
