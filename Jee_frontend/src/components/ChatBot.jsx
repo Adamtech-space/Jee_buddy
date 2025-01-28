@@ -1303,6 +1303,17 @@ const ChatBot = ({
     );
   };
 
+  // Add this useEffect to initialize WebSocket connection
+  useEffect(() => {
+    // Initialize WebSocket connection when component mounts
+    aiService.initializeWebSocket();
+
+    // Clean up WebSocket connection when component unmounts
+    return () => {
+      aiService.closeWebSocket();
+    };
+  }, []);
+
   return (
     <div
       ref={resizeRef}
