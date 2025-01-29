@@ -274,7 +274,7 @@ const ChatBot = ({
   const [pinnedImage, setPinnedImage] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [userProfile, setUserProfile] = useState(null);
-  const messagesEndRef = useRef(null);
+  const messagesContainerRef = useRef(null);
   const fileInputRef = useRef(null);
   const inputRef = useRef(null);
   const resizeRef = useRef(null);
@@ -294,6 +294,7 @@ const ChatBot = ({
   const [chatHistory, setChatHistory] = useState([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [showNotification, setShowNotification] = useState(null);
+  const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
 
   // Add focus management effect
   useEffect(() => {
@@ -306,21 +307,41 @@ const ChatBot = ({
     }
   }, [isOpen]);
 
-  // Update scroll logic for smoother control
+  // Add scroll handler to detect when user is at bottom
+  const handleScroll = useCallback(() => {
+    if (!messagesContainerRef.current) return;
+    
+    const { scrollTop, scrollHeight, clientHeight } = messagesContainerRef.current;
+    const isAtBottom = Math.abs(scrollHeight - scrollTop - clientHeight) < 10;
+    setShouldAutoScroll(isAtBottom);
+  }, []);
+
+  // Update scroll effect for smooth scrolling
   useEffect(() => {
-    const container = document.querySelector('.overflow-y-auto');
+    const container = messagesContainerRef.current;
     if (!container) return;
 
-    const handleScroll = () => {
-      // Basic scroll handler with no auto-scroll behavior
+    const scrollToBottom = () => {
+      if (!shouldAutoScroll) return;
+      
+      container.scrollTo({
+        top: container.scrollHeight,
+        behavior: 'smooth'
+      });
     };
 
-    container.addEventListener('scroll', handleScroll, { passive: true });
+    // Scroll on new messages or typing updates
+    if (isTyping || messages.length > 0) {
+      scrollToBottom();
+    }
 
+    // Add scroll listener
+    container.addEventListener('scroll', handleScroll, { passive: true });
+    
     return () => {
       container.removeEventListener('scroll', handleScroll);
     };
-  }, [messages]);
+  }, [messages, isTyping, shouldAutoScroll, handleScroll]);
 
   // Update the typing effect useEffect
   useEffect(() => {
@@ -333,7 +354,7 @@ const ChatBot = ({
       currentTypingIndex < currentMessage.content.length
     ) {
       // Increase typing speed by processing more characters at once
-      const charsPerTick = 3; // Process 3 characters per tick
+      const charsPerTick = 8; // Increased from 3 to 8 characters per tick
       timer = setTimeout(() => {
         if (!isTyping) return;
 
@@ -346,7 +367,7 @@ const ChatBot = ({
           currentMessage.content.slice(0, nextIndex)
         );
         setCurrentTypingIndex(nextIndex);
-      }, 10); // Reduced delay to 10ms
+      }, 5); // Reduced delay from 10ms to 5ms for faster typing
     } else if (isTyping && currentMessage?.sender === 'assistant') {
       setIsTyping(false);
     }
@@ -1367,7 +1388,10 @@ const ChatBot = ({
       />
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-2 sm:p-3 md:p-4 bg-gray-900 hide-scrollbar">
+      <div 
+        ref={messagesContainerRef}
+        className="flex-1 overflow-y-auto p-2 sm:p-3 md:p-4 bg-gray-900 hide-scrollbar scroll-smooth"
+      >
         {isLoadingHistory ? (
           <div className="flex flex-col items-center justify-center h-full space-y-3">
             <div className="relative w-12 h-12">
@@ -1378,12 +1402,11 @@ const ChatBot = ({
             <p className="text-sm text-gray-400">Loading chat history...</p>
           </div>
         ) : (
-          <>
+          <div className="flex flex-col">
             {messages.map(renderMessage)}
             {isLoading && renderLoadingState()}
-          </>
+          </div>
         )}
-        <div ref={messagesEndRef} />
       </div>
 
       {/* Input with Pinned Content */}
