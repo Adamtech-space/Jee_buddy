@@ -263,12 +263,31 @@ class MathAgent:
 
     async def _make_api_call(self, messages: list, model_config: Dict[str, Any]) -> str:
         """Make API call and get response"""
-        async with self._get_client() as client:
-            response = await client.chat.completions.create(
-                messages=messages,
-                **model_config
-            )
-            return response.choices[0].message.content
+        try:
+            async with self._get_client() as client:
+                try:
+                    response = await client.chat.completions.create(
+                        messages=messages,
+                        **model_config
+                    )
+                    
+                    if not response or not response.choices:
+                        logger.error("Empty response received from API")
+                        raise ValueError("Empty response received from API")
+                        
+                    return response.choices[0].message.content
+                except Exception as api_error:
+                    logger.error(f"API call failed: {str(api_error)}")
+                    # Check for specific error types
+                    if "Unauthorized" in str(api_error):
+                        raise ValueError("Invalid API key or authentication failed")
+                    elif "Bad Gateway" in str(api_error):
+                        raise ValueError("API service is unavailable")
+                    else:
+                        raise ValueError(f"API call failed: {str(api_error)}")
+        except Exception as e:
+            logger.error(f"Error in _make_api_call: {str(e)}")
+            raise
 
     async def _save_chat_history(self, question: str, solution: str, context_data: Dict[Any, Any]):
         """Save interaction to chat history"""
