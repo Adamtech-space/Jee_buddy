@@ -424,7 +424,27 @@ const StudyMaterials = () => {
               )}
 
               <div className="min-w-0">
-                <p className="font-medium truncate">{item.name}</p>
+                {editingItem?.id === item.id ? (
+                  <input
+                    type="text"
+                    value={editingItem.name}
+                    onChange={(e) =>
+                      setEditingItem({ ...editingItem, name: e.target.value })
+                    }
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        handleRename(item.id, editingItem.name);
+                      } else if (e.key === 'Escape') {
+                        setEditingItem(null);
+                      }
+                    }}
+                    onBlur={() => handleRename(item.id, editingItem.name)}
+                    className="bg-gray-700 text-white px-2 py-1 rounded w-full"
+                    autoFocus
+                  />
+                ) : (
+                  <p className="font-medium truncate">{item.name}</p>
+                )}
                 {item.type === 'file' && (
                   <p className="text-xs sm:text-sm text-gray-400 truncate">
                     {(item.file_size / (1024 * 1024)).toFixed(1)} MB •{' '}
@@ -463,22 +483,22 @@ const StudyMaterials = () => {
                   </span>
                 </div>
               ) : (
-                <div className="flex opacity-100 sm:opacity-0 sm:group-hover:opacity-100">
+                <div className="flex opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                   <button
                     onClick={() =>
                       setEditingItem({ id: item.id, name: item.name })
                     }
-                    className="p-2 hover:bg-gray-700 rounded text-gray-300"
+                    className="p-2 hover:bg-gray-700 rounded text-gray-300 hover:text-white transition-colors"
                     title="Rename"
                   >
-                    <PencilIcon className="w-4 h-4" />
+                    <PencilIcon className="w-5 h-5" />
                   </button>
                   <button
                     onClick={() => handleDelete(item.id)}
-                    className="p-2 hover:bg-gray-700 rounded text-gray-300"
+                    className="p-2 hover:bg-gray-700 rounded text-red-400 hover:text-red-300 transition-colors"
                     title="Delete"
                   >
-                    <TrashIcon className="w-4 h-4" />
+                    <TrashIcon className="w-5 h-5" />
                   </button>
                 </div>
               )}
@@ -642,6 +662,20 @@ const StudyMaterials = () => {
                     className="text-gray-300 hover:text-white px-3 py-1 rounded hover:bg-gray-800"
                   >
                     Download
+                  </button>
+                  <button
+                    onClick={() => {
+                      const fileItem = items.find(
+                        (item) => item.name === selectedFile.name
+                      );
+                      if (fileItem) {
+                        handleDelete(fileItem.id);
+                        setSelectedFile(null);
+                      }
+                    }}
+                    className="text-red-400 hover:text-red-300 px-3 py-1 rounded hover:bg-gray-800"
+                  >
+                    Delete
                   </button>
                   <button
                     onClick={() => setSelectedFile(null)}
