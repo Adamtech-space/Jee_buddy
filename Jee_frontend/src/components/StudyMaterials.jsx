@@ -664,6 +664,20 @@ const StudyMaterials = () => {
                     Download
                   </button>
                   <button
+                    onClick={() => {
+                      const fileItem = items.find(
+                        (item) => item.name === selectedFile.name
+                      );
+                      if (fileItem) {
+                        handleDelete(fileItem.id);
+                        setSelectedFile(null);
+                      }
+                    }}
+                    className="text-red-400 hover:text-red-300 px-3 py-1 rounded hover:bg-gray-800"
+                  >
+                    Delete
+                  </button>
+                  <button
                     onClick={() => setSelectedFile(null)}
                     className="text-gray-300 hover:text-white px-3 py-1 rounded hover:bg-gray-800"
                   >
