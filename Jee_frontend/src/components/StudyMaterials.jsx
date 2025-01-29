@@ -43,6 +43,7 @@ const StudyMaterials = () => {
   const [uploadProgress, setUploadProgress] = useState({});
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef(null);
+  const [isNavigating, setIsNavigating] = useState(false);
 
   // Define fetchItems with useCallback before using it in useEffect
   const fetchItems = useCallback(async () => {
@@ -68,25 +69,52 @@ const StudyMaterials = () => {
   };
 
   // Navigate to folder
-  const navigateToFolder = (folderId) => {
-    if (!folderId) {
-      setCurrentFolder({ id: null, path: [] });
-      return;
-    }
+  const navigateToFolder = async (folderId) => {
+    if (isNavigating) return; // Prevent multiple clicks
+    setIsNavigating(true);
 
-    const buildPath = (itemId) => {
-      const item = items.find((i) => i.id === itemId);
-      if (!item) return [];
-
-      if (!item.parent_id) {
-        return [{ id: item.id, name: item.name }];
+    try {
+      if (!folderId) {
+        setCurrentFolder({ id: null, path: [] });
+        setItems([]); // Clear items when going to root
+        const response = await getStudyMaterials(null, subject);
+        setItems(response.data);
+        return;
       }
 
-      return [...buildPath(item.parent_id), { id: item.id, name: item.name }];
-    };
+      const response = await getStudyMaterials(folderId, subject);
+      const folderItems = response.data;
 
-    const path = buildPath(folderId);
-    setCurrentFolder({ id: folderId, path });
+      // Find the current folder in the items
+      const currentFolderItem = items.find((item) => item.id === folderId);
+
+      if (currentFolderItem) {
+        // Going into a child folder
+        setCurrentFolder((prev) => ({
+          id: folderId,
+          path: [...prev.path, { id: folderId, name: currentFolderItem.name }],
+        }));
+      } else {
+        // Going back through breadcrumb
+        const pathIndex = currentFolder.path.findIndex(
+          (item) => item.id === folderId
+        );
+        if (pathIndex !== -1) {
+          setCurrentFolder((prev) => ({
+            id: folderId,
+            path: prev.path.slice(0, pathIndex + 1),
+          }));
+        }
+      }
+
+      setItems(folderItems);
+    } catch (error) {
+      console.error('Navigation error:', error);
+      message.error('Failed to navigate to folder');
+    } finally {
+      // Add a small delay before allowing next navigation
+      setTimeout(() => setIsNavigating(false), 500);
+    }
   };
 
   // Create new folder
