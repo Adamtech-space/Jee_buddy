@@ -12,7 +12,7 @@ import django
 from django.core.wsgi import get_wsgi_application
 from django.core.handlers.wsgi import WSGIHandler
 from django.apps import apps
-from 
+
 # Set up Django's settings
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'core.settings')
 
