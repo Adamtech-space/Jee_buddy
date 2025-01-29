@@ -74,6 +74,9 @@ const StudyMaterials = () => {
     setIsNavigating(true);
 
     try {
+      // Clear selected file when navigating
+      setSelectedFile(null);
+
       if (!folderId) {
         setCurrentFolder({ id: null, path: [] });
         setItems([]); // Clear items when going to root
@@ -384,7 +387,25 @@ const StudyMaterials = () => {
     </nav>
   );
 
-  // Render file/folder list
+  // Simplified click handler
+  const handleItemClick = async (item) => {
+    if (item.type === 'folder') {
+      navigateToFolder(item.id);
+    } else {
+      try {
+        const response = await getFileDownloadUrl(item.id);
+        setSelectedFile({
+          url: response.data.signedUrl,
+          name: item.name,
+          type: item.mime_type || item.type,
+        });
+      } catch (error) {
+        message.error(error.message || 'Failed to load file');
+      }
+    }
+  };
+
+  // Update renderItems
   const renderItems = () => {
     const currentItems = getCurrentFolderItems();
 
@@ -431,27 +452,11 @@ const StudyMaterials = () => {
         {currentItems.map((item) => (
           <div
             key={item.id}
-            className="flex items-center justify-between p-3 hover:bg-gray-800 rounded-lg group flex-wrap gap-2"
+            className="flex items-center justify-between p-3 hover:bg-gray-800 rounded-lg group flex-wrap gap-2 item-click-effect"
+            onClick={() => handleItemClick(item)}
+            style={{ cursor: 'pointer' }}
           >
-            <div
-              className="flex items-center space-x-3 text-white cursor-pointer min-w-0 flex-1"
-              onClick={async () => {
-                if (item.type === 'folder') {
-                  navigateToFolder(item.id);
-                } else {
-                  try {
-                    const response = await getFileDownloadUrl(item.id);
-                    setSelectedFile({
-                      url: response.data.signedUrl,
-                      name: item.name,
-                      type: item.mime_type || item.type, // Use mime_type if available
-                    });
-                  } catch (error) {
-                    message.error(error.message || 'Failed to load file');
-                  }
-                }
-              }}
-            >
+            <div className="flex items-center space-x-3 text-white min-w-0 flex-1">
               {item.type === 'folder' ? (
                 <FolderIcon className="w-5 h-5 text-blue-400" />
               ) : (
@@ -476,6 +481,7 @@ const StudyMaterials = () => {
                     onBlur={() => handleRename(item.id, editingItem.name)}
                     className="bg-gray-700 text-white px-2 py-1 rounded w-full"
                     autoFocus
+                    onClick={(e) => e.stopPropagation()}
                   />
                 ) : (
                   <p className="font-medium truncate">{item.name}</p>
@@ -520,16 +526,20 @@ const StudyMaterials = () => {
               ) : (
                 <div className="flex opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                   <button
-                    onClick={() =>
-                      setEditingItem({ id: item.id, name: item.name })
-                    }
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setEditingItem({ id: item.id, name: item.name });
+                    }}
                     className="p-2 hover:bg-gray-700 rounded text-gray-300 hover:text-white transition-colors"
                     title="Rename"
                   >
                     <PencilIcon className="w-5 h-5" />
                   </button>
                   <button
-                    onClick={() => handleDelete(item.id)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDelete(item.id);
+                    }}
                     className="p-2 hover:bg-gray-700 rounded text-red-400 hover:text-red-300 transition-colors"
                     title="Delete"
                   >
