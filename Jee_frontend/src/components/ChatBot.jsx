@@ -1030,7 +1030,7 @@ const ChatBot = ({
       if (!isOpen) return;
 
       try {
-        setIsLoading(true);
+        setIsLoadingHistory(true);
         const userData = JSON.parse(localStorage.getItem('user')) || {};
         const sessionId = userData.current_session_id;
 
@@ -1052,7 +1052,7 @@ const ChatBot = ({
       } catch (error) {
         console.error("Failed to load today's chats:", error);
       } finally {
-        setIsLoading(false);
+        setIsLoadingHistory(false);
       }
     };
 
@@ -1062,7 +1062,7 @@ const ChatBot = ({
   // Update loadChatsFromPeriod to handle initial load
   const loadChatsFromPeriod = (periodChats) => {
     try {
-      setIsLoading(true);
+      setIsLoadingHistory(true);
       // Combine all messages from the period's chats
       const allMessages = [];
       periodChats.forEach((chat) => {
@@ -1094,7 +1094,7 @@ const ChatBot = ({
     } catch (error) {
       console.error('Failed to load chats:', error);
     } finally {
-      setIsLoading(false);
+      setIsLoadingHistory(false);
     }
   };
 
@@ -1368,8 +1368,21 @@ const ChatBot = ({
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-2 sm:p-3 md:p-4 bg-gray-900 hide-scrollbar">
-        {messages.map(renderMessage)}
-        {isLoading && renderLoadingState()}
+        {isLoadingHistory ? (
+          <div className="flex flex-col items-center justify-center h-full space-y-3">
+            <div className="relative w-12 h-12">
+              <div className="absolute inset-0 rounded-full border-t-2 border-blue-500 animate-spin"></div>
+              <div className="absolute inset-2 rounded-full border-t-2 border-blue-400 animate-spin" style={{ animationDuration: '1s' }}></div>
+              <div className="absolute inset-4 rounded-full border-t-2 border-blue-300 animate-spin" style={{ animationDuration: '1.5s' }}></div>
+            </div>
+            <p className="text-sm text-gray-400">Loading chat history...</p>
+          </div>
+        ) : (
+          <>
+            {messages.map(renderMessage)}
+            {isLoading && renderLoadingState()}
+          </>
+        )}
         <div ref={messagesEndRef} />
       </div>
 
