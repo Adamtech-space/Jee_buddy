@@ -424,7 +424,27 @@ const StudyMaterials = () => {
               )}
 
               <div className="min-w-0">
-                <p className="font-medium truncate">{item.name}</p>
+                {editingItem?.id === item.id ? (
+                  <input
+                    type="text"
+                    value={editingItem.name}
+                    onChange={(e) =>
+                      setEditingItem({ ...editingItem, name: e.target.value })
+                    }
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        handleRename(item.id, editingItem.name);
+                      } else if (e.key === 'Escape') {
+                        setEditingItem(null);
+                      }
+                    }}
+                    onBlur={() => handleRename(item.id, editingItem.name)}
+                    className="bg-gray-700 text-white px-2 py-1 rounded w-full"
+                    autoFocus
+                  />
+                ) : (
+                  <p className="font-medium truncate">{item.name}</p>
+                )}
                 {item.type === 'file' && (
                   <p className="text-xs sm:text-sm text-gray-400 truncate">
                     {(item.file_size / (1024 * 1024)).toFixed(1)} MB •{' '}
