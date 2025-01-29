@@ -162,24 +162,50 @@ class MathAgent:
     @asynccontextmanager
     async def _get_client(self):
         """Context manager for API client"""
-        client = AsyncOpenAI(
-            api_key=self.api_key,
-            base_url="https://api.deepseek.com"
-        )
-        print("client created")
         try:
-            yield client
-        finally:
-            await client.close()
+            # Try DeepSeek first
+            client = AsyncOpenAI(
+                api_key=self.api_key,
+                base_url="https://api.deepseek.com"
+            )
+            print("DeepSeek client created")
+            try:
+                yield client
+            finally:
+                await client.close()
+        except Exception as e:
+            logger.warning(f"DeepSeek API failed, falling back to OpenAI: {str(e)}")
+            # Fallback to OpenAI
+            openai_key = os.getenv('OPENAI_API_KEY')
+            print("OpenAI fallback client created")
+            if not openai_key:
+                raise ValueError("OPENAI_API_KEY environment variable is not set")
+            
+            client = AsyncOpenAI(api_key=openai_key)
+            print("OpenAI fallback client created")
+            try:
+                yield client
+            finally:
+                await client.close()
 
     def _get_model_config(self, deep_think: bool) -> Dict[str, Any]:
         """Get model configuration based on mode"""
-        return {
-            "model": "deepseek-reasoner" if deep_think else "deepseek-chat",
-            "temperature": 0.9 if deep_think else 0.7,
-            "max_tokens": 3000 if deep_think else 2000,
-            "stream": False
-        }
+        try:
+            # Try to use DeepSeek models first
+            return {
+                "model": "deepseek-reasoner" if deep_think else "deepseek-chat",
+                "temperature": 0.9 if deep_think else 0.7,
+                "max_tokens": 3000 if deep_think else 2000,
+                "stream": False
+            }
+        except Exception:
+            # Fallback to OpenAI models
+            return {
+                "model": "gpt-4" if deep_think else "gpt-3.5-turbo-16k",
+                "temperature": 0.9 if deep_think else 0.7,
+                "max_tokens": 3000 if deep_think else 2000,
+                "stream": False
+            }
 
     async def solve(self, question: str, context: Dict[Any, Any]) -> dict:
         try:
@@ -263,12 +289,54 @@ class MathAgent:
 
     async def _make_api_call(self, messages: list, model_config: Dict[str, Any]) -> str:
         """Make API call and get response"""
-        async with self._get_client() as client:
-            response = await client.chat.completions.create(
-                messages=messages,
-                **model_config
-            )
-            return response.choices[0].message.content
+        last_error = None
+        
+        # Try DeepSeek first
+        try:
+            async with self._get_client() as client:
+                try:
+                    response = await client.chat.completions.create(
+                        messages=messages,
+                        **model_config
+                    )
+                    
+                    if not response or not response.choices:
+                        raise ValueError("Empty response received from API")
+                        
+                    return response.choices[0].message.content
+                except Exception as api_error:
+                    last_error = api_error
+                    logger.error(f"DeepSeek API call failed: {str(api_error)}")
+                    raise
+        except Exception as e:
+            # If DeepSeek fails, try OpenAI
+            try:
+                openai_key = os.getenv('OPENAI_API_KEY')
+                if not openai_key:
+                    raise ValueError("OPENAI_API_KEY environment variable is not set")
+                
+                # Update model config for OpenAI
+                openai_config = {
+                    "model": "deepseek-chat" if model_config.get("model") == "deepseek-reasoner" else "gpt-3.5-turbo",
+                    "temperature": model_config.get("temperature", 0.7),
+                    "max_tokens": model_config.get("max_tokens", 2000),
+                    "stream": False
+                }
+                
+                async with AsyncOpenAI(api_key=openai_key) as openai_client:
+                    response = await openai_client.chat.completions.create(
+                        messages=messages,
+                        **openai_config
+                    )
+                    
+                    if not response or not response.choices:
+                        raise ValueError("Empty response received from OpenAI API")
+                        
+                    return response.choices[0].message.content
+                    
+            except Exception as openai_error:
+                logger.error(f"Both APIs failed. DeepSeek error: {last_error}, OpenAI error: {openai_error}")
+                raise ValueError(f"API calls failed: DeepSeek - {last_error}, OpenAI - {openai_error}")
 
     async def _save_chat_history(self, question: str, solution: str, context_data: Dict[Any, Any]):
         """Save interaction to chat history"""
