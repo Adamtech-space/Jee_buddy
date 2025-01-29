@@ -13,111 +13,97 @@ import { useLocation } from 'react-router-dom';
 
 const LoadingContext = createContext();
 
-// Synchronous auth check function to reuse
-const checkAuthStatus = () => {
-  try {
-    return Boolean(
-      localStorage.getItem('tokens') && localStorage.getItem('user')
-    );
-  } catch (error) {
-    console.error('Auth check error:', error);
-    return false;
-  }
+// Simplified auth validation
+const validateAuthTokens = async () => {
+  const tokens = JSON.parse(localStorage.getItem('tokens'));
+  return !!tokens; // Direct boolean conversion
 };
 
 export const LoadingProvider = ({ children }) => {
   const location = useLocation();
   const [isLoading, setIsLoading] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(() =>
-    checkAuthStatus()
-  );
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const initialCheckDone = useRef(false);
   const loadingTimeoutRef = useRef(null);
 
-  // Super quick loading setter
-  const debouncedSetLoading = useCallback((value) => {
+  // Single source auth check
+  useEffect(() => {
+    const checkAuth = async () => {
+      if (initialCheckDone.current) return;
+      initialCheckDone.current = true;
+      
+      const isValid = await validateAuthTokens();
+      setIsAuthenticated(isValid);
+      setIsLoading(false);
+    };
+
+    // Only check auth if not coming from auth flow
+    if (!location.state?.fromAuth) {
+      checkAuth();
+    } else {
+      // If coming from auth flow, trust the auth state
+      setIsLoading(false);
+    }
+  }, [location.state]);
+
+  // Replace the debouncedSetLoading function with:
+  const setLoadingDirect = useCallback((value) => {
+    // Clear any pending timeouts first
     if (loadingTimeoutRef.current) {
       clearTimeout(loadingTimeoutRef.current);
+      loadingTimeoutRef.current = null;
     }
-    if (value) {
-      setIsLoading(true);
-    } else {
-      loadingTimeoutRef.current = setTimeout(() => setIsLoading(false), 20);
-    }
+    setIsLoading(value);
   }, []);
 
-  // Quick initial auth check
-  useEffect(() => {
-    debouncedSetLoading(false);
-    return () =>
-      loadingTimeoutRef.current && clearTimeout(loadingTimeoutRef.current);
-  }, [debouncedSetLoading]);
-
-  // Quick route change loader
+  // Route change handler
   useEffect(() => {
     if (!isAuthenticated) return;
 
-    const majorRoutePaths = [
-      '/login',
-      '/register',
-      '/subject-selection',
-      '/settings',
-    ];
-    if (majorRoutePaths.some((path) => location.pathname.startsWith(path))) {
-      debouncedSetLoading(true);
-      loadingTimeoutRef.current = setTimeout(
-        () => debouncedSetLoading(false),
-        50
-      );
-    }
+    const handleRouteChange = () => {
+      if (location.state?.fromAuth) return;
+      
+      setLoadingDirect(true);
+      const timer = setTimeout(() => setLoadingDirect(false), 50);
+      return () => clearTimeout(timer);
+    };
 
-    return () =>
-      loadingTimeoutRef.current && clearTimeout(loadingTimeoutRef.current);
-  }, [location.pathname, isAuthenticated, debouncedSetLoading]);
+    handleRouteChange();
+  }, [location.pathname, isAuthenticated, setLoadingDirect, location.state]);
 
-  // Global loading events
+  // Global loading control
   useEffect(() => {
-    const handleGlobalLoading = (event) =>
-      debouncedSetLoading(event.detail.loading);
+    const handleGlobalLoading = (event) => {
+      setLoadingDirect(event.detail.loading);
+    };
     window.addEventListener('setLoading', handleGlobalLoading);
     return () => window.removeEventListener('setLoading', handleGlobalLoading);
-  }, [debouncedSetLoading]);
+  }, [setLoadingDirect]);
 
-  // Quick auth update
-  const updateAuth = useCallback(
-    (status) => {
-      setIsAuthenticated(status);
-      debouncedSetLoading(true);
-      loadingTimeoutRef.current = setTimeout(
-        () => debouncedSetLoading(false),
-        50
-      );
-    },
-    [debouncedSetLoading]
-  );
-
-  // Prevent scroll during loading with short timeout
+  // Scroll prevention with cleanup
   useEffect(() => {
-    if (!isLoading) {
-      document.body.style.overflow = 'unset';
+    if (isLoading) {
+      document.body.style.overflow = 'hidden';
       return;
     }
-    document.body.style.overflow = 'hidden';
-    const maxTimeout = setTimeout(() => debouncedSetLoading(false), 500);
-    return () => {
+    
+    const timer = setTimeout(() => {
       document.body.style.overflow = 'unset';
-      clearTimeout(maxTimeout);
+    }, 100);
+    
+    return () => {
+      clearTimeout(timer);
+      document.body.style.overflow = 'unset';
     };
-  }, [isLoading, debouncedSetLoading]);
+  }, [isLoading]);
 
-  const contextValue = useMemo(
-    () => ({
-      isLoading,
-      setIsLoading: debouncedSetLoading,
-      isAuthenticated,
-      setIsAuthenticated: updateAuth,
-    }),
-    [isLoading, debouncedSetLoading, isAuthenticated, updateAuth]
-  );
+  // Context value memoization
+  const contextValue = useMemo(() => ({
+    isLoading,
+    setIsLoading: setLoadingDirect,
+    isAuthenticated,
+    setIsAuthenticated: setIsAuthenticated,
+  }), [isLoading, setLoadingDirect, isAuthenticated]);
 
   return (
     <LoadingContext.Provider value={contextValue}>
