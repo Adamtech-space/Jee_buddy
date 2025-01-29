@@ -483,22 +483,22 @@ const StudyMaterials = () => {
                   </span>
                 </div>
               ) : (
-                <div className="flex opacity-100 sm:opacity-0 sm:group-hover:opacity-100">
+                <div className="flex opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                   <button
                     onClick={() =>
                       setEditingItem({ id: item.id, name: item.name })
                     }
-                    className="p-2 hover:bg-gray-700 rounded text-gray-300"
+                    className="p-2 hover:bg-gray-700 rounded text-gray-300 hover:text-white transition-colors"
                     title="Rename"
                   >
-                    <PencilIcon className="w-4 h-4" />
+                    <PencilIcon className="w-5 h-5" />
                   </button>
                   <button
                     onClick={() => handleDelete(item.id)}
-                    className="p-2 hover:bg-gray-700 rounded text-gray-300"
+                    className="p-2 hover:bg-gray-700 rounded text-red-400 hover:text-red-300 transition-colors"
                     title="Delete"
                   >
-                    <TrashIcon className="w-4 h-4" />
+                    <TrashIcon className="w-5 h-5" />
                   </button>
                 </div>
               )}
