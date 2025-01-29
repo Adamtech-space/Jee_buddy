@@ -25,14 +25,18 @@ const AuthCallback = () => {
         const response = await apiInstance.get(`/auth/google/callback?code=${code}`);
 
         if (response.data.tokens && response.data.user) {
-          // Set auth data first
+          // Store tokens and user data
           localStorage.setItem('tokens', JSON.stringify(response.data.tokens));
           localStorage.setItem('user', JSON.stringify(response.data.user));
+          
+          // Set authentication state
           setIsAuthenticated(true);
+          setIsLoading(false);
 
-          // Then navigate (this will trigger route change)
+          // Navigate to subject selection
           navigate('/subject-selection', { replace: true });
         } else {
+          console.error('Invalid response data:', response.data);
           setIsLoading(false);
           navigate('/login', { replace: true });
         }
