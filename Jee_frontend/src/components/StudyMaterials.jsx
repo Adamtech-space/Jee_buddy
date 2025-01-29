@@ -19,10 +19,9 @@ import {
   renameStudyMaterial,
   getFileDownloadUrl,
 } from '../interceptors/services';
-import { Document, Page, pdfjs } from 'react-pdf';
 import { useSelection } from '../hooks/useSelection';
 import SelectionPopup from './SelectionPopup';
-pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
+import PdfViewer from './PdfViewer';
 
 const StudyMaterials = () => {
   const { subject } = useParams();
@@ -37,12 +36,12 @@ const StudyMaterials = () => {
   const [newFolderName, setNewFolderName] = useState('');
   const [editingItem, setEditingItem] = useState(null);
   const [selectedFile, setSelectedFile] = useState(null);
-  const [numPages, setNumPages] = useState(null); // for PDF viewer
   const { handleTextSelection } = useSelection();
   const [loadingItems, setLoadingItems] = useState(new Set());
   const [uploadProgress, setUploadProgress] = useState({});
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef(null);
+  const [isNavigating, setIsNavigating] = useState(false);
 
   // Define fetchItems with useCallback before using it in useEffect
   const fetchItems = useCallback(async () => {
@@ -68,25 +67,55 @@ const StudyMaterials = () => {
   };
 
   // Navigate to folder
-  const navigateToFolder = (folderId) => {
-    if (!folderId) {
-      setCurrentFolder({ id: null, path: [] });
-      return;
-    }
+  const navigateToFolder = async (folderId) => {
+    if (isNavigating) return; // Prevent multiple clicks
+    setIsNavigating(true);
 
-    const buildPath = (itemId) => {
-      const item = items.find((i) => i.id === itemId);
-      if (!item) return [];
+    try {
+      // Clear selected file when navigating
+      setSelectedFile(null);
 
-      if (!item.parent_id) {
-        return [{ id: item.id, name: item.name }];
+      if (!folderId) {
+        setCurrentFolder({ id: null, path: [] });
+        setItems([]); // Clear items when going to root
+        const response = await getStudyMaterials(null, subject);
+        setItems(response.data);
+        return;
       }
 
-      return [...buildPath(item.parent_id), { id: item.id, name: item.name }];
-    };
+      const response = await getStudyMaterials(folderId, subject);
+      const folderItems = response.data;
 
-    const path = buildPath(folderId);
-    setCurrentFolder({ id: folderId, path });
+      // Find the current folder in the items
+      const currentFolderItem = items.find((item) => item.id === folderId);
+
+      if (currentFolderItem) {
+        // Going into a child folder
+        setCurrentFolder((prev) => ({
+          id: folderId,
+          path: [...prev.path, { id: folderId, name: currentFolderItem.name }],
+        }));
+      } else {
+        // Going back through breadcrumb
+        const pathIndex = currentFolder.path.findIndex(
+          (item) => item.id === folderId
+        );
+        if (pathIndex !== -1) {
+          setCurrentFolder((prev) => ({
+            id: folderId,
+            path: prev.path.slice(0, pathIndex + 1),
+          }));
+        }
+      }
+
+      setItems(folderItems);
+    } catch (error) {
+      console.error('Navigation error:', error);
+      message.error('Failed to navigate to folder');
+    } finally {
+      // Add a small delay before allowing next navigation
+      setTimeout(() => setIsNavigating(false), 500);
+    }
   };
 
   // Create new folder
@@ -255,20 +284,13 @@ const StudyMaterials = () => {
     // PDF files
     if (fileType === 'application/pdf') {
       return (
-        <Document
-          file={file.url}
-          onLoadSuccess={({ numPages }) => setNumPages(numPages)}
-          className="w-full"
-        >
-          {Array.from(new Array(numPages), (el, index) => (
-            <Page
-              key={`page_${index + 1}`}
-              pageNumber={index + 1}
-              className="mb-4"
-              width={window.innerWidth * 0.7}
-            />
-          ))}
-        </Document>
+        <div className="h-full w-full">
+          <PdfViewer
+            pdfUrl={file.url}
+            subject={subject}
+            onBack={() => setSelectedFile(null)}
+          />
+        </div>
       );
     }
 
@@ -324,32 +346,65 @@ const StudyMaterials = () => {
 
   // Render breadcrumb navigation
   const renderBreadcrumbs = () => (
-    <div className="flex items-center space-x-2 text-sm mb-4 text-white">
+    <nav className="flex items-center space-x-1 text-sm mb-4 text-white overflow-x-auto py-2 scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
       <button
         onClick={() => navigateToFolder(null)}
-        className="p-1 hover:bg-gray-800 rounded"
+        className="flex items-center p-1.5 hover:bg-gray-800 rounded-lg transition-colors duration-200 group min-w-fit"
+        title="Home"
       >
-        <HomeIcon className="w-4 h-4" />
+        <HomeIcon className="w-4 h-4 text-gray-400 group-hover:text-blue-400" />
       </button>
+
       {currentFolder.path.map((item, index) => (
-        <div key={item.id} className="flex items-center">
-          <ChevronRightIcon className="w-4 h-4 text-gray-400" />
+        <div key={item.id} className="flex items-center min-w-fit">
+          <ChevronRightIcon className="w-4 h-4 text-gray-600 flex-shrink-0" />
           <button
             onClick={() => navigateToFolder(item.id)}
-            className={`px-2 py-1 rounded hover:bg-gray-800 ${
-              index === currentFolder.path.length - 1
-                ? 'font-medium text-blue-400'
-                : 'text-gray-300'
-            }`}
+            className={`
+              px-2 py-1.5 rounded-lg transition-all duration-200
+              hover:bg-gray-800 flex items-center gap-1 group
+              ${
+                index === currentFolder.path.length - 1
+                  ? 'bg-gray-800/50 font-medium text-blue-400'
+                  : 'text-gray-300 hover:text-white'
+              }
+            `}
+            title={item.name}
           >
-            {item.name}
+            <span className="truncate max-w-[150px]">{item.name}</span>
           </button>
         </div>
       ))}
-    </div>
+    </nav>
   );
 
-  // Render file/folder list
+  // Simplified click handler
+  const handleItemClick = async (item) => {
+    if (item.type === 'folder') {
+      navigateToFolder(item.id);
+    } else {
+      try {
+        const response = await getFileDownloadUrl(item.id);
+        const fileUrl = response.data.signedUrl;
+
+        // Verify the URL is valid before setting it
+        const urlCheck = await fetch(fileUrl, { method: 'HEAD' });
+        if (!urlCheck.ok) {
+          throw new Error('Unable to access the file');
+        }
+
+        setSelectedFile({
+          url: fileUrl,
+          name: item.name,
+          type: item.mime_type || item.type,
+        });
+      } catch (error) {
+        message.error(error.message || 'Failed to load file');
+      }
+    }
+  };
+
+  // Update renderItems
   const renderItems = () => {
     const currentItems = getCurrentFolderItems();
 
@@ -396,27 +451,11 @@ const StudyMaterials = () => {
         {currentItems.map((item) => (
           <div
             key={item.id}
-            className="flex items-center justify-between p-3 hover:bg-gray-800 rounded-lg group flex-wrap gap-2"
+            className="flex items-center justify-between p-3 hover:bg-gray-800 rounded-lg group flex-wrap gap-2 item-click-effect"
+            onClick={() => handleItemClick(item)}
+            style={{ cursor: 'pointer' }}
           >
-            <div
-              className="flex items-center space-x-3 text-white cursor-pointer min-w-0 flex-1"
-              onClick={async () => {
-                if (item.type === 'folder') {
-                  navigateToFolder(item.id);
-                } else {
-                  try {
-                    const response = await getFileDownloadUrl(item.id);
-                    setSelectedFile({
-                      url: response.data.signedUrl,
-                      name: item.name,
-                      type: item.mime_type || item.type, // Use mime_type if available
-                    });
-                  } catch (error) {
-                    message.error(error.message || 'Failed to load file');
-                  }
-                }
-              }}
-            >
+            <div className="flex items-center space-x-3 text-white min-w-0 flex-1">
               {item.type === 'folder' ? (
                 <FolderIcon className="w-5 h-5 text-blue-400" />
               ) : (
@@ -441,6 +480,7 @@ const StudyMaterials = () => {
                     onBlur={() => handleRename(item.id, editingItem.name)}
                     className="bg-gray-700 text-white px-2 py-1 rounded w-full"
                     autoFocus
+                    onClick={(e) => e.stopPropagation()}
                   />
                 ) : (
                   <p className="font-medium truncate">{item.name}</p>
@@ -485,16 +525,20 @@ const StudyMaterials = () => {
               ) : (
                 <div className="flex opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                   <button
-                    onClick={() =>
-                      setEditingItem({ id: item.id, name: item.name })
-                    }
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setEditingItem({ id: item.id, name: item.name });
+                    }}
                     className="p-2 hover:bg-gray-700 rounded text-gray-300 hover:text-white transition-colors"
                     title="Rename"
                   >
                     <PencilIcon className="w-5 h-5" />
                   </button>
                   <button
-                    onClick={() => handleDelete(item.id)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDelete(item.id);
+                    }}
                     className="p-2 hover:bg-gray-700 rounded text-red-400 hover:text-red-300 transition-colors"
                     title="Delete"
                   >
