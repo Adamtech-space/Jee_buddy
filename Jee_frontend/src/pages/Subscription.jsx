@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { aiService } from '../interceptors/ai.service';
 import PropTypes from 'prop-types';
 
 // Define plan IDs
@@ -120,6 +119,15 @@ SubscriptionCard.defaultProps = {
   subscriptionDetails: null
 };
 
+const LoadingSpinner = () => (
+  <div className="min-h-screen bg-black flex items-center justify-center">
+    <div className="flex flex-col items-center space-y-4">
+      <div className="animate-spin rounded-full h-16 w-16 border-4 border-[#8075FF] border-t-transparent"></div>
+      <p className="text-white text-lg">Loading subscription details...</p>
+    </div>
+  </div>
+);
+
 const Subscription = () => {
   const navigate = useNavigate();
   const [loadingStates, setLoadingStates] = useState({
@@ -129,6 +137,7 @@ const Subscription = () => {
   });
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [currentPlan, setCurrentPlan] = useState(null);
+  const [isInitializing, setIsInitializing] = useState(true);
 
   const loadScript = (src) => {
     return new Promise((resolve) => {
@@ -144,57 +153,91 @@ const Subscription = () => {
     });
   };
 
-  const getUserId = () => {
+  const getUserData = () => {
     try {
       const userDataStr = localStorage.getItem('user');
       if (!userDataStr) return null;
-      
-      const userData = JSON.parse(userDataStr);
-      return userData.id || null;
+      return JSON.parse(userDataStr);
     } catch (error) {
-      console.error('Error getting user ID:', error);
+      console.error('Error getting user data:', error);
       return null;
     }
   };
 
   useEffect(() => {
     const initializeSubscription = async () => {
-      await loadScript("https://checkout.razorpay.com/v1/checkout.js");
-      const userId = getUserId();
-    console.log('Current user ID:', userId);
-    if (!userId) {
-      console.warn('No user ID found in localStorage');
-        navigate('/login');
-        return;
+      try {
+        setIsInitializing(true);
+        await loadScript("https://checkout.razorpay.com/v1/checkout.js");
+        const userData = getUserData();
+        console.log('Current user data:', userData);
+        if (!userData) {
+          console.warn('No user data found in localStorage');
+          navigate('/login');
+          return;
+        }
+        
+        checkSubscriptionStatus(userData);
+      } finally {
+        // Add a minimum delay to prevent flash
+        setTimeout(() => {
+          setIsInitializing(false);
+        }, 500);
       }
-      
-      await checkSubscriptionStatus();
     };
 
     initializeSubscription();
   }, []);
 
-  const checkSubscriptionStatus = async () => {
+  const checkSubscriptionStatus = (userData) => {
     try {
-      const userId = getUserId();
-      if (!userId) {
-        console.warn('No user ID available for subscription check');
+      console.log('Checking subscription status from user data:', userData);
+      
+      if (!userData) {
+        console.warn('No user data available');
         return;
       }
-      const response = await aiService.checkSubscriptionStatus(userId);
-      
-      if (response.status === 'success') {
-        setIsSubscribed(response.is_subscribed);
-        // Set current plan based on subscription details
-        if (response.is_subscribed && response.plan_id) {
-          // Find plan type based on plan_id
-          const planType = Object.keys(PLANS).find(key => PLANS[key] === response.plan_id);
-          setCurrentPlan({
-            type: planType,
-            name: `${planType.charAt(0) + planType.slice(1).toLowerCase()} Plan`,
-            price: planType === 'BASIC' ? 499 : planType === 'PRO' ? 1499 : 4999
-          });
+
+      // Check if user has payment_status completed
+      if (userData.payment_status === 'completed') {
+        setIsSubscribed(true);
+        
+        // Determine plan type based on current_plan_id
+        let planType = 'BASIC'; // Default to BASIC
+        if (userData.current_plan_id) {
+          planType = Object.keys(PLANS).find(key => PLANS[key] === userData.current_plan_id) || 'BASIC';
         }
+
+        // Calculate days used
+        const createdAt = new Date(userData.created_at);
+        const nextBillingDate = new Date(userData.next_billing_date);
+        const currentDate = new Date();
+        const totalDays = Math.ceil((nextBillingDate - createdAt) / (1000 * 60 * 60 * 24));
+        const daysUsed = Math.ceil((currentDate - createdAt) / (1000 * 60 * 60 * 24));
+
+        // Set current plan with subscription details
+        setCurrentPlan({
+          type: planType,
+          name: `${planType.charAt(0) + planType.slice(1).toLowerCase()} Plan`,
+          price: planType === 'BASIC' ? 499 : planType === 'PRO' ? 1499 : 4999,
+          subscriptionDetails: {
+            plan_id: userData.current_plan_id,
+            days_remaining: userData.days_remaining || 0,
+            days_used: daysUsed,
+            total_days: totalDays,
+            subscription_progress: `${userData.days_remaining} days remaining`,
+            start_date: userData.created_at,
+            end_date: userData.next_billing_date,
+            expiry_status: userData.days_remaining <= 5 ? 'expiring_soon' : 
+                          userData.days_remaining <= 0 ? 'expired' : 'active',
+            reminder_message: userData.days_remaining <= 5 ? 
+                            `Your subscription will expire in ${userData.days_remaining} days. Renew now to continue uninterrupted access.` : 
+                            null
+          }
+        });
+      } else {
+        setIsSubscribed(false);
+        setCurrentPlan(null);
       }
     } catch (error) {
       console.error('Failed to check subscription status:', error);
@@ -208,8 +251,8 @@ const Subscription = () => {
         [plan.type]: true,
       }));
       
-      const userId = getUserId();
-      if (!userId) {
+      const userData = getUserData();
+      if (!userData) {
         alert('Please login first');
         navigate('/login');
         return;
@@ -234,31 +277,19 @@ const Subscription = () => {
         [Object.keys(prev).find((key) => prev[key] === true)]: true,
       }));
       
-      const userId = getUserId();
-      if (!userId) {
+      const userData = getUserData();
+      if (!userData) {
         alert('Please login first');
         return;
       }
 
-      const userData = JSON.parse(localStorage.getItem('user'));
-      const requestData = {
-        price: Number(price),
-        product_name,
-        plan_id,
-        user_id: userId,
-        email: userData.email || '',
-        name: userData.name || ''
+      // Mock data for demonstration
+      const data = {
+        razorpay_key: 'YOUR_RAZORPAY_KEY',
+        order: {
+          id: 'mock_order_id'
+        }
       };
-
-      console.log('Sending subscription request with data:', requestData);
-
-      const data = await aiService.createSubscription(requestData);
-      console.log('Received subscription response:', data);
-
-      if (!data.razorpay_key || !data.order) {
-        console.error('Invalid server response:', data);
-        throw new Error('Invalid response from server');
-      }
       
       const options = {
         key: data.razorpay_key,
@@ -273,7 +304,7 @@ const Subscription = () => {
           contact: ''
         },
         notes: {
-          user_id: userId,
+          user_id: userData.id,
           plan_name: product_name,
           plan_id: plan_id
         },
@@ -295,22 +326,14 @@ const Subscription = () => {
         }
       };
 
-      console.log('Initializing Razorpay with options:', options);
-
       if (!window.Razorpay) {
         throw new Error('Razorpay script not loaded');
       }
 
       const razorpay = new window.Razorpay(options);
-      console.log('Opening Razorpay modal...');
       razorpay.open();
     } catch (error) {
       console.error('Payment error:', error);
-      console.error('Error details:', {
-        message: error.message,
-        stack: error.stack,
-        response: error.response?.data
-      });
       alert(`Failed to initiate payment: ${error.message}`);
     } finally {
       setLoadingStates((prev) => ({
@@ -323,22 +346,17 @@ const Subscription = () => {
   const verifyPayment = async (paymentResponse) => {
     try {
       console.log('Payment response:', paymentResponse);
-      const userId = getUserId();
-      const verificationData = {
-          razorpay_payment_id: paymentResponse.razorpay_payment_id,
-          razorpay_subscription_id: paymentResponse.razorpay_subscription_id,
-          razorpay_signature: paymentResponse.razorpay_signature,
-        user_id: userId
+      
+      // Mock successful payment verification
+      const mockData = {
+        status: 'success',
+        plan_id: PLANS['BASIC']
       };
 
-      console.log('Sending verification data:', verificationData);
-      const data = await aiService.verifySubscription(verificationData);
-      console.log('Verification response:', data);
-
-      if (data.status === 'success') {
+      if (mockData.status === 'success') {
         setIsSubscribed(true);
         // Update current plan after successful payment
-        const planType = Object.keys(PLANS).find(key => PLANS[key] === data.plan_id);
+        const planType = Object.keys(PLANS).find(key => PLANS[key] === mockData.plan_id);
         setCurrentPlan({
           type: planType,
           name: `${planType.charAt(0) + planType.slice(1).toLowerCase()} Plan`,
@@ -347,15 +365,11 @@ const Subscription = () => {
         alert('Payment successful! Your plan has been updated.');
         navigate('/dashboard');
       } else {
-        console.error('Verification failed:', data);
+        console.error('Verification failed:', mockData);
         alert('Payment verification failed. Please contact support.');
       }
     } catch (error) {
       console.error('Verification error:', error);
-      console.error('Error details:', {
-        message: error.message,
-        response: error.response?.data
-      });
       alert('Payment verification failed. Please contact support.');
     }
   };
@@ -390,6 +404,10 @@ const Subscription = () => {
         return [];
     }
   };
+
+  if (isInitializing) {
+    return <LoadingSpinner />;
+  }
 
   return (
     <div className="min-h-screen bg-black">
@@ -603,7 +621,7 @@ const Subscription = () => {
                   <div className="flex items-baseline">
                     <span className="text-2xl text-[#8075FF]">₹</span>
                     <span className="text-4xl font-bold text-[#8075FF]">
-                      499
+                      0000000
                     </span>
                     <span className="text-gray-400 ml-2">/month</span>
                   </div>

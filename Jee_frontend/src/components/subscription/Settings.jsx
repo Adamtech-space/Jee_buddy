@@ -107,7 +107,7 @@ const Pricing = () => {
             },
             {
               name: 'Premium',
-              price: '₹4,999',
+              price: '₹4,9990000',
               duration: '/month',
               features: [
                 'Everything in Pro',

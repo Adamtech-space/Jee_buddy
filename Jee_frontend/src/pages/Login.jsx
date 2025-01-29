@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate, Link } from 'react-router-dom';
 import { userLogin, googleSignIn } from '../interceptors/services';
+import { aiService } from '../interceptors/ai.service';
 import { Analytics } from '@vercel/analytics/react';
 
 const Login = () => {
@@ -20,6 +21,37 @@ const Login = () => {
     }
   }, [navigate]);
 
+  const fetchAndStoreSubscriptionDetails = async (userId) => {
+    try {
+      const subscriptionData = await aiService.checkSubscriptionStatus(userId);
+      console.log('Received subscription data:', subscriptionData); // Debug log
+      
+      if (subscriptionData && subscriptionData.status === 'success') {
+        const subscriptionDetails = {
+          is_subscribed: subscriptionData.is_subscribed,
+          subscription_id: subscriptionData.subscription_id,
+          plan_id: subscriptionData.plan_id,
+          created_at: subscriptionData.created_at,
+          valid_till: subscriptionData.valid_till,
+          days_remaining: subscriptionData.days_remaining,
+          next_billing_date: subscriptionData.next_billing_date,
+          status: subscriptionData.status
+        };
+        
+        console.log('Storing subscription details:', subscriptionDetails); // Debug log
+        localStorage.setItem('subscription', JSON.stringify(subscriptionDetails));
+        
+        // Verify storage
+        const storedData = localStorage.getItem('subscription');
+        console.log('Verified stored data:', storedData); // Debug log
+      } else {
+        console.warn('Invalid subscription data received:', subscriptionData);
+      }
+    } catch (error) {
+      console.error('Failed to fetch subscription details:', error);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
@@ -30,8 +62,22 @@ const Login = () => {
       const response = await userLogin({ email, password });
       console.log('Login successful:', response);
       
-      // Double check that we have the necessary data
       if (response?.tokens?.access?.token && response?.user) {
+        // Store tokens and user data first
+        localStorage.setItem('tokens', JSON.stringify(response.tokens));
+        localStorage.setItem('user', JSON.stringify(response.user));
+        
+        // Then fetch and store subscription details
+        await fetchAndStoreSubscriptionDetails(response.user.id);
+        
+        // Verify all data is stored
+        const verifyData = {
+          tokens: localStorage.getItem('tokens'),
+          user: localStorage.getItem('user'),
+          subscription: localStorage.getItem('subscription')
+        };
+        console.log('Verified stored data:', verifyData);
+        
         // Force a small delay to ensure state updates are processed
         await new Promise(resolve => setTimeout(resolve, 500));
         
@@ -61,6 +107,8 @@ const Login = () => {
     try {
       const response = await googleSignIn();
       if (response.url) {
+        // Note: For Google sign-in, subscription details will need to be handled 
+        // in the callback route after successful authentication
         window.location.href = response.url;
       }
     } catch (err) {
