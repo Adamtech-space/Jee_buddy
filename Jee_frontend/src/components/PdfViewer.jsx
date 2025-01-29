@@ -1,5 +1,10 @@
-import { useState, useEffect } from 'react';
-import { useParams, useLocation, useNavigate, useOutletContext } from 'react-router-dom';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import {
+  useParams,
+  useLocation,
+  useNavigate,
+  useOutletContext,
+} from 'react-router-dom';
 import { message, Modal } from 'antd';
 import {
   ArrowLeftOutlined,
@@ -32,6 +37,108 @@ const PdfViewer = ({ pdfUrl: propsPdfUrl, subject: propsSubject, onBack }) => {
   const [viewerContainerRef, setViewerContainerRef] = useState(null);
   const [capturedImage, setCapturedImage] = useState(null);
   const [showConfirmation, setShowConfirmation] = useState(false);
+
+  // Refs
+  const selectionTimerRef = useRef(null);
+  const containerRef = useRef(null);
+
+  // Memoized selection handler
+  const handleSelection = useCallback(
+    (e) => {
+      // Don't handle selection if clicking on controls or during loading
+      if (
+        loading ||
+        e.target instanceof HTMLButtonElement ||
+        e.target instanceof HTMLInputElement ||
+        e.target.closest('.rpv-core__viewer-navigation') ||
+        e.target.closest('.rpv-core__viewer-toolbar') ||
+        isAreaSelecting
+      ) {
+        return;
+      }
+
+      // Clear any existing timer
+      if (selectionTimerRef.current) {
+        clearTimeout(selectionTimerRef.current);
+      }
+
+      // Set a new timer to handle the selection
+      selectionTimerRef.current = setTimeout(() => {
+        const selection = window.getSelection();
+        const selectedText = selection?.toString()?.trim();
+
+        // Ignore if selection is too short or too long
+        if (
+          !selectedText ||
+          selectedText.length < 2 ||
+          selectedText.length > 1000
+        ) {
+          return;
+        }
+
+        // Process mathematical notation
+        let processedText = selectedText
+          .replace(/÷/g, '\\div')
+          .replace(/×/g, '\\times')
+          .replace(/√/g, '\\sqrt')
+          .replace(/∞/g, '\\infty')
+          .replace(/≠/g, '\\neq')
+          .replace(/≤/g, '\\leq')
+          .replace(/≥/g, '\\geq')
+          .replace(/±/g, '\\pm')
+          .replace(/∓/g, '\\mp')
+          .replace(/∑/g, '\\sum')
+          .replace(/∏/g, '\\prod')
+          .replace(/∫/g, '\\int')
+          .replace(/∂/g, '\\partial')
+          .replace(/∇/g, '\\nabla')
+          .replace(/∆/g, '\\Delta')
+          .replace(/π/g, '\\pi')
+          .replace(/θ/g, '\\theta')
+          .replace(/α/g, '\\alpha')
+          .replace(/β/g, '\\beta')
+          .replace(/γ/g, '\\gamma')
+          .replace(/δ/g, '\\delta')
+          .replace(/ε/g, '\\epsilon')
+          .replace(/ζ/g, '\\zeta')
+          .replace(/η/g, '\\eta')
+          .replace(/λ/g, '\\lambda')
+          .replace(/μ/g, '\\mu')
+          .replace(/ν/g, '\\nu')
+          .replace(/ξ/g, '\\xi')
+          .replace(/ρ/g, '\\rho')
+          .replace(/σ/g, '\\sigma')
+          .replace(/τ/g, '\\tau')
+          .replace(/φ/g, '\\phi')
+          .replace(/χ/g, '\\chi')
+          .replace(/ψ/g, '\\psi')
+          .replace(/ω/g, '\\omega')
+          // Process fractions
+          .replace(/(\d+)\/(\d+)/g, '\\frac{$1}{$2}')
+          // Process superscripts
+          .replace(/\^(\d+)/g, '^{$1}')
+          // Process subscripts
+          .replace(/_(\d+)/g, '_{$1}');
+
+        // Wrap in math delimiters if it contains math symbols
+        if (processedText.match(/[+\-*/=<>≠≤≥±∓∑∏∫∂∇∆π\\]/)) {
+          processedText = `$${processedText}$`;
+        }
+
+        handleTextSelection(e, processedText);
+      }, 250); // Increased debounce time for better control
+    },
+    [loading, isAreaSelecting, handleTextSelection]
+  );
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (selectionTimerRef.current) {
+        clearTimeout(selectionTimerRef.current);
+      }
+    };
+  }, []);
 
   // Get the actual URL from props, state, or params
   const pdfUrl =
@@ -219,82 +326,6 @@ const PdfViewer = ({ pdfUrl: propsPdfUrl, subject: propsSubject, onBack }) => {
     setIsAreaSelecting(false);
   };
 
-  // Enhanced text selection handler
-  const handleSelection = (e) => {
-    // Don't handle selection if clicking on controls or during loading
-    if (
-      loading ||
-      e.target instanceof HTMLButtonElement ||
-      e.target instanceof HTMLInputElement ||
-      e.target.closest('.rpv-core__viewer-navigation') ||
-      e.target.closest('.rpv-core__viewer-toolbar')
-    ) {
-      return;
-    }
-
-    // Use requestAnimationFrame to ensure selection is complete
-    requestAnimationFrame(() => {
-      const selection = window.getSelection();
-      if (!selection || !selection.toString().trim()) return;
-
-      let selectedText = selection.toString().trim();
-
-      // Process mathematical notation
-      if (selectedText) {
-        // Replace common math symbols with LaTeX notation
-        selectedText = selectedText
-          .replace(/÷/g, '\\div')
-          .replace(/×/g, '\\times')
-          .replace(/√/g, '\\sqrt')
-          .replace(/∞/g, '\\infty')
-          .replace(/≠/g, '\\neq')
-          .replace(/≤/g, '\\leq')
-          .replace(/≥/g, '\\geq')
-          .replace(/±/g, '\\pm')
-          .replace(/∓/g, '\\mp')
-          .replace(/∑/g, '\\sum')
-          .replace(/∏/g, '\\prod')
-          .replace(/∫/g, '\\int')
-          .replace(/∂/g, '\\partial')
-          .replace(/∇/g, '\\nabla')
-          .replace(/∆/g, '\\Delta')
-          .replace(/π/g, '\\pi')
-          .replace(/θ/g, '\\theta')
-          .replace(/α/g, '\\alpha')
-          .replace(/β/g, '\\beta')
-          .replace(/γ/g, '\\gamma')
-          .replace(/δ/g, '\\delta')
-          .replace(/ε/g, '\\epsilon')
-          .replace(/ζ/g, '\\zeta')
-          .replace(/η/g, '\\eta')
-          .replace(/λ/g, '\\lambda')
-          .replace(/μ/g, '\\mu')
-          .replace(/ν/g, '\\nu')
-          .replace(/ξ/g, '\\xi')
-          .replace(/ρ/g, '\\rho')
-          .replace(/σ/g, '\\sigma')
-          .replace(/τ/g, '\\tau')
-          .replace(/φ/g, '\\phi')
-          .replace(/χ/g, '\\chi')
-          .replace(/ψ/g, '\\psi')
-          .replace(/ω/g, '\\omega')
-          // Process fractions
-          .replace(/(\d+)\/(\d+)/g, '\\frac{$1}{$2}')
-          // Process superscripts
-          .replace(/\^(\d+)/g, '^{$1}')
-          // Process subscripts
-          .replace(/_(\d+)/g, '_{$1}');
-
-        // Wrap the text in math delimiters if it contains math symbols
-        if (selectedText.match(/[+\-*/=<>≠≤≥±∓∑∏∫∂∇∆π\\]/)) {
-          selectedText = `$${selectedText}$`;
-        }
-      }
-
-      handleTextSelection(e, selectedText);
-    });
-  };
-
   if (!pdfUrl) return null;
 
   return (
@@ -306,8 +337,6 @@ const PdfViewer = ({ pdfUrl: propsPdfUrl, subject: propsSubject, onBack }) => {
         right: isMobile ? '0' : isChatOpen ? '450px' : '0',
         bottom: '0',
       }}
-      onMouseUp={handleSelection}
-      onTouchEnd={handleSelection}
       ref={setViewerContainerRef}
     >
       {/* Back button - Left side */}
@@ -479,8 +508,15 @@ const PdfViewer = ({ pdfUrl: propsPdfUrl, subject: propsSubject, onBack }) => {
 
       {/* PDF Viewer */}
       <div
-        className="absolute inset-0 bg-gray-900"
-        style={{ top: isMobile ? '56px' : 0 }}
+        ref={containerRef}
+        className="absolute inset-0 overflow-auto bg-gray-900 scroll-smooth"
+        style={{
+          top: isMobile ? '56px' : 0,
+          paddingTop: '1rem',
+          paddingBottom: '1rem',
+        }}
+        onMouseUp={handleSelection}
+        onTouchEnd={handleSelection}
       >
         <Worker workerUrl="https://unpkg.com/pdfjs-dist@3.4.120/build/pdf.worker.min.js">
           <Viewer
@@ -556,4 +592,4 @@ PdfViewer.propTypes = {
   onBack: PropTypes.func,
 };
 
-export default PdfViewer; 
+export default PdfViewer;

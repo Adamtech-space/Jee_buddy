@@ -1,6 +1,6 @@
 import PropTypes from 'prop-types';
 import { useSelection } from '../hooks/useSelection';
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
 
 const SelectionPopup = ({ onSaveToFlashCard, onAskAI }) => {
   const {
@@ -12,35 +12,69 @@ const SelectionPopup = ({ onSaveToFlashCard, onAskAI }) => {
     setShowPopup,
   } = useSelection();
   const popupRef = useRef(null);
+  const [isSelecting, setIsSelecting] = useState(false);
+  const selectionStartRef = useRef({ x: 0, y: 0 });
 
   useEffect(() => {
-    const handleSelection = () => {
-      const selection = window.getSelection();
-      if (selection && selection.toString().trim().length > 0) {
-        const range = selection.getRangeAt(0);
-        const rect = range.getBoundingClientRect();
-        // Immediately update position and show popup
-        setSelectionPosition({
-          x: rect.left + rect.width / 2,
-          y: rect.bottom + window.scrollY,
-        });
-        setShowPopup(true);
-      } else {
-        setShowPopup(false);
+    const handleSelectionStart = (e) => {
+      if (e.type === 'mousedown') {
+        setIsSelecting(true);
+        selectionStartRef.current = { x: e.clientX, y: e.clientY };
       }
     };
 
-    // Listen for all possible selection events
-    document.addEventListener('selectionchange', handleSelection);
-    document.addEventListener('touchend', handleSelection);
-    document.addEventListener('mouseup', handleSelection);
+    const handleSelectionEnd = (e) => {
+      if (!isSelecting) return;
+
+      setIsSelecting(false);
+
+      // Calculate selection distance
+      const distance = Math.hypot(
+        e.clientX - selectionStartRef.current.x,
+        e.clientY - selectionStartRef.current.y
+      );
+
+      // If the movement is too small (less than 5 pixels), ignore it
+      if (distance < 5) return;
+
+      const selection = window.getSelection();
+      const selectedText = selection?.toString().trim();
+
+      // Ignore if selection is too short or too long
+      if (
+        !selectedText ||
+        selectedText.length < 2 ||
+        selectedText.length > 1000
+      ) {
+        setShowPopup(false);
+        return;
+      }
+
+      // Get selection coordinates for popup positioning
+      const range = selection.getRangeAt(0);
+      const rect = range.getBoundingClientRect();
+
+      // Update position and show popup
+      setSelectionPosition({
+        x: rect.left + rect.width / 2,
+        y: rect.bottom + window.scrollY,
+      });
+      setShowPopup(true);
+    };
+
+    // Listen for selection events
+    document.addEventListener('mousedown', handleSelectionStart);
+    document.addEventListener('mouseup', handleSelectionEnd);
+    document.addEventListener('touchstart', handleSelectionStart);
+    document.addEventListener('touchend', handleSelectionEnd);
 
     return () => {
-      document.removeEventListener('selectionchange', handleSelection);
-      document.removeEventListener('touchend', handleSelection);
-      document.removeEventListener('mouseup', handleSelection);
+      document.removeEventListener('mousedown', handleSelectionStart);
+      document.removeEventListener('mouseup', handleSelectionEnd);
+      document.removeEventListener('touchstart', handleSelectionStart);
+      document.removeEventListener('touchend', handleSelectionEnd);
     };
-  }, []);
+  }, [isSelecting, setSelectionPosition, setShowPopup]);
 
   useEffect(() => {
     if (!popupRef.current || !selectionPosition) return;
