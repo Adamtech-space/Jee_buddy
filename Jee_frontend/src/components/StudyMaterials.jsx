@@ -352,29 +352,36 @@ const StudyMaterials = () => {
 
   // Render breadcrumb navigation
   const renderBreadcrumbs = () => (
-    <div className="flex items-center space-x-2 text-sm mb-4 text-white">
+    <nav className="flex items-center space-x-1 text-sm mb-4 text-white overflow-x-auto py-2 scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
       <button
         onClick={() => navigateToFolder(null)}
-        className="p-1 hover:bg-gray-800 rounded"
+        className="flex items-center p-1.5 hover:bg-gray-800 rounded-lg transition-colors duration-200 group min-w-fit"
+        title="Home"
       >
-        <HomeIcon className="w-4 h-4" />
+        <HomeIcon className="w-4 h-4 text-gray-400 group-hover:text-blue-400" />
       </button>
+
       {currentFolder.path.map((item, index) => (
-        <div key={item.id} className="flex items-center">
-          <ChevronRightIcon className="w-4 h-4 text-gray-400" />
+        <div key={item.id} className="flex items-center min-w-fit">
+          <ChevronRightIcon className="w-4 h-4 text-gray-600 flex-shrink-0" />
           <button
             onClick={() => navigateToFolder(item.id)}
-            className={`px-2 py-1 rounded hover:bg-gray-800 ${
-              index === currentFolder.path.length - 1
-                ? 'font-medium text-blue-400'
-                : 'text-gray-300'
-            }`}
+            className={`
+              px-2 py-1.5 rounded-lg transition-all duration-200
+              hover:bg-gray-800 flex items-center gap-1 group
+              ${
+                index === currentFolder.path.length - 1
+                  ? 'bg-gray-800/50 font-medium text-blue-400'
+                  : 'text-gray-300 hover:text-white'
+              }
+            `}
+            title={item.name}
           >
-            {item.name}
+            <span className="truncate max-w-[150px]">{item.name}</span>
           </button>
         </div>
       ))}
-    </div>
+    </nav>
   );
 
   // Render file/folder list
