@@ -19,8 +19,8 @@ import html2canvas from 'html2canvas';
 // Import styles
 import '@react-pdf-viewer/core/lib/styles/index.css';
 
-const PdfViewer = () => {
-  const { pdfUrl: encodedUrl, subject } = useParams();
+const PdfViewer = ({ pdfUrl: propsPdfUrl, subject: propsSubject, onBack }) => {
+  const { pdfUrl: encodedUrl, subject: routeSubject } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
   const [error, setError] = useState(null);
@@ -33,8 +33,12 @@ const PdfViewer = () => {
   const [capturedImage, setCapturedImage] = useState(null);
   const [showConfirmation, setShowConfirmation] = useState(false);
 
-  // Get the actual URL from either state or params
-  const pdfUrl = location.state?.pdfUrl || decodeURIComponent(encodedUrl);
+  // Get the actual URL from props, state, or params
+  const pdfUrl =
+    propsPdfUrl ||
+    location.state?.pdfUrl ||
+    decodeURIComponent(encodedUrl || '');
+  const subject = propsSubject || routeSubject;
   const pdfTitle = decodeURIComponent(
     pdfUrl.split('/').pop().replace('.pdf', '')
   );
@@ -62,13 +66,13 @@ const PdfViewer = () => {
           if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
           }
-        setLoading(false);
-      })
+          setLoading(false);
+        })
         .catch((err) => {
-        console.error('Error checking PDF URL:', err);
-        setError(`Failed to access PDF: ${err.message}`);
-        setLoading(false);
-      });
+          console.error('Error checking PDF URL:', err);
+          setError(`Failed to access PDF: ${err.message}`);
+          setLoading(false);
+        });
     }
   }, [pdfUrl, navigate, subject]);
 
@@ -309,7 +313,9 @@ const PdfViewer = () => {
       {/* Back button - Left side */}
       <div className="absolute top-4 left-4 z-10">
         <button
-          onClick={() => navigate(`/dashboard/${subject}/books`)}
+          onClick={() =>
+            onBack ? onBack() : navigate(`/dashboard/${subject}/books`)
+          }
           className="flex items-center gap-1 px-3 py-1.5 text-white hover:text-blue-500 transition-colors bg-gray-800/80 backdrop-blur rounded-lg"
         >
           <ArrowLeftOutlined />
@@ -477,21 +483,21 @@ const PdfViewer = () => {
         style={{ top: isMobile ? '56px' : 0 }}
       >
         <Worker workerUrl="https://unpkg.com/pdfjs-dist@3.4.120/build/pdf.worker.min.js">
-            <Viewer
-              fileUrl={pdfUrl}
+          <Viewer
+            fileUrl={pdfUrl}
             defaultScale={isMobile ? 1 : 'PageWidth'}
             theme="dark"
             className="h-full"
-              renderLoader={(percentages) => (
-                <div className="flex items-center justify-center h-full">
+            renderLoader={(percentages) => (
+              <div className="flex items-center justify-center h-full">
                 <div className="text-center text-white">
-                    <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-500 mb-4"></div>
+                  <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-500 mb-4"></div>
                   <p>Loading PDF... {Math.round(percentages)}%</p>
                 </div>
-                </div>
-              )}
-            />
-          </Worker>
+              </div>
+            )}
+          />
+        </Worker>
       </div>
 
       {/* Selection Popup */}
@@ -522,8 +528,8 @@ const PdfViewer = () => {
                   maxWidth: '100%',
                 }}
               />
-        </div>
-      )}
+            </div>
+          )}
           <div className="flex justify-end gap-2 mt-4">
             <button
               onClick={handleReselect}
@@ -545,8 +551,9 @@ const PdfViewer = () => {
 };
 
 PdfViewer.propTypes = {
-  onClick: PropTypes.func,
-  scale: PropTypes.number,
+  pdfUrl: PropTypes.string,
+  subject: PropTypes.string,
+  onBack: PropTypes.func,
 };
 
 export default PdfViewer; 

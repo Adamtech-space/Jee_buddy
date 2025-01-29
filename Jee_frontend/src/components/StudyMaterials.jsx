@@ -19,10 +19,9 @@ import {
   renameStudyMaterial,
   getFileDownloadUrl,
 } from '../interceptors/services';
-import { Document, Page, pdfjs } from 'react-pdf';
 import { useSelection } from '../hooks/useSelection';
 import SelectionPopup from './SelectionPopup';
-pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
+import PdfViewer from './PdfViewer';
 
 const StudyMaterials = () => {
   const { subject } = useParams();
@@ -37,7 +36,6 @@ const StudyMaterials = () => {
   const [newFolderName, setNewFolderName] = useState('');
   const [editingItem, setEditingItem] = useState(null);
   const [selectedFile, setSelectedFile] = useState(null);
-  const [numPages, setNumPages] = useState(null); // for PDF viewer
   const { handleTextSelection } = useSelection();
   const [loadingItems, setLoadingItems] = useState(new Set());
   const [uploadProgress, setUploadProgress] = useState({});
@@ -286,20 +284,13 @@ const StudyMaterials = () => {
     // PDF files
     if (fileType === 'application/pdf') {
       return (
-        <Document
-          file={file.url}
-          onLoadSuccess={({ numPages }) => setNumPages(numPages)}
-          className="w-full"
-        >
-          {Array.from(new Array(numPages), (el, index) => (
-            <Page
-              key={`page_${index + 1}`}
-              pageNumber={index + 1}
-              className="mb-4"
-              width={window.innerWidth * 0.7}
-            />
-          ))}
-        </Document>
+        <div className="h-full w-full">
+          <PdfViewer
+            pdfUrl={file.url}
+            subject={subject}
+            onBack={() => setSelectedFile(null)}
+          />
+        </div>
       );
     }
 
@@ -394,8 +385,16 @@ const StudyMaterials = () => {
     } else {
       try {
         const response = await getFileDownloadUrl(item.id);
+        const fileUrl = response.data.signedUrl;
+
+        // Verify the URL is valid before setting it
+        const urlCheck = await fetch(fileUrl, { method: 'HEAD' });
+        if (!urlCheck.ok) {
+          throw new Error('Unable to access the file');
+        }
+
         setSelectedFile({
-          url: response.data.signedUrl,
+          url: fileUrl,
           name: item.name,
           type: item.mime_type || item.type,
         });
