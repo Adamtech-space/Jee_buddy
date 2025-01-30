@@ -37,19 +37,66 @@ const PdfViewer = ({ pdfUrl: propsPdfUrl, subject: propsSubject, onBack }) => {
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
   const { isChatOpen, isSidebarOpen, setIsChatOpen } = useOutletContext();
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const { handleTextSelection } = useSelection();
   const [isAreaSelecting, setIsAreaSelecting] = useState(false);
   const [viewerContainerRef, setViewerContainerRef] = useState(null);
   const [capturedImage, setCapturedImage] = useState(null);
   const [showConfirmation, setShowConfirmation] = useState(false);
+  const [visiblePageRange, setVisiblePageRange] = useState({
+    start: 0,
+    end: 3,
+  });
+  const [isSmallScreen, setIsSmallScreen] = useState(window.innerWidth < 768);
+  const [initialZoomSet, setInitialZoomSet] = useState(false);
+  const [selectedText, setSelectedText] = useState('');
 
   // Refs
   const selectionTimerRef = useRef(null);
   const containerRef = useRef(null);
 
-  // Add state for page range
-  const [visiblePageRange, setVisiblePageRange] = useState({ start: 0, end: 3 });
+  // Update screen size detection
+  useEffect(() => {
+    const handleResize = () => {
+      const smallScreen = window.innerWidth < 768;
+      setIsSmallScreen(smallScreen);
+
+      // Reset zoom when screen size changes
+      if (!initialZoomSet) {
+        setInitialZoomSet(true);
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    handleResize(); // Initial check
+    return () => window.removeEventListener('resize', handleResize);
+  }, [initialZoomSet]);
+
+  // Handle chat opening in mobile view
+  const handleOpenChat = useCallback(() => {
+    if (isSmallScreen) {
+      // Reset any active states
+      setIsAreaSelecting(false);
+      setShowConfirmation(false);
+      setSelectedText('');
+
+      // Hide PDF viewer in mobile when chat is open
+      document.body.style.overflow = 'hidden';
+
+      // Force chat to open
+      requestAnimationFrame(() => {
+        setIsChatOpen(true);
+      });
+    } else {
+      setIsChatOpen(true);
+    }
+  }, [isSmallScreen, setIsChatOpen]);
+
+  // Cleanup body style on unmount
+  useEffect(() => {
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, []);
 
   // Memoized selection handler
   const handleSelection = useCallback(
@@ -134,8 +181,12 @@ const PdfViewer = ({ pdfUrl: propsPdfUrl, subject: propsSubject, onBack }) => {
           processedText = `$${processedText}$`;
         }
 
+        // Store the selected text
+        setSelectedText(processedText);
+
+        // Call the text selection handler
         handleTextSelection(e, processedText);
-      }, 250); // Increased debounce time for better control
+      }, 250);
     },
     [loading, isAreaSelecting, handleTextSelection]
   );
@@ -158,16 +209,6 @@ const PdfViewer = ({ pdfUrl: propsPdfUrl, subject: propsSubject, onBack }) => {
   const pdfTitle = decodeURIComponent(
     pdfUrl.split('/').pop().replace('.pdf', '')
   );
-
-  // Handle window resize
-  useEffect(() => {
-    const handleResize = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
 
   // Check PDF URL and load document
   useEffect(() => {
@@ -210,21 +251,31 @@ const PdfViewer = ({ pdfUrl: propsPdfUrl, subject: propsSubject, onBack }) => {
     }
   };
 
-  const handleAskAI = (text, source) => {
-    setIsChatOpen(true);
+  const handleAskAI = useCallback(
+    (text, source) => {
+      // Ensure we have text to send
+      if (!text) return;
 
-    // Ensure chat is open before dispatching event
-    setTimeout(() => {
-      const eventData = {
-        detail: {
-          question: text,
-          source: source || `PDF: ${pdfTitle}`,
-        },
-      };
+      // Open chat first and wait for it to be ready
+      handleOpenChat();
 
-      window.dispatchEvent(new CustomEvent('setAIQuestion', eventData));
-    }, 100); // Short delay to ensure chat is open
-  };
+      // Clear selection after a short delay
+      setTimeout(() => {
+        window.getSelection()?.removeAllRanges();
+        setSelectedText('');
+
+        // Dispatch the question event after chat is open
+        const eventData = {
+          detail: {
+            question: text,
+            source: source || `PDF: ${pdfTitle}`,
+          },
+        };
+        window.dispatchEvent(new CustomEvent('setAIQuestion', eventData));
+      }, 300); // Increased delay to ensure chat is open
+    },
+    [handleOpenChat, pdfTitle]
+  );
 
   const handleAreaSelected = async (rect) => {
     if (!viewerContainerRef) return;
@@ -306,7 +357,7 @@ const PdfViewer = ({ pdfUrl: propsPdfUrl, subject: propsSubject, onBack }) => {
   const handleConfirm = () => {
     if (!capturedImage) return;
 
-    setIsChatOpen(true);
+    handleOpenChat();
     setTimeout(() => {
       const eventData = {
         detail: {
@@ -336,7 +387,47 @@ const PdfViewer = ({ pdfUrl: propsPdfUrl, subject: propsSubject, onBack }) => {
   };
 
   const pageNavigationPluginInstance = pageNavigationPlugin();
-  const toolbarPluginInstance = toolbarPlugin();
+
+  // Custom toolbar plugin
+  const customToolbarPlugin = toolbarPlugin({
+    renderDefaultToolbar: (Toolbar) => (
+      <Toolbar>
+        {(slots) => {
+          const {
+            CurrentPageInput,
+            Download,
+            EnterFullScreen,
+            GoToNextPage,
+            GoToPreviousPage,
+            NumberOfPages,
+            Print,
+            ZoomIn,
+            ZoomOut,
+          } = slots;
+          return (
+            <div className="flex flex-wrap items-center justify-center gap-1 px-2">
+              <div className="flex items-center gap-1">
+                <GoToPreviousPage />
+                <CurrentPageInput />
+                <span className="text-white">/</span>
+                <NumberOfPages />
+                <GoToNextPage />
+              </div>
+              <div className="flex items-center gap-1">
+                <ZoomOut />
+                <ZoomIn />
+              </div>
+              <div className="flex items-center gap-1">
+                <Download />
+                <Print />
+                <EnterFullScreen />
+              </div>
+            </div>
+          );
+        }}
+      </Toolbar>
+    ),
+  });
 
   const defaultLayoutPluginInstance = defaultLayoutPlugin({
     sidebarTabs: () => [],
@@ -345,15 +436,16 @@ const PdfViewer = ({ pdfUrl: propsPdfUrl, subject: propsSubject, onBack }) => {
         <div
           style={{
             margin: '0 auto',
-            maxWidth: '900px',
+            maxWidth: isSmallScreen ? '100%' : '900px',
             position: 'relative',
             height: '100%',
             backgroundColor: '#ffffff',
-            borderRadius: '8px',
-            boxShadow:
-              '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+            borderRadius: isSmallScreen ? '0' : '8px',
+            boxShadow: isSmallScreen
+              ? 'none'
+              : '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
             overflow: 'hidden',
-            contain: 'paint',  // Add paint containment
+            contain: 'paint',
           }}
         >
           <div style={{ position: 'absolute', inset: 0, contain: 'paint' }}>
@@ -376,35 +468,35 @@ const PdfViewer = ({ pdfUrl: propsPdfUrl, subject: propsSubject, onBack }) => {
         </div>
       </div>
     ),
-    toolbarPlugin: {
-      ...toolbarPluginInstance,
-      fullScreenPlugin: {
-        onEnterFullScreen: (zoom) => zoom(SpecialZoomLevel.PageFit),
-        onExitFullScreen: (zoom) => zoom(SpecialZoomLevel.PageWidth),
-      },
-    },
+    toolbarPlugin: customToolbarPlugin,
   });
 
-  // Add scroll handler for dynamic page loading
-  const handleScroll = useCallback((e) => {
-    const container = e.target;
-    const scrollTop = container.scrollTop;
-    const clientHeight = container.clientHeight;
-    const scrollHeight = container.scrollHeight;
+  // Update scroll handler
+  const handleScroll = useCallback(
+    (e) => {
+      const container = e.target;
+      const scrollTop = container.scrollTop;
+      const scrollHeight = container.scrollHeight;
 
-    // Calculate which pages should be visible
-    const totalHeight = scrollHeight;
-    const pageHeight = totalHeight / (visiblePageRange.end - visiblePageRange.start + 1);
-    const currentPage = Math.floor(scrollTop / pageHeight);
-    
-    // Load 2 pages before and after the current page
-    const newStart = Math.max(0, currentPage - 2);
-    const newEnd = currentPage + 2;
+      // Calculate which pages should be visible
+      const totalHeight = scrollHeight;
+      const pageHeight =
+        totalHeight / (visiblePageRange.end - visiblePageRange.start + 1);
+      const currentPage = Math.floor(scrollTop / pageHeight);
 
-    if (newStart !== visiblePageRange.start || newEnd !== visiblePageRange.end) {
-      setVisiblePageRange({ start: newStart, end: newEnd });
-    }
-  }, [visiblePageRange]);
+      // Load 2 pages before and after the current page
+      const newStart = Math.max(0, currentPage - 2);
+      const newEnd = currentPage + 2;
+
+      if (
+        newStart !== visiblePageRange.start ||
+        newEnd !== visiblePageRange.end
+      ) {
+        setVisiblePageRange({ start: newStart, end: newEnd });
+      }
+    },
+    [visiblePageRange]
+  );
 
   // Add scroll event listener
   useEffect(() => {
@@ -421,39 +513,51 @@ const PdfViewer = ({ pdfUrl: propsPdfUrl, subject: propsSubject, onBack }) => {
     <div
       className="fixed bg-[#0f172a] transition-all duration-300 ease-in-out"
       style={{
-        top: isMobile ? '0' : '64px',
-        left: isMobile ? '0' : isSidebarOpen ? '256px' : '0',
-        right: isMobile ? '0' : isChatOpen ? '450px' : '0',
+        top: isSmallScreen ? '0' : '64px',
+        left: isSmallScreen ? '0' : isSidebarOpen ? '256px' : '0',
+        right: isSmallScreen ? '0' : isChatOpen ? '450px' : '0',
         bottom: '0',
+        zIndex: isSmallScreen ? '50' : 'auto',
+        display: isSmallScreen && isChatOpen ? 'none' : 'block', // Hide PDF viewer when chat is open on mobile
       }}
       ref={setViewerContainerRef}
     >
       {/* Modern Toolbar */}
-      <div className="absolute top-0 left-0 right-0 h-16 flex items-center justify-between px-6 z-50 bg-[#1e293b] border-b border-white/10">
+      <div
+        className={`
+        absolute top-0 left-0 right-0 
+        ${isSmallScreen ? 'h-14' : 'h-16'} 
+        flex items-center justify-between px-3 sm:px-6 z-50 
+        bg-[#1e293b] border-b border-white/10
+        ${isSmallScreen ? 'safe-area-top' : ''}
+      `}
+      >
         {/* Left Section */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <button
             onClick={() =>
               onBack ? onBack() : navigate(`/dashboard/${subject}/books`)
             }
-            className="flex items-center gap-2 px-4 py-2 text-white/90 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg transition-all duration-200"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-white/90 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg transition-all duration-200"
           >
-            <ArrowLeftOutlined className="text-lg" />
-            <span className={`font-medium ${isMobile ? 'text-sm' : ''}`}>
+            <ArrowLeftOutlined
+              className={isSmallScreen ? 'w-4 h-4' : 'w-5 h-5'}
+            />
+            <span className={`font-medium ${isSmallScreen ? 'text-sm' : ''}`}>
               Back
             </span>
           </button>
         </div>
 
         {/* Center Section - PDF Title */}
-        <div className="hidden md:block">
-          <h1 className="text-white/90 font-medium truncate max-w-[400px]">
+        <div className={`hidden ${isSmallScreen ? '' : 'md:block'}`}>
+          <h1 className="text-white/90 font-medium truncate max-w-[200px] sm:max-w-[400px]">
             {pdfTitle}
           </h1>
         </div>
 
         {/* Right Section */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -464,21 +568,26 @@ const PdfViewer = ({ pdfUrl: propsPdfUrl, subject: propsSubject, onBack }) => {
               }
             }}
             className={`
-              group relative px-4 py-2 rounded-lg transition-all duration-200
+              group relative px-3 py-1.5 rounded-lg transition-all duration-200
               ${
                 isAreaSelecting
                   ? 'bg-red-500/20 hover:bg-red-500/30 text-red-400 hover:text-red-300'
                   : 'bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 hover:text-blue-300'
               }
               border border-white/10
+              ${isSmallScreen ? 'text-sm' : ''}
             `}
           >
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
               <span className="flex items-center justify-center">
                 {isAreaSelecting ? (
-                  <CloseOutlined className="text-lg" />
+                  <CloseOutlined
+                    className={isSmallScreen ? 'w-4 h-4' : 'w-5 h-5'}
+                  />
                 ) : (
-                  <CameraOutlined className="text-lg" />
+                  <CameraOutlined
+                    className={isSmallScreen ? 'w-4 h-4' : 'w-5 h-5'}
+                  />
                 )}
               </span>
               <span className="font-medium">
@@ -520,26 +629,29 @@ const PdfViewer = ({ pdfUrl: propsPdfUrl, subject: propsSubject, onBack }) => {
         ref={containerRef}
         className="absolute inset-0 overflow-auto bg-[#0f172a] scroll-smooth"
         style={{
-          top: '64px',
-          padding: '2rem',
-          willChange: 'transform',  // Optimize for animations
-          transform: 'translateZ(0)',  // Force GPU acceleration
+          top: isSmallScreen ? '56px' : '64px',
+          padding: isSmallScreen ? '0.5rem' : '2rem',
+          willChange: 'transform',
+          transform: 'translateZ(0)',
         }}
         onMouseUp={handleSelection}
         onTouchEnd={handleSelection}
       >
-        <Worker 
+        <Worker
           workerUrl="https://unpkg.com/pdfjs-dist@3.4.120/build/pdf.worker.min.js"
           workerOptions={{
-            workerSrc: "https://unpkg.com/pdfjs-dist@3.4.120/build/pdf.worker.min.js",
-            maxImageSize: 1024 * 1024 * 32,  // Increase max image size to 32MB
-            isOffscreenCanvasSupported: true,  // Enable offscreen canvas if supported
+            workerSrc:
+              'https://unpkg.com/pdfjs-dist@3.4.120/build/pdf.worker.min.js',
+            maxImageSize: 1024 * 1024 * 32,
+            isOffscreenCanvasSupported: true,
           }}
         >
           <Viewer
             fileUrl={pdfUrl}
             defaultScale={
-              isMobile ? SpecialZoomLevel.PageFit : SpecialZoomLevel.PageWidth
+              isSmallScreen
+                ? SpecialZoomLevel.PageFit
+                : SpecialZoomLevel.PageWidth
             }
             theme={{
               theme: 'dark',
@@ -550,7 +662,7 @@ const PdfViewer = ({ pdfUrl: propsPdfUrl, subject: propsSubject, onBack }) => {
             plugins={[
               defaultLayoutPluginInstance,
               pageNavigationPluginInstance,
-              toolbarPluginInstance,
+              customToolbarPlugin,
             ]}
             onDocumentLoad={() => setLoading(false)}
             characterMap={{
@@ -559,15 +671,15 @@ const PdfViewer = ({ pdfUrl: propsPdfUrl, subject: propsSubject, onBack }) => {
             }}
             renderInteractionMode="custom"
             pageLayout={{
-              transformScale: 0.8,
-              viewportScale: Math.min(1.5, window.devicePixelRatio), // Limit viewport scale
-              renderQuality: 1.0,  // Reduce render quality slightly for better performance
+              transformScale: isSmallScreen ? 1 : 0.8,
+              viewportScale: Math.min(window.devicePixelRatio, 2),
+              renderQuality: 1.0,
               enableOptimization: true,
               enableCache: true,
               lazyLoading: true,
-              pageGap: 24,
-              visiblePages: visiblePageRange,  // Only render visible pages
-              unloadInvisiblePages: true,  // Unload invisible pages to save memory
+              pageGap: isSmallScreen ? 12 : 24,
+              visiblePages: visiblePageRange,
+              unloadInvisiblePages: true,
             }}
             renderPageProps={{
               enableOptimizedRendering: true,
@@ -582,6 +694,7 @@ const PdfViewer = ({ pdfUrl: propsPdfUrl, subject: propsSubject, onBack }) => {
       <SelectionPopup
         onSaveToFlashCard={handleSaveToFlashCard}
         onAskAI={handleAskAI}
+        selectedText={selectedText}
       />
 
       {/* Confirmation Modal */}
@@ -592,7 +705,7 @@ const PdfViewer = ({ pdfUrl: propsPdfUrl, subject: propsSubject, onBack }) => {
         closable={false}
         centered
         className="confirmation-modal"
-        width={500}
+        width={isSmallScreen ? '90%' : 500}
       >
         <div className="p-2">
           <h3 className="text-lg font-medium text-gray-200 mb-4">
@@ -605,7 +718,7 @@ const PdfViewer = ({ pdfUrl: propsPdfUrl, subject: propsSubject, onBack }) => {
                 alt="Selected area"
                 className="w-full h-auto rounded-lg"
                 style={{
-                  maxHeight: '300px',
+                  maxHeight: isSmallScreen ? '200px' : '300px',
                   objectFit: 'contain',
                   maxWidth: '100%',
                 }}
