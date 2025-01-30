@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { memo, useCallback, useMemo, useEffect } from 'react';
+import { memo, useCallback, useMemo} from 'react';
 import PropTypes from 'prop-types';
 import { useLoading } from '../context/LoadingContext';
 
