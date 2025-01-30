@@ -5,9 +5,9 @@ import PropTypes from 'prop-types';
 
 // Define plan IDs
 const PLANS = {
-  'BASIC': 'plan_PhmnKiiVXD3B1M',
-  'PREMIUM': 'plan_Phmo9yOZAKb0P8',
-  'PRO': 'plan_PhmnlqjWH24hwy'
+  'BASIC': import.meta.env.VITE_BASIC_PLAN_ID,
+  'PRO': import.meta.env.VITE_PRO_PLAN_ID,
+  'PREMIUM': import.meta.env.VITE_PREMIUM_PLAN_ID
 };
 
 const SubscriptionCard = ({ plan, isActive, onSubscribe, subscriptionDetails }) => {
@@ -171,7 +171,14 @@ const Subscription = () => {
         // Fetch actual subscription status
         const userData = JSON.parse(localStorage.getItem('user'));
         if (userData.payment_status === 'completed' && userData.current_plan_id) {
-          const planType = Object.keys(PLANS).find(key => PLANS[key] === userData.current_plan_id) || 'BASIC';
+          // Compare plan IDs directly with environment variables
+          let planType = 'BASIC';
+          if (userData.current_plan_id === import.meta.env.VITE_PREMIUM_PLAN_ID) {
+            planType = 'PREMIUM';
+          } else if (userData.current_plan_id === import.meta.env.VITE_PRO_PLAN_ID) {
+            planType = 'PRO';
+          }
+          
           setIsSubscribed(true);
           setCurrentPlan({
             type: planType,
@@ -314,9 +321,9 @@ const Subscription = () => {
       console.log('Payment response:', paymentResponse);
       const userId = getUserId();
       const verificationData = {
-          razorpay_payment_id: paymentResponse.razorpay_payment_id,
-          razorpay_subscription_id: paymentResponse.razorpay_subscription_id,
-          razorpay_signature: paymentResponse.razorpay_signature,
+        razorpay_payment_id: paymentResponse.razorpay_payment_id,
+        razorpay_subscription_id: paymentResponse.razorpay_subscription_id,
+        razorpay_signature: paymentResponse.razorpay_signature,
         user_id: userId
       };
 
@@ -325,14 +332,31 @@ const Subscription = () => {
       console.log('Verification response:', data);
 
       if (data.status === 'success') {
+        // Update local storage with new plan data
+        const userDataStr = localStorage.getItem('user');
+        if (userDataStr) {
+          const userData = JSON.parse(userDataStr);
+          const updatedUserData = {
+            ...userData,
+            payment_status: 'completed',
+            current_plan_id: data.plan_id,
+            next_billing_date: data.next_billing_date,
+            days_remaining: 30, // Reset to full month
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          };
+          localStorage.setItem('user', JSON.stringify(updatedUserData));
+        }
+
         setIsSubscribed(true);
-        // Update current plan after successful payment
-        const planType = Object.keys(PLANS).find(key => PLANS[key] === data.plan_id);
+        // Update current plan state
+        const planType = Object.keys(PLANS).find(key => PLANS[key] === data.plan_id) || 'BASIC';
         setCurrentPlan({
           type: planType,
           name: `${planType.charAt(0) + planType.slice(1).toLowerCase()} Plan`,
           price: planType === 'BASIC' ? 499 : planType === 'PRO' ? 1499 : 4999
         });
+        
         alert('Payment successful! Your plan has been updated.');
         navigate('/dashboard');
       } else {
