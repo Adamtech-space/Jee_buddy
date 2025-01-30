@@ -1,0 +1,32 @@
+# dependencies
+node_modules/
+
+# environment variables
+.env
+.env.local
+.env.development
+.env.production
+
+# logs
+logs
+*.log
+npm-debug.log*
+
+# runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# testing
+coverage/
+
+# misc
+.DS_Store
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# vercel
+.vercel

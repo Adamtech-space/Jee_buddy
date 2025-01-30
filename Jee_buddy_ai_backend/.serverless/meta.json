@@ -1,0 +1,289 @@
+{
+  "unknown": {
+    "versionSfCore": null,
+    "versionFramework": "4.4.19",
+    "isWithinCompose": false,
+    "composeOrgName": null,
+    "composeServiceName": null,
+    "command": [],
+    "options": {
+      "version": true
+    },
+    "error": null,
+    "machineId": "aa88ec05a9003a18abfd40051e5ba8b9",
+    "serviceProviderAwsCfStackId": null,
+    "serviceProviderAwsCfStackCreated": null,
+    "serviceProviderAwsCfStackUpdated": null,
+    "serviceProviderAwsCfStackStatus": null,
+    "serviceProviderAwsCfStackOutputs": null
+  },
+  "C:\\vicky\\Projects\\Jee_buddy\\Jee_buddy\\Jee_buddy_ai_backend": {
+    "versionSfCore": null,
+    "versionFramework": "4.4.19",
+    "isWithinCompose": false,
+    "isCompose": false,
+    "composeOrgName": null,
+    "composeResolverProviders": {
+      "default-aws-credential-resolver": "<REDACTED>",
+      "opt": {
+        "instance": {
+          "credentials": "<REDACTED>",
+          "serviceConfigFile": {
+            "service": "jee-buddy-ai-backend",
+            "provider": {
+              "name": "aws",
+              "runtime": "python3.9",
+              "region": "ap-south-1",
+              "timeout": 900,
+              "memorySize": 1024,
+              "environment": {
+                "STAGE": "dev"
+              },
+              "stage": "dev",
+              "versionFunctions": true
+            },
+            "package": {
+              "patterns": [
+                "!venv/**",
+                "!.venv/**",
+                "!node_modules/**",
+                "!tests/**",
+                "src/**",
+                "requirements.txt"
+              ]
+            },
+            "functions": {
+              "api": {
+                "handler": "src.main.views.handler",
+                "events": [
+                  {
+                    "http": {
+                      "path": "/{proxy+}",
+                      "method": "ANY",
+                      "cors": true
+                    }
+                  }
+                ],
+                "environment": {
+                  "PYTHONPATH": "./src"
+                }
+              }
+            },
+            "plugins": [
+              "serverless-python-requirements",
+              "serverless-wsgi"
+            ],
+            "custom": {
+              "pythonRequirements": {
+                "dockerizePip": true,
+                "layer": {
+                  "name": "python-deps",
+                  "description": "Python dependencies for Jee Buddy AI"
+                }
+              },
+              "wsgi": {
+                "app": "src.core.asgi.application",
+                "packRequirements": false
+              }
+            }
+          },
+          "configFileDirPath": "C:\\vicky\\Projects\\Jee_buddy\\Jee_buddy\\Jee_buddy_ai_backend",
+          "config": {
+            "type": "opt"
+          },
+          "options": {},
+          "stage": "dev",
+          "dashboard": null,
+          "logger": {
+            "namespace": "s:core:resolver:opt",
+            "prefix": null,
+            "prefixColor": null
+          },
+          "_credentialsPromise": "<REDACTED>"
+        },
+        "resolvers": {}
+      },
+      "sls": {
+        "instance": {
+          "credentials": "<REDACTED>",
+          "serviceConfigFile": {
+            "service": "jee-buddy-ai-backend",
+            "provider": {
+              "name": "aws",
+              "runtime": "python3.9",
+              "region": "ap-south-1",
+              "timeout": 900,
+              "memorySize": 1024,
+              "environment": {
+                "STAGE": "dev"
+              },
+              "stage": "dev",
+              "versionFunctions": true
+            },
+            "package": {
+              "patterns": [
+                "!venv/**",
+                "!.venv/**",
+                "!node_modules/**",
+                "!tests/**",
+                "src/**",
+                "requirements.txt"
+              ]
+            },
+            "functions": {
+              "api": {
+                "handler": "src.main.views.handler",
+                "events": [
+                  {
+                    "http": {
+                      "path": "/{proxy+}",
+                      "method": "ANY",
+                      "cors": true
+                    }
+                  }
+                ],
+                "environment": {
+                  "PYTHONPATH": "./src"
+                }
+              }
+            },
+            "plugins": [
+              "serverless-python-requirements",
+              "serverless-wsgi"
+            ],
+            "custom": {
+              "pythonRequirements": {
+                "dockerizePip": true,
+                "layer": {
+                  "name": "python-deps",
+                  "description": "Python dependencies for Jee Buddy AI"
+                }
+              },
+              "wsgi": {
+                "app": "src.core.asgi.application",
+                "packRequirements": false
+              }
+            }
+          },
+          "configFileDirPath": "C:\\vicky\\Projects\\Jee_buddy\\Jee_buddy\\Jee_buddy_ai_backend",
+          "config": {
+            "type": "sls"
+          },
+          "options": {},
+          "stage": "dev",
+          "dashboard": null,
+          "logger": {
+            "namespace": "s:core:resolver:sls",
+            "prefix": null,
+            "prefixColor": null
+          },
+          "_credentialsPromise": "<REDACTED>"
+        },
+        "resolvers": {}
+      }
+    },
+    "composeServiceName": null,
+    "servicePath": "C:\\vicky\\Projects\\Jee_buddy\\Jee_buddy\\Jee_buddy_ai_backend",
+    "serviceConfigFileName": "serverless.yml",
+    "service": {
+      "service": "jee-buddy-ai-backend",
+      "provider": {
+        "name": "aws",
+        "runtime": "python3.9",
+        "region": "ap-south-1",
+        "timeout": 900,
+        "memorySize": 1024,
+        "environment": {
+          "STAGE": "dev"
+        },
+        "stage": "dev",
+        "versionFunctions": true
+      },
+      "package": {
+        "patterns": [
+          "!venv/**",
+          "!.venv/**",
+          "!node_modules/**",
+          "!tests/**",
+          "src/**",
+          "requirements.txt"
+        ]
+      },
+      "functions": {
+        "api": {
+          "handler": "src.main.views.handler",
+          "events": [
+            {
+              "http": {
+                "path": "/{proxy+}",
+                "method": "ANY",
+                "cors": true
+              }
+            }
+          ],
+          "environment": {
+            "PYTHONPATH": "./src"
+          }
+        }
+      },
+      "plugins": [
+        "serverless-python-requirements",
+        "serverless-wsgi"
+      ],
+      "custom": {
+        "pythonRequirements": {
+          "dockerizePip": true,
+          "layer": {
+            "name": "python-deps",
+            "description": "Python dependencies for Jee Buddy AI"
+          }
+        },
+        "wsgi": {
+          "app": "src.core.asgi.application",
+          "packRequirements": false
+        }
+      }
+    },
+    "serviceRawFile": "service: jee-buddy-ai-backend\r\n\r\nprovider:\r\n  name: aws\r\n  runtime: python3.9\r\n  region: ap-south-1  # Mumbai region\r\n  timeout: 900  # Maximum timeout (15 minutes)\r\n  memorySize: 1024  # 1GB RAM\r\n  environment:\r\n    STAGE: ${opt:stage, 'dev'}\r\n    # Add your environment variables from .env here\r\n    \r\npackage:\r\n  patterns:\r\n    - '!venv/**'\r\n    - '!.venv/**'\r\n    - '!node_modules/**'\r\n    - '!tests/**'\r\n    - 'src/**'\r\n    - 'requirements.txt'\r\n\r\nfunctions:\r\n  api:\r\n    handler: src.main.views.handler  # Update this to your main handler function\r\n    events:\r\n      - http:\r\n          path: /{proxy+}\r\n          method: ANY\r\n          cors: true\r\n    environment:\r\n      PYTHONPATH: ./src\r\n    \r\nplugins:\r\n  - serverless-python-requirements\r\n  - serverless-wsgi\r\n\r\ncustom:\r\n  pythonRequirements:\r\n    dockerizePip: true\r\n    layer:\r\n      name: python-deps\r\n      description: Python dependencies for Jee Buddy AI\r\n  wsgi:\r\n    app: src.core.asgi.application\r\n    packRequirements: false ",
+    "command": [
+      "deploy"
+    ],
+    "options": {},
+    "error": {
+      "message": "Serverless plugin \"serverless-python-requirements\" not found. Make sure it's installed and listed in the \"plugins\" section of your serverless config file. Use the --debug flag to learn more.",
+      "stack": "ServerlessError2: Serverless plugin \"serverless-python-requirements\" not found. Make sure it's installed and listed in the \"plugins\" section of your serverless config file. Use the --debug flag to learn more.\n    at PluginManager.resolveServicePlugins (file:///C:/Users/HP/.serverless/releases/4.4.19/package/dist/sf-core.js:925:2671)\n    at async PluginManager.loadAllPlugins (file:///C:/Users/HP/.serverless/releases/4.4.19/package/dist/sf-core.js:925:1293)\n    at async Serverless.init (file:///C:/Users/HP/.serverless/releases/4.4.19/package/dist/sf-core.js:932:9985)\n    at async runFramework (file:///C:/Users/HP/.serverless/releases/4.4.19/package/dist/sf-core.js:980:1336)\n    at async route (file:///C:/Users/HP/.serverless/releases/4.4.19/package/dist/sf-core.js:1010:14772)\n    at async Object.run2 [as run] (file:///C:/Users/HP/.serverless/releases/4.4.19/package/dist/sf-core.js:1010:15173)\n    at async run3 (file:///C:/Users/HP/.serverless/releases/4.4.19/package/dist/sf-core.js:1010:16435)",
+      "code": "PLUGIN_NOT_FOUND"
+    },
+    "params": {},
+    "machineId": "aa88ec05a9003a18abfd40051e5ba8b9",
+    "stage": "dev",
+    "accessKeyV2": "<REDACTED>",
+    "accessKeyV1": "<REDACTED>",
+    "orgId": "8c3671dc-928a-41b5-bf4f-c3c0e902a622",
+    "orgName": "adamtech25",
+    "userId": "sZC5jjzJxbnRsQcqg3",
+    "dashboard": {
+      "isEnabledForService": false,
+      "requiredAuthentication": true,
+      "orgFeaturesInUse": null,
+      "orgObservabilityIntegrations": null,
+      "serviceAppId": null,
+      "serviceProvider": null,
+      "instanceParameters": null
+    },
+    "userName": "adamtech25",
+    "subscription": null,
+    "userEmail": "techtitan@adamtechnologies.in",
+    "serviceProviderAwsRegion": "ap-south-1",
+    "serviceProviderAwsCredentials": "<REDACTED>",
+    "serviceProviderAwsAccountId": "203918875872",
+    "projectType": "traditional",
+    "versionSf": "4.4.19",
+    "serviceUniqueId": null,
+    "serviceProviderAwsCfStackId": null,
+    "serviceProviderAwsCfStackCreated": null,
+    "serviceProviderAwsCfStackUpdated": null,
+    "serviceProviderAwsCfStackStatus": null,
+    "serviceProviderAwsCfStackOutputs": null
+  }
+}

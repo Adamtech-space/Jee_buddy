@@ -1,0 +1,1309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Reading Assistant</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .user-select-none {
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        
+        /* Smooth transitions for sidebar resizing */
+        .w-64, .w-80 {
+            transition: width 0.05s ease-out;
+        }
+        
+        /* Resize handle hover effects */
+        .resize-handle {
+            opacity: 0;
+            transition: opacity 0.2s, width 0.2s;
+        }
+        
+        .resize-handle:hover {
+            opacity: 1;
+        }
+
+        #resize-overlay {
+            cursor: col-resize;
+            user-select: none;
+            -webkit-user-select: none;
+            background: transparent;
+        }
+
+        .resize-handle {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background-color: transparent;
+            transition: background-color 0.2s;
+        }
+
+        .resize-handle:hover {
+            background-color: #3b82f6;
+        }
+
+        .resize-handle.active {
+            background-color: #3b82f6;
+            width: 4px;
+        }
+
+        /* Prevent text selection during resize */
+        .resizing {
+            user-select: none;
+            -webkit-user-select: none;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div class="flex flex-col h-screen">
+        <!-- Navigation stays at top -->
+        <nav class="bg-white border-b border-gray-200 flex-shrink-0">
+            <div class="flex justify-between items-center px-4 py-2">
+                <!-- Left side menu -->
+                <div class="flex space-x-4">
+                    <div class="relative group">
+                        <button class="px-3 py-2 hover:bg-gray-100 rounded">File</button>
+                        <div class="absolute left-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg hidden group-hover:block w-48 z-50">
+                            <div class="py-1">
+                                <a href="#" class="px-4 py-2 hover:bg-gray-100 flex justify-between items-center">
+                                    <span>New File</span>
+                                    <span class="text-xs text-gray-500">⌘N</span>
+                                </a>
+                                <a href="#" class="px-4 py-2 hover:bg-gray-100 flex justify-between items-center">
+                                    <span>Open</span>
+                                    <span class="text-xs text-gray-500">⌘O</span>
+                                </a>
+                                <a href="#" class="px-4 py-2 hover:bg-gray-100 flex justify-between items-center">
+                                    <span>Save</span>
+                                    <span class="text-xs text-gray-500">⌘S</span>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="relative group">
+                        <button class="px-3 py-2 hover:bg-gray-100 rounded">Edit</button>
+                        <div class="absolute left-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg hidden group-hover:block w-48 z-50">
+                            <div class="py-1">
+                                <a href="#" class="px-4 py-2 hover:bg-gray-100 flex justify-between items-center">
+                                    <span>Cut</span>
+                                    <span class="text-xs text-gray-500">⌘X</span>
+                                </a>
+                                <a href="#" class="px-4 py-2 hover:bg-gray-100 flex justify-between items-center">
+                                    <span>Copy</span>
+                                    <span class="text-xs text-gray-500">⌘C</span>
+                                </a>
+                                <a href="#" class="px-4 py-2 hover:bg-gray-100 flex justify-between items-center">
+                                    <span>Paste</span>
+                                    <span class="text-xs text-gray-500">⌘V</span>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="relative group">
+                        <button class="px-3 py-2 hover:bg-gray-100 rounded">View</button>
+                        <div class="absolute left-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg hidden group-hover:block w-48 z-50">
+                            <div class="py-1">
+                                <a href="#" class="px-4 py-2 hover:bg-gray-100 flex justify-between items-center">
+                                    <span>Zoom In</span>
+                                    <span class="text-xs text-gray-500">⌘+</span>
+                                </a>
+                                <a href="#" class="px-4 py-2 hover:bg-gray-100 flex justify-between items-center">
+                                    <span>Zoom Out</span>
+                                    <span class="text-xs text-gray-500">⌘-</span>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="relative group">
+                        <button class="px-3 py-2 hover:bg-gray-100 rounded">Help</button>
+                        <div class="absolute left-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg hidden group-hover:block w-48 z-50">
+                            <div class="py-1">
+                                <a href="#" class="px-4 py-2 hover:bg-gray-100 flex justify-between items-center">
+                                    <span>Shortcuts</span>
+                                    <span class="text-xs text-gray-500">⌘/</span>
+                                </a>
+                                <a href="#" class="px-4 py-2 hover:bg-gray-100">Documentation</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Middle search bar -->
+                <div class="flex-1 max-w-2xl mx-4">
+                    <div class="relative">
+                        <input type="text" placeholder="Search or jump to..." 
+                            class="w-full px-4 py-2 pl-10 pr-4 rounded-lg border border-gray-300 focus:outline-none focus:border-blue-500">
+                        <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                        <span class="absolute right-3 top-1/2 transform -translate-y-1/2 text-xs text-gray-500">⌘K</span>
+                    </div>
+                </div>
+
+                <!-- Right side profile and settings -->
+                <div class="flex items-center space-x-4">
+                    <button class="p-2 hover:bg-gray-100 rounded">
+                        <i class="fas fa-cog"></i>
+                    </button>
+                    <div class="relative group">
+                        <button class="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center">
+                            <i class="fas fa-user"></i>
+                        </button>
+                        <div class="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg hidden group-hover:block w-48 z-50">
+                            <div class="py-1">
+                                <a href="#" class="px-4 py-2 hover:bg-gray-100 block">Profile</a>
+                                <a href="#" class="px-4 py-2 hover:bg-gray-100 block">Settings</a>
+                                <a href="#" class="px-4 py-2 hover:bg-gray-100 block text-red-600">Sign out</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Main content area with proper scrolling -->
+        <div class="flex flex-1 overflow-hidden">
+            <!-- Left Sidebar -->
+            <div class="w-64 flex flex-col bg-white border-r border-gray-200 flex-shrink-0">
+                <!-- Tabs stay at top -->
+                <div class="flex border-b border-gray-200 flex-shrink-0">
+                    <button class="flex-1 px-4 py-2 text-sm font-medium text-blue-600 border-b-2 border-blue-600">Notes</button>
+                    <button class="flex-1 px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700">Flashcards</button>
+                    <button class="flex-1 px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700">Files</button>
+                </div>
+
+                <!-- Scrollable content area -->
+                <div class="flex-1 overflow-y-auto">
+                    <div class="p-4">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-lg font-semibold">My Notes</h2>
+                            <button class="p-1 hover:bg-gray-100 rounded">
+                                <i class="fas fa-plus"></i>
+                            </button>
+                        </div>
+                        
+                        <!-- Notes List -->
+                        <div class="space-y-2">
+                            <div class="p-2 hover:bg-gray-100 rounded cursor-pointer">
+                                <div class="font-medium">Chapter 1 Notes</div>
+                                <div class="text-sm text-gray-500">Updated 2h ago</div>
+                            </div>
+                            <div class="p-2 hover:bg-gray-100 rounded cursor-pointer">
+                                <div class="font-medium">Important Concepts</div>
+                                <div class="text-sm text-gray-500">Updated yesterday</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Actions stay at bottom -->
+                <div class="p-4 border-t border-gray-200 flex-shrink-0">
+                    <div class="flex space-x-2">
+                        <button class="flex-1 px-3 py-2 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600">
+                            <i class="fas fa-plus mr-1"></i> New Note
+                        </button>
+                        <button class="flex-1 px-3 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200">
+                            <i class="fas fa-upload mr-1"></i> Import
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Content - Book Reading -->
+            <div class="flex-1 flex flex-col overflow-hidden bg-white">
+                <!-- Header stays at top -->
+                <div class="p-4 border-b border-gray-200 flex-shrink-0 bg-white sticky top-0 z-10">
+                    <div class="flex justify-between items-center">
+                        <h1 class="text-2xl font-bold">Document Viewer</h1>
+                        <div class="flex space-x-4">
+                            <button class="p-2 hover:bg-gray-100 rounded">
+                                <i class="fas fa-search"></i>
+                            </button>
+                            <button class="p-2 hover:bg-gray-100 rounded">
+                                <i class="fas fa-expand"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Scrollable document content -->
+                <div class="flex-1 overflow-y-auto">
+                    <div class="max-w-3xl mx-auto p-8">
+                        <div class="prose max-w-none">
+                            <!-- Add more sample content to test scrolling -->
+                            <h2 class="text-xl font-bold mb-4">Chapter 1: Introduction</h2>
+                            <p class="mb-4">Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</p>
+                            <p class="mb-4">Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.</p>
+                            
+                            <h2 class="text-xl font-bold mb-4 mt-8">Chapter 2: Main Concepts</h2>
+                            <p class="mb-4">Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.</p>
+                            <p class="mb-4">Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p>
+                            
+                            <h2 class="text-xl font-bold mb-4 mt-8">Chapter 3: Advanced Topics</h2>
+                            <p class="mb-4">Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium.</p>
+                            <p class="mb-4">Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores.</p>
+                            
+                            <h2 class="text-xl font-bold mb-4 mt-8">Chapter 4: Implementation</h2>
+                            <p class="mb-4">Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit.</p>
+                            <p class="mb-4">Ut enim ad minima veniam, quis nostrum exercitationem ullam corporis suscipit laboriosam.</p>
+                            
+                            <h2 class="text-xl font-bold mb-4 mt-8">Chapter 5: Conclusion</h2>
+                            <p class="mb-4">At vero eos et accusamus et iusto odio dignissimos ducimus qui blanditiis praesentium.</p>
+                            <p class="mb-4">Nam libero tempore, cum soluta nobis est eligendi optio cumque nihil impedit quo minus.</p>
+                            
+                            <!-- Code example -->
+                            <pre class="bg-gray-100 p-4 rounded-lg my-4"><code>function example() {
+    console.log("Hello, World!");
+    return true;
+}</code></pre>
+
+                            <!-- List example -->
+                            <ul class="list-disc pl-6 mb-4">
+                                <li>First important point</li>
+                                <li>Second important point</li>
+                                <li>Third important point</li>
+                            </ul>
+
+                            <!-- Table example -->
+                            <table class="min-w-full border border-gray-200 my-4">
+                                <thead>
+                                    <tr class="bg-gray-50">
+                                        <th class="border p-2">Header 1</th>
+                                        <th class="border p-2">Header 2</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td class="border p-2">Data 1</td>
+                                        <td class="border p-2">Data 2</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="border p-2">Data 3</td>
+                                        <td class="border p-2">Data 4</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Sidebar - Chat Interface -->
+            <div class="w-80 flex flex-col bg-white border-l border-gray-200 flex-shrink-0">
+                <!-- Chat Header -->
+                <div class="p-4 border-b border-gray-200 flex-shrink-0">
+                    <div class="flex justify-between items-center">
+                        <h2 class="text-lg font-semibold">Chat Assistant</h2>
+                        <div class="flex space-x-2">
+                            <button class="p-1 hover:bg-gray-100 rounded" title="New Chat">
+                                <i class="fas fa-plus"></i>
+                            </button>
+                            <button class="p-1 hover:bg-gray-100 rounded" title="Chat History">
+                                <i class="fas fa-history"></i>
+                            </button>
+                            <button class="p-1 hover:bg-gray-100 rounded text-gray-500 hover:text-red-500" title="Close Chat" id="closeChat">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Chat Interface -->
+                <div class="flex-1 flex">
+                    <!-- Chat History Sidebar (initially hidden) -->
+                    <div class="hidden w-64 border-r border-gray-200 flex flex-col bg-gray-50" id="chatHistory">
+                        <div class="p-3 border-b border-gray-200">
+                            <button class="w-full px-3 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 flex items-center justify-center">
+                                <i class="fas fa-plus mr-2"></i> New Chat
+                            </button>
+                        </div>
+                        <div class="flex-1 overflow-y-auto p-2">
+                            <div class="space-y-2">
+                                <div class="p-2 hover:bg-gray-200 rounded cursor-pointer">
+                                    <div class="font-medium text-sm">Document Analysis</div>
+                                    <div class="text-xs text-gray-500">2 hours ago</div>
+                                </div>
+                                <div class="p-2 hover:bg-gray-200 rounded cursor-pointer">
+                                    <div class="font-medium text-sm">Code Review</div>
+                                    <div class="text-xs text-gray-500">Yesterday</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Chat Messages Area -->
+                    <div class="flex-1 flex flex-col">
+                        <!-- Messages Container -->
+                        <div class="flex-1 overflow-y-auto p-4 space-y-4" id="chatMessages">
+                            <!-- AI Message -->
+                            <div class="flex items-start space-x-2">
+                                <div class="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center flex-shrink-0">
+                                    <i class="fas fa-robot text-white text-sm"></i>
+                                </div>
+                                <div class="flex flex-col space-y-1 max-w-[80%]">
+                                    <div class="bg-gray-100 rounded-lg p-3">
+                                        <p class="text-sm">Hello! How can I help you understand this document?</p>
+                                    </div>
+                                    <div class="flex items-center space-x-2 opacity-0 hover:opacity-100 transition-opacity">
+                                        <button class="text-xs text-gray-500 hover:text-gray-700">
+                                            <i class="fas fa-copy"></i> Copy
+                                        </button>
+                                        <button class="text-xs text-gray-500 hover:text-gray-700">
+                                            <i class="fas fa-redo"></i> Regenerate
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- User Message -->
+                            <div class="flex items-start space-x-2 justify-end">
+                                <div class="flex flex-col space-y-1 max-w-[80%] items-end">
+                                    <div class="bg-blue-500 rounded-lg p-3">
+                                        <p class="text-sm text-white">Can you summarize the main points?</p>
+                                    </div>
+                                    <div class="flex items-center space-x-2 opacity-0 hover:opacity-100 transition-opacity">
+                                        <button class="text-xs text-gray-500 hover:text-gray-700">
+                                            <i class="fas fa-copy"></i> Copy
+                                        </button>
+                                        <button class="text-xs text-gray-500 hover:text-gray-700">
+                                            <i class="fas fa-edit"></i> Edit
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center flex-shrink-0">
+                                    <i class="fas fa-user text-gray-600 text-sm"></i>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Composer Area -->
+                        <div class="p-4 border-t border-gray-200">
+                            <div class="relative">
+                                <textarea 
+                                    class="w-full p-3 pr-12 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 resize-none"
+                                    placeholder="Type your message..."
+                                    rows="3"
+                                ></textarea>
+                                <div class="absolute right-2 bottom-2 flex items-center space-x-2">
+                                    <button class="p-1 text-gray-400 hover:text-gray-600" title="Upload file">
+                                        <i class="fas fa-paperclip"></i>
+                                    </button>
+                                    <button class="p-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed">
+                                        <i class="fas fa-paper-plane"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="mt-2 flex justify-between items-center text-xs text-gray-500">
+                                <div>Press ⌘ + Enter to send</div>
+                                <div class="flex items-center space-x-2">
+                                    <button class="hover:text-gray-700">
+                                        <i class="fas fa-keyboard mr-1"></i> Shortcuts
+                                    </button>
+                                    <button class="hover:text-gray-700">
+                                        <i class="fas fa-cog mr-1"></i> Settings
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="shortcut-tooltip" class="fixed bottom-4 right-4 bg-gray-800 text-white p-4 rounded-lg shadow-lg text-sm hidden">
+        <h3 class="font-bold mb-2">Keyboard Shortcuts</h3>
+        <div class="grid grid-cols-2 gap-2">
+            <div>⌘ + K</div><div>Search</div>
+            <div>⌘ + C</div><div>Copy</div>
+            <div>⌘ + X</div><div>Cut</div>
+            <div>⌘ + V</div><div>Paste</div>
+            <div>⌘ + F</div><div>Find in document</div>
+            <div>⌘ + /</div><div>Show/Hide shortcuts</div>
+        </div>
+    </div>
+
+    <script>
+        // File Upload Handling
+        const fileInput = document.querySelector('input[type="file"]');
+        const dropZone = document.querySelector('.cursor-pointer');
+
+        dropZone.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            // Handle file upload
+            const files = Array.from(e.target.files);
+            console.log('Files selected:', files);
+        });
+
+        // Drag and Drop
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('border-blue-500');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('border-blue-500');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('border-blue-500');
+            const files = Array.from(e.dataTransfer.files);
+            console.log('Files dropped:', files);
+        });
+
+        // Chat Functionality
+        const chatInput = document.querySelector('input[type="text"]');
+        const sendButton = document.querySelector('.bg-blue-500');
+        const chatMessages = document.querySelector('.overflow-y-auto');
+
+        function sendMessage() {
+            const message = chatInput.value.trim();
+            if (message) {
+                // Add user message to chat
+                const userMessage = `
+                    <div class="flex items-start space-x-2 justify-end">
+                        <div class="bg-blue-500 rounded-lg p-3 max-w-[80%]">
+                            <p class="text-sm text-white">${message}</p>
+                        </div>
+                        <div class="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center">
+                            <i class="fas fa-user text-gray-600 text-sm"></i>
+                        </div>
+                    </div>
+                `;
+                chatMessages.insertAdjacentHTML('beforeend', userMessage);
+                chatInput.value = '';
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
+        }
+
+        sendButton.addEventListener('click', sendMessage);
+        chatInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+        // Keyboard Shortcuts
+        document.addEventListener('keydown', function(e) {
+            // Show/Hide shortcuts tooltip with Cmd + /
+            if (e.key === '/' && (e.metaKey || e.ctrlKey)) {
+                e.preventDefault();
+                const tooltip = document.getElementById('shortcut-tooltip');
+                tooltip.classList.toggle('hidden');
+            }
+
+            // Search functionality with Cmd + K
+            if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
+                e.preventDefault();
+                document.querySelector('.fa-search').closest('button').click();
+            }
+
+            // Find in document with Cmd + F
+            if (e.key === 'f' && (e.metaKey || e.ctrlKey)) {
+                e.preventDefault();
+                // Implement document search
+                const searchTerm = prompt('Enter search term:');
+                if (searchTerm) {
+                    const content = document.querySelector('.prose').textContent;
+                    const regex = new RegExp(searchTerm, 'gi');
+                    const matches = content.match(regex);
+                    if (matches) {
+                        alert(`Found ${matches.length} matches for "${searchTerm}"`);
+                    } else {
+                        alert('No matches found');
+                    }
+                }
+            }
+
+            // Context menu enhancement
+            const selection = window.getSelection().toString();
+            
+            // Copy with Cmd + C
+            if (e.key === 'c' && (e.metaKey || e.ctrlKey) && selection) {
+                e.preventDefault();
+                navigator.clipboard.writeText(selection)
+                    .then(() => {
+                        showNotification('Copied to clipboard');
+                    })
+                    .catch(err => {
+                        console.error('Failed to copy:', err);
+                    });
+            }
+
+            // Cut with Cmd + X
+            if (e.key === 'x' && (e.metaKey || e.ctrlKey) && selection) {
+                e.preventDefault();
+                navigator.clipboard.writeText(selection)
+                    .then(() => {
+                        // Only remove text if it's in an editable area
+                        if (document.activeElement.isContentEditable || 
+                            document.activeElement.tagName === 'INPUT' || 
+                            document.activeElement.tagName === 'TEXTAREA') {
+                            document.execCommand('cut');
+                        }
+                        showNotification('Cut to clipboard');
+                    })
+                    .catch(err => {
+                        console.error('Failed to cut:', err);
+                    });
+            }
+
+            // New File (Cmd + N)
+            if (e.key === 'n' && (e.metaKey || e.ctrlKey)) {
+                e.preventDefault();
+                // Handle new file creation
+                showNotification('Creating new file...');
+            }
+
+            // Save (Cmd + S)
+            if (e.key === 's' && (e.metaKey || e.ctrlKey)) {
+                e.preventDefault();
+                // Handle save
+                showNotification('Saving...');
+            }
+
+            // Open (Cmd + O)
+            if (e.key === 'o' && (e.metaKey || e.ctrlKey)) {
+                e.preventDefault();
+                // Handle open
+                showNotification('Opening file picker...');
+            }
+
+            // Zoom In (Cmd + Plus)
+            if (e.key === '+' && (e.metaKey || e.ctrlKey)) {
+                e.preventDefault();
+                // Handle zoom in
+                document.body.style.zoom = (parseFloat(document.body.style.zoom || 1) + 0.1);
+            }
+
+            // Zoom Out (Cmd + Minus)
+            if (e.key === '-' && (e.metaKey || e.ctrlKey)) {
+                e.preventDefault();
+                // Handle zoom out
+                document.body.style.zoom = (parseFloat(document.body.style.zoom || 1) - 0.1);
+            }
+        });
+
+        // Context Menu
+        document.addEventListener('contextmenu', function(e) {
+            e.preventDefault();
+            const selection = window.getSelection().toString();
+            
+            // Create custom context menu
+            const contextMenu = document.createElement('div');
+            contextMenu.className = 'fixed bg-white shadow-lg rounded-lg py-2 z-50';
+            contextMenu.style.left = `${e.pageX}px`;
+            contextMenu.style.top = `${e.pageY}px`;
+            
+            const menuItems = [
+                { label: 'Copy (⌘ C)', action: 'copy' },
+                { label: 'Cut (⌘ X)', action: 'cut' },
+                { label: 'Paste (⌘ V)', action: 'paste' },
+                { label: 'Search (⌘ K)', action: 'search' }
+            ];
+
+            menuItems.forEach(item => {
+                const menuItem = document.createElement('div');
+                menuItem.className = 'px-4 py-2 hover:bg-gray-100 cursor-pointer';
+                menuItem.textContent = item.label;
+                menuItem.onclick = () => handleContextMenuAction(item.action, selection);
+                contextMenu.appendChild(menuItem);
+            });
+
+            document.body.appendChild(contextMenu);
+
+            // Remove context menu when clicking outside
+            const removeMenu = (e) => {
+                if (!contextMenu.contains(e.target)) {
+                    contextMenu.remove();
+                    document.removeEventListener('click', removeMenu);
+                }
+            };
+            document.addEventListener('click', removeMenu);
+        });
+
+        // Notification system
+        function showNotification(message) {
+            const notification = document.createElement('div');
+            notification.className = 'fixed bottom-4 left-4 bg-gray-800 text-white px-4 py-2 rounded-lg shadow-lg transition-opacity duration-300';
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.style.opacity = '0';
+                setTimeout(() => notification.remove(), 300);
+            }, 2000);
+        }
+
+        function handleContextMenuAction(action, selection) {
+            switch(action) {
+                case 'copy':
+                    navigator.clipboard.writeText(selection)
+                        .then(() => showNotification('Copied to clipboard'));
+                    break;
+                case 'cut':
+                    if (document.activeElement.isContentEditable || 
+                        document.activeElement.tagName === 'INPUT' || 
+                        document.activeElement.tagName === 'TEXTAREA') {
+                        document.execCommand('cut');
+                        showNotification('Cut to clipboard');
+                    }
+                    break;
+                case 'paste':
+                    navigator.clipboard.readText()
+                        .then(text => {
+                            if (document.activeElement.isContentEditable || 
+                                document.activeElement.tagName === 'INPUT' || 
+                                document.activeElement.tagName === 'TEXTAREA') {
+                                document.execCommand('paste');
+                                showNotification('Pasted from clipboard');
+                            }
+                        });
+                    break;
+                case 'search':
+                    document.querySelector('.fa-search').closest('button').click();
+                    break;
+            }
+        }
+
+        // Add responsive handling
+        window.addEventListener('resize', function() {
+            const sidebar = document.querySelector('.w-64');
+            const mainContent = document.querySelector('.flex-1');
+            const chatSidebar = document.querySelector('.w-80');
+            
+            if (window.innerWidth < 768) {
+                // Mobile view
+                sidebar.classList.add('hidden');
+                chatSidebar.classList.add('hidden');
+                mainContent.classList.add('px-4');
+            } else {
+                // Desktop view
+                sidebar.classList.remove('hidden');
+                chatSidebar.classList.remove('hidden');
+                mainContent.classList.remove('px-4');
+            }
+        });
+
+        // Cursor Movement Functionality
+        document.addEventListener('keydown', function(e) {
+            // Get the editable content area
+            const editor = document.querySelector('.prose');
+            const selection = window.getSelection();
+            const range = selection.getRangeAt(0);
+
+            // Make content editable
+            editor.contentEditable = 'true';
+
+            // Basic arrow key navigation
+            if (e.key.startsWith('Arrow')) {
+                // Let default arrow key behavior work
+                return;
+            }
+
+            // Word by word movement (Ctrl + Left/Right)
+            if (e.ctrlKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+                e.preventDefault();
+                const direction = e.key === 'ArrowLeft' ? 'backward' : 'forward';
+                selection.modify('move', direction, 'word');
+            }
+
+            // Paragraph movement (Ctrl + Up/Down)
+            if (e.ctrlKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+                e.preventDefault();
+                const direction = e.key === 'ArrowUp' ? 'backward' : 'forward';
+                selection.modify('move', direction, 'paragraph');
+            }
+
+            // Document start/end (Ctrl + Home/End)
+            if (e.ctrlKey && (e.key === 'Home' || e.key === 'End')) {
+                e.preventDefault();
+                if (e.key === 'Home') {
+                    range.setStart(editor.firstChild, 0);
+                } else {
+                    range.setStart(editor.lastChild, editor.lastChild.length);
+                }
+                range.collapse(true);
+                selection.removeAllRanges();
+                selection.addRange(range);
+            }
+
+            // Page Up/Down (Ctrl + PageUp/PageDown)
+            if (e.ctrlKey && (e.key === 'PageUp' || e.key === 'PageDown')) {
+                e.preventDefault();
+                const container = editor.closest('.overflow-y-auto');
+                const scrollAmount = container.clientHeight;
+                container.scrollBy({
+                    top: e.key === 'PageUp' ? -scrollAmount : scrollAmount,
+                    behavior: 'smooth'
+                });
+            }
+
+            // Focus address bar (Ctrl + L)
+            if (e.ctrlKey && e.key.toLowerCase() === 'l') {
+                e.preventDefault();
+                document.querySelector('input[type="text"]').focus();
+            }
+
+            // Center align text (Ctrl + E)
+            if (e.ctrlKey && e.key.toLowerCase() === 'e') {
+                e.preventDefault();
+                document.execCommand('justifyCenter', false, null);
+            }
+
+            // Clear text to end of line (Ctrl + K)
+            if (e.ctrlKey && e.key.toLowerCase() === 'k') {
+                e.preventDefault();
+                const selection = window.getSelection();
+                if (selection.rangeCount > 0) {
+                    const range = selection.getRangeAt(0);
+                    const startContainer = range.startContainer;
+                    const startOffset = range.startOffset;
+                    
+                    // Find the end of the current line
+                    let currentNode = startContainer;
+                    while (currentNode && currentNode.nodeType === Node.TEXT_NODE) {
+                        const text = currentNode.textContent;
+                        const lineEnd = text.indexOf('\n', startOffset);
+                        if (lineEnd !== -1) {
+                            // Clear text until the end of line
+                            currentNode.textContent = 
+                                text.substring(0, startOffset) + 
+                                text.substring(lineEnd);
+                            break;
+                        } else {
+                            // Clear all text in this node
+                            currentNode.textContent = 
+                                text.substring(0, startOffset);
+                        }
+                        currentNode = currentNode.nextSibling;
+                    }
+                }
+            }
+        });
+
+        // Add these to your shortcut tooltip
+        const additionalShortcuts = `
+            <div>↑↓←→</div><div>Move cursor</div>
+            <div>Ctrl + ←→</div><div>Move by word</div>
+            <div>Ctrl + ↑↓</div><div>Move by paragraph</div>
+            <div>Ctrl + Home</div><div>Document start</div>
+            <div>Ctrl + End</div><div>Document end</div>
+            <div>Ctrl + PgUp</div><div>Page up</div>
+            <div>Ctrl + PgDn</div><div>Page down</div>
+            <div>Ctrl + L</div><div>Focus address bar</div>
+            <div>Ctrl + E</div><div>Center align</div>
+            <div>Ctrl + K</div><div>Clear to line end</div>
+        `;
+
+        // Update the shortcut tooltip content
+        document.querySelector('#shortcut-tooltip .grid').insertAdjacentHTML('beforeend', additionalShortcuts);
+
+        // Add selection highlighting styles
+        const style = document.createElement('style');
+        style.textContent = `
+            .prose::selection {
+                background-color: #93c5fd;
+                color: #1e3a8a;
+            }
+            .prose:focus {
+                outline: none;
+            }
+            .prose {
+                caret-color: #2563eb;
+            }
+        `;
+        document.head.appendChild(style);
+
+        // Add cursor position indicator
+        const cursorIndicator = document.createElement('div');
+        cursorIndicator.className = 'fixed bottom-4 right-4 bg-gray-800 text-white px-3 py-1 rounded text-sm';
+        document.body.appendChild(cursorIndicator);
+
+        // Update cursor position
+        document.querySelector('.prose').addEventListener('keyup', function(e) {
+            const selection = window.getSelection();
+            if (selection.rangeCount > 0) {
+                const range = selection.getRangeAt(0);
+                const container = range.startContainer;
+                let lineNumber = 1;
+                let column = range.startOffset;
+
+                // Calculate line number
+                const walker = document.createTreeWalker(
+                    this,
+                    NodeFilter.SHOW_TEXT,
+                    null,
+                    false
+                );
+                let node;
+                while ((node = walker.nextNode()) && node !== container) {
+                    lineNumber += (node.textContent.match(/\n/g) || []).length;
+                }
+                
+                cursorIndicator.textContent = `Ln ${lineNumber}, Col ${column}`;
+            }
+        });
+
+        // Tab switching functionality
+        function setupTabSwitching() {
+            const tabs = {
+                notes: {
+                    content: `
+                        <div class="h-full flex flex-col">
+                            <div class="p-4 border-b border-gray-200">
+                                <div class="flex justify-between items-center">
+                                    <h2 class="text-lg font-semibold">My Notes</h2>
+                                    <button class="p-1 hover:bg-gray-100 rounded">
+                                        <i class="fas fa-plus"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="flex-1 overflow-y-auto p-4">
+                                <div class="space-y-2">
+                                    <!-- Add more notes to test scrolling -->
+                                    <div class="p-2 hover:bg-gray-100 rounded cursor-pointer">
+                                        <div class="font-medium">Chapter 1 Notes</div>
+                                        <div class="text-sm text-gray-500">Updated 2h ago</div>
+                                    </div>
+                                    <div class="p-2 hover:bg-gray-100 rounded cursor-pointer">
+                                        <div class="font-medium">Important Concepts</div>
+                                        <div class="text-sm text-gray-500">Updated yesterday</div>
+                                    </div>
+                                    <div class="p-2 hover:bg-gray-100 rounded cursor-pointer">
+                                        <div class="font-medium">Research Notes</div>
+                                        <div class="text-sm text-gray-500">Updated 3 days ago</div>
+                                    </div>
+                                    <div class="p-2 hover:bg-gray-100 rounded cursor-pointer">
+                                        <div class="font-medium">Project Ideas</div>
+                                        <div class="text-sm text-gray-500">Updated last week</div>
+                                    </div>
+                                    <div class="p-2 hover:bg-gray-100 rounded cursor-pointer">
+                                        <div class="font-medium">Meeting Notes</div>
+                                        <div class="text-sm text-gray-500">Updated 2 weeks ago</div>
+                                    </div>
+                                    <div class="p-2 hover:bg-gray-100 rounded cursor-pointer">
+                                        <div class="font-medium">Study Plan</div>
+                                        <div class="text-sm text-gray-500">Updated 3 weeks ago</div>
+                                    </div>
+                                    <div class="p-2 hover:bg-gray-100 rounded cursor-pointer">
+                                        <div class="font-medium">Reading List</div>
+                                        <div class="text-sm text-gray-500">Updated last month</div>
+                                    </div>
+                                    <div class="p-2 hover:bg-gray-100 rounded cursor-pointer">
+                                        <div class="font-medium">Code Snippets</div>
+                                        <div class="text-sm text-gray-500">Updated 2 months ago</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `
+                },
+                flashcards: {
+                    content: `
+                        <div class="h-full flex flex-col">
+                            <div class="p-4 border-b border-gray-200">
+                                <div class="flex justify-between items-center">
+                                    <h2 class="text-lg font-semibold">Flashcards</h2>
+                                    <button class="p-1 hover:bg-gray-100 rounded">
+                                        <i class="fas fa-plus"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="flex-1 overflow-y-auto p-4">
+                                <div class="space-y-2">
+                                    <!-- Add more flashcard decks -->
+                                    <div class="p-4 border rounded-lg hover:shadow-md cursor-pointer transition-shadow">
+                                        <div class="font-medium mb-1">Basic Concepts</div>
+                                        <div class="text-sm text-gray-500">12 cards</div>
+                                    </div>
+                                    <!-- Add more flashcard decks as needed -->
+                                </div>
+                            </div>
+                        </div>
+                    `
+                },
+                files: {
+                    content: `
+                        <div class="h-full flex flex-col">
+                            <div class="p-4 border-b border-gray-200">
+                                <div class="flex justify-between items-center">
+                                    <h2 class="text-lg font-semibold">Files</h2>
+                                    <button class="p-1 hover:bg-gray-100 rounded">
+                                        <i class="fas fa-upload"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="flex-1 overflow-y-auto p-4">
+                                <div class="space-y-2">
+                                    <!-- Add more files -->
+                                    <div class="flex items-center p-2 hover:bg-gray-100 rounded cursor-pointer">
+                                        <i class="far fa-file-pdf text-red-500 mr-2"></i>
+                                        <div>
+                                            <div class="font-medium">Document1.pdf</div>
+                                            <div class="text-xs text-gray-500">2.4 MB</div>
+                                        </div>
+                                    </div>
+                                    <!-- Add more files as needed -->
+                                </div>
+                            </div>
+                        </div>
+                    `
+                }
+            };
+
+            const contentArea = document.querySelector('.flex-1.overflow-y-auto');
+            const tabButtons = document.querySelectorAll('.flex.border-b.border-gray-200 button');
+
+            // Make items draggable
+            function makeItemsDraggable() {
+                const items = document.querySelectorAll('.space-y-2 > div');
+                items.forEach(item => {
+                    item.draggable = true;
+                    item.addEventListener('dragstart', handleDragStart);
+                    item.addEventListener('dragend', handleDragEnd);
+                    item.addEventListener('dragover', handleDragOver);
+                    item.addEventListener('drop', handleDrop);
+                });
+            }
+
+            // Drag and drop handlers
+            function handleDragStart(e) {
+                e.target.classList.add('opacity-50');
+                e.dataTransfer.setData('text/plain', e.target.innerHTML);
+                e.dataTransfer.effectAllowed = 'move';
+            }
+
+            function handleDragEnd(e) {
+                e.target.classList.remove('opacity-50');
+            }
+
+            function handleDragOver(e) {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+            }
+
+            function handleDrop(e) {
+                e.preventDefault();
+                const item = e.target.closest('.space-y-2 > div');
+                if (item) {
+                    const draggedHTML = e.dataTransfer.getData('text/plain');
+                    const tempHTML = item.innerHTML;
+                    item.innerHTML = draggedHTML;
+                    e.target.closest('.space-y-2 > div').innerHTML = tempHTML;
+                }
+            }
+
+            // Switch tab content
+            function switchTab(tabName) {
+                // Update tab button styles
+                tabButtons.forEach(button => {
+                    if (button.textContent.trim().toLowerCase() === tabName) {
+                        button.classList.add('text-blue-600', 'border-b-2', 'border-blue-600');
+                        button.classList.remove('text-gray-500');
+                    } else {
+                        button.classList.remove('text-blue-600', 'border-b-2', 'border-blue-600');
+                        button.classList.add('text-gray-500');
+                    }
+                });
+
+                // Update content
+                contentArea.innerHTML = tabs[tabName].content;
+                makeItemsDraggable();
+            }
+
+            // Add click handlers to tab buttons
+            tabButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const tabName = button.textContent.trim().toLowerCase();
+                    switchTab(tabName);
+                });
+            });
+
+            // Initialize with Notes tab
+            makeItemsDraggable();
+        }
+
+        // Initialize tab switching
+        setupTabSwitching();
+
+        // Resizable Sidebars
+        function setupResizableSidebars() {
+            const leftSidebar = document.querySelector('.w-64');
+            const rightSidebar = document.querySelector('.w-80');
+            const mainContent = document.querySelector('.flex-1');
+
+            // Add resize handles with better visibility and larger drag area
+            const leftHandle = document.createElement('div');
+            leftHandle.className = 'absolute right-0 top-0 bottom-0 w-2 group z-50';
+            leftHandle.innerHTML = `
+                <div class="absolute right-0 top-0 bottom-0 w-0.5 bg-gray-200 group-hover:bg-blue-500 group-hover:w-1 transition-all"></div>
+                <div class="absolute right-[-8px] top-0 bottom-0 w-4 cursor-col-resize"></div>
+            `;
+            leftSidebar.style.position = 'relative';
+            leftSidebar.appendChild(leftHandle);
+
+            const rightHandle = document.createElement('div');
+            rightHandle.className = 'absolute left-0 top-0 bottom-0 w-2 group z-50';
+            rightHandle.innerHTML = `
+                <div class="absolute left-0 top-0 bottom-0 w-0.5 bg-gray-200 group-hover:bg-blue-500 group-hover:w-1 transition-all"></div>
+                <div class="absolute left-[-8px] top-0 bottom-0 w-4 cursor-col-resize"></div>
+            `;
+            rightSidebar.style.position = 'relative';
+            rightSidebar.appendChild(rightHandle);
+
+            function initResize(handle, sidebar, isLeft) {
+                let startX, startWidth, startMainWidth;
+                let isDragging = false;
+
+                function startResizing(e) {
+                    isDragging = true;
+                    startX = e.pageX;
+                    startWidth = parseInt(getComputedStyle(sidebar).width, 10);
+                    startMainWidth = parseInt(getComputedStyle(mainContent).width, 10);
+                    
+                    // Add active resize styling
+                    handle.querySelector('div').classList.add('bg-blue-500', 'w-1');
+                    document.body.style.cursor = 'col-resize';
+                    
+                    // Add overlay to prevent text selection while resizing
+                    const overlay = document.createElement('div');
+                    overlay.id = 'resize-overlay';
+                    overlay.className = 'fixed inset-0 z-50';
+                    document.body.appendChild(overlay);
+
+                    document.addEventListener('mousemove', resize);
+                    document.addEventListener('mouseup', stopResizing);
+                }
+
+                function resize(e) {
+                    if (!isDragging) return;
+                    
+                    const diff = e.pageX - startX;
+                    let newWidth = isLeft ? startWidth + diff : startWidth - diff;
+                    
+                    // Set minimum and maximum widths
+                    newWidth = Math.max(200, Math.min(600, newWidth));
+                    
+                    // Calculate main content width adjustment
+                    const mainWidthDiff = isLeft ? diff : -diff;
+                    const newMainWidth = startMainWidth - mainWidthDiff;
+                    
+                    // Update widths
+                    sidebar.style.width = `${newWidth}px`;
+                    sidebar.style.flexShrink = '0';
+                    mainContent.style.width = `${newMainWidth}px`;
+                    
+                    // Remove the Tailwind width classes
+                    if (isLeft) {
+                        sidebar.classList.remove('w-64');
+                    } else {
+                        sidebar.classList.remove('w-80');
+                    }
+
+                    // Prevent text selection during resize
+                    e.preventDefault();
+                }
+
+                function stopResizing() {
+                    isDragging = false;
+                    document.removeEventListener('mousemove', resize);
+                    document.removeEventListener('mouseup', stopResizing);
+                    
+                    // Remove active resize styling
+                    handle.querySelector('div').classList.remove('bg-blue-500', 'w-1');
+                    document.body.style.cursor = '';
+                    
+                    // Remove overlay
+                    const overlay = document.getElementById('resize-overlay');
+                    if (overlay) overlay.remove();
+                }
+
+                // Attach event listener to the wider drag area
+                handle.querySelector('[class*="cursor-col-resize"]').addEventListener('mousedown', startResizing);
+            }
+
+            // Initialize resize handles
+            initResize(leftHandle, leftSidebar, true);
+            initResize(rightHandle, rightSidebar, false);
+        }
+
+        // Update the resize styles
+        const resizeStyles = document.createElement('style');
+        resizeStyles.textContent = `
+            #resize-overlay {
+                cursor: col-resize;
+                user-select: none;
+                -webkit-user-select: none;
+                background: transparent;
+            }
+
+            /* Prevent text selection during resize */
+            .resizing {
+                user-select: none;
+                -webkit-user-select: none;
+            }
+
+            /* Smooth transitions for width changes */
+            .w-64, .w-80, .flex-1 {
+                transition: width 0.05s ease-out;
+            }
+        `;
+        document.head.appendChild(resizeStyles);
+
+        // Initialize resizable sidebars
+        setupResizableSidebars();
+
+        // Chat Interface Functionality
+        function setupChatInterface() {
+            const chatHistoryBtn = document.querySelector('.fa-history').closest('button');
+            const chatHistoryPanel = document.getElementById('chatHistory');
+            const newChatBtn = document.querySelector('.fa-plus').closest('button');
+            const textarea = document.querySelector('textarea');
+            const sendButton = textarea.nextElementSibling.querySelector('.bg-blue-500');
+            const messagesContainer = document.getElementById('chatMessages');
+
+            // Toggle chat history
+            chatHistoryBtn.addEventListener('click', () => {
+                chatHistoryPanel.classList.toggle('hidden');
+            });
+
+            // New chat functionality
+            function startNewChat() {
+                messagesContainer.innerHTML = '';
+                textarea.value = '';
+                chatHistoryPanel.classList.add('hidden');
+                textarea.focus();
+            }
+
+            newChatBtn.addEventListener('click', startNewChat);
+
+            // Send message functionality
+            function sendMessage() {
+                const message = textarea.value.trim();
+                if (!message) return;
+
+                // Add user message
+                const userMessage = `
+                    <div class="flex items-start space-x-2 justify-end">
+                        <div class="flex flex-col space-y-1 max-w-[80%] items-end">
+                            <div class="bg-blue-500 rounded-lg p-3">
+                                <p class="text-sm text-white">${message}</p>
+                            </div>
+                            <div class="flex items-center space-x-2 opacity-0 hover:opacity-100 transition-opacity">
+                                <button class="text-xs text-gray-500 hover:text-gray-700">
+                                    <i class="fas fa-copy"></i> Copy
+                                </button>
+                                <button class="text-xs text-gray-500 hover:text-gray-700">
+                                    <i class="fas fa-edit"></i> Edit
+                                </button>
+                            </div>
+                        </div>
+                        <div class="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center flex-shrink-0">
+                            <i class="fas fa-user text-gray-600 text-sm"></i>
+                        </div>
+                    </div>
+                `;
+                messagesContainer.insertAdjacentHTML('beforeend', userMessage);
+                
+                // Clear input and scroll to bottom
+                textarea.value = '';
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                
+                // Simulate AI response (you'll replace this with actual API call)
+                setTimeout(() => {
+                    const aiMessage = `
+                        <div class="flex items-start space-x-2">
+                            <div class="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center flex-shrink-0">
+                                <i class="fas fa-robot text-white text-sm"></i>
+                            </div>
+                            <div class="flex flex-col space-y-1 max-w-[80%]">
+                                <div class="bg-gray-100 rounded-lg p-3">
+                                    <p class="text-sm">I understand you're asking about: "${message}"</p>
+                                </div>
+                                <div class="flex items-center space-x-2 opacity-0 hover:opacity-100 transition-opacity">
+                                    <button class="text-xs text-gray-500 hover:text-gray-700">
+                                        <i class="fas fa-copy"></i> Copy
+                                    </button>
+                                    <button class="text-xs text-gray-500 hover:text-gray-700">
+                                        <i class="fas fa-redo"></i> Regenerate
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    messagesContainer.insertAdjacentHTML('beforeend', aiMessage);
+                    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                }, 1000);
+            }
+
+            // Send message on button click
+            sendButton.addEventListener('click', sendMessage);
+
+            // Send message on Cmd/Ctrl + Enter
+            textarea.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                    e.preventDefault();
+                    sendMessage();
+                }
+            });
+
+            // Auto-resize textarea
+            textarea.addEventListener('input', () => {
+                textarea.style.height = 'auto';
+                textarea.style.height = Math.min(textarea.scrollHeight, 150) + 'px';
+            });
+
+            // Add close chat functionality
+            const closeButton = document.getElementById('closeChat');
+            const chatSidebar = document.querySelector('.w-80');
+            const mainContent = document.querySelector('.flex-1');
+            
+            closeButton.addEventListener('click', () => {
+                // Hide chat sidebar
+                chatSidebar.classList.add('hidden');
+                
+                // Add a button to restore chat
+                const restoreButton = document.createElement('button');
+                restoreButton.className = 'fixed bottom-4 right-4 bg-blue-500 text-white p-2 rounded-full shadow-lg hover:bg-blue-600 transition-all';
+                restoreButton.innerHTML = '<i class="fas fa-comment"></i>';
+                restoreButton.title = 'Open Chat';
+                document.body.appendChild(restoreButton);
+                
+                // Expand main content
+                mainContent.style.marginRight = '0';
+                
+                // Restore chat when clicking the button
+                restoreButton.addEventListener('click', () => {
+                    chatSidebar.classList.remove('hidden');
+                    restoreButton.remove();
+                    mainContent.style.marginRight = '';
+                });
+            });
+        }
+
+        // Initialize chat interface
+        setupChatInterface();
+
+        // Add these styles to your resizeStyles
+        resizeStyles.textContent += `
+            .w-80.hidden + .fixed {
+                transition: all 0.3s ease-out;
+            }
+            
+            .w-80 {
+                transition: all 0.3s ease-out;
+            }
+        `;
+    </script>
+</body>
+</html>
