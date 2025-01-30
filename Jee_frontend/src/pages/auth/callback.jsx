@@ -1,4 +1,5 @@
-import { useEffect } from 'react';
+// AuthCallback.jsx
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import apiInstance from '../../interceptors/axios';
 import { useLoading } from '../../context/LoadingContext';
@@ -7,51 +8,58 @@ import AuthLoader from '../../components/AuthLoader';
 const AuthCallback = () => {
   const navigate = useNavigate();
   const { setIsLoading, setIsAuthenticated } = useLoading();
+  const [authError, setAuthError] = useState(null);
 
   useEffect(() => {
     const handleAuthCallback = async () => {
+      setIsLoading(true);
       try {
-        setIsLoading(true); // Show loader immediately
         const code = new URLSearchParams(window.location.search).get('code');
+        
         if (!code) {
-          setIsLoading(false);
+          setAuthError('Authentication failed - Missing authorization code');
+          await new Promise(resolve => setTimeout(resolve, 2000)); // Maintain loader for 2s
           navigate('/login', { replace: true });
           return;
         }
 
-        // Clean URL before making request
+        // Clean URL before processing
         window.history.replaceState({}, document.title, window.location.pathname);
+
+        const { data } = await apiInstance.get(`/auth/google/callback?code=${code}`);
         
-        const response = await apiInstance.get(`/auth/google/callback?code=${code}`);
-
-        if (response.data.tokens && response.data.user) {
-          // Store tokens and user data
-          localStorage.setItem('tokens', JSON.stringify(response.data.tokens));
-          localStorage.setItem('user', JSON.stringify(response.data.user));
-          
-          // Set authentication state
-          setIsAuthenticated(true);
-          setIsLoading(false);
-
-          // Navigate to subject selection
-          navigate('/subject-selection', { replace: true });
-        } else {
-          console.error('Invalid response data:', response.data);
-          setIsLoading(false);
-          navigate('/login', { replace: true });
+        if (!data?.tokens || !data?.user) {
+          throw new Error('Invalid authentication response');
         }
+
+        // Atomic state update before navigation
+        setIsAuthenticated(true);
+        localStorage.setItem('tokens', JSON.stringify(data.tokens));
+        localStorage.setItem('user', JSON.stringify(data.user));
+
+        // Immediate navigation with state flag
+        navigate('/subject-selection', { 
+          replace: true,
+          state: { fromAuth: true } 
+        });
+
       } catch (error) {
-        console.error('Auth error:', error.response?.data?.message || error.message);
-        setIsLoading(false);
-        navigate('/login', { replace: true });
+        setAuthError(error.message);
+        localStorage.clear();
+        navigate('/login', { 
+          replace: true,
+          state: { error: error.message }
+        });
+      } finally {
+        // Sync loading state with navigation completion
+        setTimeout(() => setIsLoading(false), 300);
       }
     };
 
     handleAuthCallback();
   }, [navigate, setIsLoading, setIsAuthenticated]);
 
-  // Return AuthLoader directly for faster visual feedback
-  return <AuthLoader />;
+  return <AuthLoader errorMessage={authError} />;
 };
 
-export default AuthCallback; 
+export default AuthCallback;

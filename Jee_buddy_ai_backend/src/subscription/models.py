@@ -1,8 +1,9 @@
 from django.db import models
 from django.contrib.auth.models import User
+import uuid
 
 class Subscription(models.Model):
-    user_id = models.CharField(max_length=255)
+    user_id = models.UUIDField()
     subscription_id = models.CharField(max_length=255)
     plan_id = models.CharField(max_length=255)
     status = models.CharField(max_length=255)
