@@ -621,7 +621,7 @@ const Subscription = () => {
                   <div className="flex items-baseline">
                     <span className="text-2xl text-[#8075FF]">₹</span>
                     <span className="text-4xl font-bold text-[#8075FF]">
-                      0000000
+                      499
                     </span>
                     <span className="text-gray-400 ml-2">/month</span>
                   </div>
