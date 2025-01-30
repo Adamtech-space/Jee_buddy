@@ -529,19 +529,47 @@ const ChatBot = ({
 
         const questionWithInteraction = `${chatMessage} (${activeHelpType || ''})`;
 
-        const response = await aiService.askQuestion(questionWithInteraction, {
-          user_id: userData.id || 'anonymous',
-          session_id: sessionId,
-          subject: subject || '',
-          topic: topic || '',
-          type: activeHelpType || '',
-          pinnedText: '',
-          selectedText: questionContext?.content || '',
-          source: questionContext?.source || 'Chat',
-          image: imageToSend?.content?.split(',')[1] || null,
-          Deep_think: isDeepThinkEnabled,
-          signal: controller.signal,
-        });
+        // Create FormData for the request
+        const formData = new FormData();
+        formData.append('user_id', userData.id || 'anonymous');
+        formData.append('session_id', sessionId);
+        formData.append('subject', subject || '');
+        formData.append('topic', topic || '');
+        formData.append('type', activeHelpType || '');
+        formData.append('pinnedText', '');
+        formData.append('selectedText', questionContext?.content || '');
+        formData.append('source', questionContext?.source || 'Chat');
+        formData.append('Deep_think', isDeepThinkEnabled);
+        formData.append('question', questionWithInteraction);
+
+        // If there's an image, append it to FormData
+        if (imageToSend?.content) {
+          // Convert base64 to blob
+          const base64Data = imageToSend.content.split(',')[1];
+          const byteCharacters = atob(base64Data);
+          const byteNumbers = new Array(byteCharacters.length);
+
+          for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+          }
+
+          const byteArray = new Uint8Array(byteNumbers);
+          const blob = new Blob([byteArray], { type: 'image/png' });
+
+          // Append the blob to FormData
+          formData.append('image', blob, 'image.png');
+        }
+
+        const response = await aiService.askQuestion(
+          questionWithInteraction,
+          formData,
+          {
+            signal: controller.signal,
+            headers: {
+              // Don't set Content-Type header - it will be automatically set with boundary
+            },
+          }
+        );
 
         // Check if cancelled before updating state
         if (controller.signal.aborted) {
