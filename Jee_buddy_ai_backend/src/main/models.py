@@ -18,7 +18,7 @@ class ChatHistory(models.Model):
 
     def to_dict(self):
         """Convert the model instance to a dictionary"""
-        return {
+        data = {
             'user_id': self.user_id,
             'session_id': self.session_id,
             'question': self.question,
@@ -26,6 +26,12 @@ class ChatHistory(models.Model):
             'context': self.context,
             'timestamp': self.timestamp.isoformat()
         }
+        
+        # Add visualization if available
+        if self.context.get('visualization'):
+            data['visualization'] = self.context['visualization']
+            
+        return data
 
     @classmethod
     def add_interaction(cls, user_id, session_id, question, response, context):
