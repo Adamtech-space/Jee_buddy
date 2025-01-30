@@ -83,25 +83,52 @@ const AreaSelector = ({ onAreaSelected, onCancel }) => {
 
   return (
     <div
-      className="fixed inset-0 cursor-crosshair bg-black/20"
+      className="fixed inset-0 cursor-crosshair"
+      style={{
+        backgroundColor: 'transparent',
+        pointerEvents: 'all',
+      }}
       onMouseDown={handleMouseDown}
     >
-      {/* Simple top instruction */}
+      {/* Hint */}
       {showHint && !isSelecting && (
         <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 pointer-events-none">
-          <div className="px-4 py-2 bg-gray-900/80 backdrop-blur-sm rounded-lg shadow-lg">
-            <p className="text-white/90 text-xs sm:text-sm font-medium whitespace-nowrap">
-              Click and drag to select
+          <div className="px-4 py-2 bg-green-500 rounded-lg">
+            <p className="text-white text-xs sm:text-sm font-medium whitespace-nowrap">
+              Click and drag to select an area
             </p>
           </div>
         </div>
       )}
 
+      {/* Selection Area */}
       {isSelecting && selectionStyle && (
         <div
-          className="absolute border-2 border-blue-500 bg-blue-500/10"
-          style={selectionStyle}
-        />
+          className="absolute"
+          style={{
+            ...selectionStyle,
+            border: '2.5px solid #22c55e',
+            boxShadow: '0 0 0 1px rgba(0,0,0,0.2)',
+            backgroundColor: 'transparent',
+            pointerEvents: 'none',
+            zIndex: 50,
+          }}
+        >
+          {/* Selection handles */}
+          <div className="absolute -top-2 -left-2 w-4 h-4 bg-white border-2 border-green-500 rounded-full" />
+          <div className="absolute -top-2 -right-2 w-4 h-4 bg-white border-2 border-green-500 rounded-full" />
+          <div className="absolute -bottom-2 -left-2 w-4 h-4 bg-white border-2 border-green-500 rounded-full" />
+          <div className="absolute -bottom-2 -right-2 w-4 h-4 bg-white border-2 border-green-500 rounded-full" />
+
+          {/* Size indicator */}
+          <div
+            className="absolute -top-7 left-1/2 transform -translate-x-1/2 bg-green-500 text-white text-xs px-2 py-1 rounded"
+            style={{ whiteSpace: 'nowrap' }}
+          >
+            {Math.round(selectionStyle.width)} ×{' '}
+            {Math.round(selectionStyle.height)}
+          </div>
+        </div>
       )}
     </div>
   );

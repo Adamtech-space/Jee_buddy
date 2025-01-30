@@ -8,7 +8,7 @@ from .agents.math_agent import MathAgent
 import asyncio
 import logging
 import json
-from .models import ChatHistory, UserProfile
+from .models import ChatHistory
 import base64
 import uuid
 from django.db import connections

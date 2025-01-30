@@ -32,25 +32,44 @@ const handleApiError = (error, defaultMessage) => {
 };
 
 // Core AI functions
-const askQuestion = async (message, context) => {
+const askQuestion = async (message, context, options = {}) => {
   try {
-    const requestData = {
-      question: message,
-      context: {
-        user_id: context.user_id,
-        session_id: context.session_id,
-        subject: context.subject || '',
-        interaction_type: context.type,
-        pinnedText: context.pinnedText || '',
-        selectedText: context.selectedText || '',
-        image: context.image || null,
-        Deep_think: context.Deep_think || false,
-        history_limit: 100,
-        chat_history: []
-      }
-    };
+    let requestData;
+    let headers = {};
 
-    const response = await aiInstance.post('api/solve-math/', requestData);
+    // Check if context is FormData
+    if (context instanceof FormData) {
+      requestData = context;
+      // Don't set Content-Type header - it will be automatically set with boundary
+    } else {
+      // Handle regular JSON request
+      requestData = {
+        question: message,
+        context: {
+          user_id: context.user_id,
+          session_id: context.session_id,
+          subject: context.subject || '',
+          interaction_type: context.type,
+          pinnedText: context.pinnedText || '',
+          selectedText: context.selectedText || '',
+          image: context.image || null,
+          Deep_think: context.Deep_think || false,
+          history_limit: 100,
+          chat_history: []
+        }
+      };
+      headers = {
+        'Content-Type': 'application/json'
+      };
+    }
+
+    const response = await aiInstance.post('api/solve-math/', requestData, {
+      ...options,
+      headers: {
+        ...headers,
+        ...options.headers
+      }
+    });
     return response.data;
   } catch (error) {
     handleApiError(error, 'Failed to get AI response');
