@@ -8,6 +8,9 @@ from openai import AsyncOpenAI
 from supabase import create_client, Client
 from datetime import datetime, timedelta
 import shutil
+from dotenv import load_dotenv
+
+load_dotenv()
 
 logger = logging.getLogger(__name__)
 
@@ -569,7 +572,6 @@ class ManimRenderer:
         for video_file in self.output_dir.glob(f"*{script_name}*.mp4"):
             return str(video_file)
         return None
-
 async def generate_script(self, concept: str, details: Dict[str, Any]) -> Optional[str]:
     """Generate a Manim script for the given concept"""
     try:
@@ -595,3 +597,4 @@ async def generate_script(self, concept: str, details: Dict[str, Any]) -> Option
     except Exception as e:
         logger.error(f"Error generating visualization script: {str(e)}")
         return None
+
