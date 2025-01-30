@@ -248,23 +248,37 @@ class MathAgent:
             # Extract context first
             context_data = self._extract_context(context)
             
-            # Determine if visualization is needed
+            # Check if this is a visualization request
             needs_visual = self._needs_visualization(question, context)
             
-            # Generate visualization if needed
-            visualization = None
+            # Handle visualization if needed
+            visualization_data = None
             if needs_visual:
-                # Extract concept from question
-                concept = question.lower().replace('show me how ', '').replace('works', '').strip()
-                visualization = await self._generate_visualization(
-                    concept,
-                    {
-                        'subject': context_data['subject'],
-                        'deep_think': context_data['deep_think'],
-                        'question': question
-                    }
-                )
-
+                try:
+                    # Extract concept from question (e.g., "show me how pythagoras theorem works" -> "pythagoras theorem")
+                    concept = question.lower()
+                    concept = concept.replace('show me how', '').replace('visualize', '')
+                    concept = concept.replace('demonstrate', '').replace('works', '')
+                    concept = concept.strip(' ()?')
+                    
+                    # Generate visualization
+                    script_path = await self.visualization_agent.generate_script(
+                        concept=concept,
+                        details={
+                            'subject': context_data['subject'],
+                            'question': question,
+                            'deep_think': context_data['deep_think']
+                        }
+                    )
+                    
+                    if script_path:
+                        # Render the visualization
+                        visualization_data = await self.renderer.render_animation(script_path)
+                        logger.info(f"Generated visualization: {visualization_data}")
+                except Exception as e:
+                    logger.error(f"Error generating visualization: {str(e)}")
+                    # Continue with text response even if visualization fails
+            
             # Get system message
             system_message = self._get_system_message(context_data)
             
@@ -273,21 +287,12 @@ class MathAgent:
             
             # Get model configuration
             model_config = self._get_model_config(context_data['deep_think'])
-
+            
             # Make API call
             solution = await self._make_api_call(messages, model_config, context)
             
-            # Save chat history
-            if visualization:
-                context_data['visualization'] = {
-                    'script_path': visualization.get('script_path'),
-                    'video_path': visualization.get('video_path'),
-                    'video_url': visualization.get('video_url')
-                }
-            await self._save_chat_history(question, solution, context_data)
-            
             # Prepare response
-            result = {
+            response = {
                 "solution": solution,
                 "context": {
                     "current_question": question,
@@ -296,12 +301,11 @@ class MathAgent:
                 }
             }
             
-            # Add visualization to result if available
-            if visualization:
-                result['visualization'] = visualization
-
-            logger.info("Successfully processed request")
-            return result
+            # Add visualization data if available
+            if visualization_data:
+                response["visualization"] = visualization_data
+            
+            return response
 
         except Exception as e:
             logger.error(f"Error in solve method: {str(e)}", exc_info=True)
@@ -483,41 +487,31 @@ class MathAgent:
         try:
             # Keywords that suggest visualization would be helpful
             visualization_keywords = [
-                'show me', 'visualize', 'draw', 'sketch', 'diagram', 'demonstrate',
-                'graph', 'plot', 'geometric', 'visual', 'figure', 'shape', 'curve',
-                'function', 'trigonometric', 'circle', 'triangle', 'vector', 'coordinate',
-                'theorem', 'how', 'works'
+                'show me how', 'visualize', 'demonstrate', 'draw',
+                'sketch', 'diagram', 'plot', 'graph', 'visual'
             ]
             
-            # Mathematical concepts that should always be visualized
-            visual_concepts = {
-                'pythagorean theorem', 'pythagoras theorem', 'pythogorous theorem',
-                'trigonometry', 'geometry', 'calculus', 'vectors', 'coordinates',
-                'functions', 'graphs'
-            }
+            # Mathematical concepts that should be visualized
+            visual_concepts = [
+                'theorem', 'geometry', 'trigonometry', 'calculus',
+                'vector', 'matrix', 'function', 'graph'
+            ]
             
-            # Check question and topic for visualization keywords
             question_lower = question.lower()
-            topic_lower = context.get('topic', '').lower()
             
-            # Check if any visualization keyword is present
-            needs_visual = any(keyword in question_lower or keyword in topic_lower 
-                             for keyword in visualization_keywords)
+            # Check for direct visualization requests
+            if any(keyword in question_lower for keyword in visualization_keywords):
+                return True
             
-            # Check if the question involves a concept that should be visualized
-            involves_visual_concept = any(concept in question_lower 
-                                        for concept in visual_concepts)
+            # Check for mathematical concepts that benefit from visualization
+            if any(concept in question_lower for concept in visual_concepts):
+                return True
             
-            # Check subject - certain subjects benefit more from visualization
-            visual_subjects = {'mathematics', 'physics', 'geometry', 'calculus'}
-            subject = context.get('subject', '').lower()
-            
-            return needs_visual or involves_visual_concept or subject in visual_subjects
+            return False
             
         except Exception as e:
             logger.error(f"Error in _needs_visualization: {str(e)}")
             return False
-
     async def _generate_visualization(self, concept: str, details: Dict[str, Any]) -> Optional[Dict[str, str]]:
         """Generate visualization for mathematical concepts"""
         try:

@@ -26,6 +26,120 @@ class ManimScriptGenerator:
         self.deepseek_key = os.getenv('DEEPSEEK_CHAT_API_KEY')
         self.openai_key = os.getenv('OPENAI_API_KEY')
         
+    async def generate_script(self, concept: str, details: Dict[str, Any]) -> Optional[str]:
+        """Generate a Manim script for the given concept"""
+        try:
+            # Clean up old files before generating new ones
+            self._cleanup_directories()
+            
+            # Check if visualization already exists
+            existing_script = self._find_existing_script(concept)
+            if existing_script:
+                logger.info(f"Found existing visualization for {concept}")
+                return existing_script
+            
+            # Generate new script using AI
+            script_content = await self._generate_manim_script(concept, details)
+            if not script_content:
+                return None
+                
+            # Save script
+            script_path = self._save_script(concept, script_content)
+            logger.info(f"Generated new script at: {script_path}")
+            return script_path
+                
+        except Exception as e:
+            logger.error(f"Error generating visualization script: {str(e)}")
+            return None
+
+    async def _generate_manim_script(self, concept: str, details: Dict[str, Any]) -> Optional[str]:
+        """Generate Manim script content using AI"""
+        try:
+            prompt = self._create_visualization_prompt(concept, details)
+            script_content = None
+            
+            # Try DeepSeek first
+            try:
+                async with AsyncOpenAI(api_key=self.deepseek_key, base_url="https://api.deepseek.com") as client:
+                    response = await client.chat.completions.create(
+                        model="deepseek-chat",
+                        messages=[
+                            {"role": "system", "content": """You are an expert in creating educational Manim animations. 
+                                Create a complete Python script with these requirements:
+                                1. Must include 'from manim import *'
+                                2. Must define exactly one Scene class
+                                3. Class name must be derived from the concept name
+                                4. Must include a construct method
+                                5. Use proper indentation (4 spaces)
+                                Return only pure Python code without any markdown or text explanations."""},
+                            {"role": "user", "content": prompt}
+                        ],
+                        temperature=0.7,
+                        max_tokens=3000
+                    )
+                    
+                    if response.choices and response.choices[0].message.content:
+                        script_content = response.choices[0].message.content.strip()
+                        
+            except Exception as e:
+                logger.warning(f"DeepSeek API failed for visualization, falling back to GPT-3.5: {str(e)}")
+                
+                # Fallback to GPT-3.5
+                try:
+                    async with AsyncOpenAI(api_key=self.openai_key) as openai_client:
+                        response = await openai_client.chat.completions.create(
+                            model="gpt-3.5-turbo-16k",
+                            messages=[
+                                {"role": "system", "content": """You are an expert in creating educational Manim animations. 
+                                    Create a complete Python script with these requirements:
+                                    1. Must include 'from manim import *'
+                                    2. Must define exactly one Scene class
+                                    3. Class name must be derived from the concept name
+                                    4. Must include a construct method
+                                    5. Use proper indentation (4 spaces)
+                                    Return only pure Python code without any markdown or text explanations."""},
+                                {"role": "user", "content": prompt}
+                            ],
+                            temperature=0.7,
+                            max_tokens=3000
+                        )
+                        
+                        if response.choices and response.choices[0].message.content:
+                            script_content = response.choices[0].message.content.strip()
+                            
+                except Exception as openai_error:
+                    logger.error(f"OpenAI fallback also failed: {str(openai_error)}")
+                    return None
+
+            if not script_content:
+                logger.error("No script content generated from either API")
+                return None
+
+            # Validate script content format
+            if "class" not in script_content:
+                logger.error("Invalid script content format")
+                return None
+
+            # Clean the script content
+            script_content = self._clean_script_content(script_content)
+            
+            # Create class name from concept
+            class_name = ''.join(x.title() for x in concept.split()) + 'Scene'
+            
+            # Create complete script with error handling
+            complete_script = self._create_complete_script(concept, class_name, script_content)
+            
+            # Validate the complete script
+            if not self._validate_script(complete_script):
+                logger.error("Script validation failed")
+                return None
+            
+            return complete_script
+            
+        except Exception as e:
+            logger.error(f"Error generating Manim script: {str(e)}")
+            return None
+
     def _cleanup_directories(self):
         """Clean up old animation files and directories"""
         try:
@@ -49,42 +163,6 @@ class ManimScriptGenerator:
         except Exception as e:
             logger.error(f"Error cleaning directories: {str(e)}")
         
-    async def _generate_manim_script(self, concept: str, details: Dict[str, Any]) -> Optional[str]:
-        """Generate Manim script using AI"""
-        prompt = self._create_visualization_prompt(concept, details)
-        
-        try:
-            # Try DeepSeek first
-            try:
-                client = AsyncOpenAI(
-                    api_key=self.deepseek_key,
-                    base_url="https://api.deepseek.com"
-                )
-                response = await client.chat.completions.create(
-                    model="deepseek-chat",
-                    messages=[{"role": "user", "content": prompt}],
-                    temperature=0.7,
-                    max_tokens=2000
-                )
-                return response.choices[0].message.content
-                
-            except Exception as e:
-                logger.warning(f"DeepSeek API failed for visualization, falling back to GPT-3.5: {str(e)}")
-                
-                # Fallback to GPT-3.5
-                async with AsyncOpenAI(api_key=self.openai_key) as openai_client:
-                    response = await openai_client.chat.completions.create(
-                        model="gpt-3.5",
-                        messages=[{"role": "user", "content": prompt}],
-                        temperature=0.7,
-                        max_tokens=2000
-                    )
-                    return response.choices[0].message.content
-                    
-        except Exception as e:
-            logger.error(f"Both APIs failed for visualization generation: {str(e)}")
-            return None
-            
     def _find_existing_script(self, concept: str) -> Optional[str]:
         """Check if visualization already exists for concept"""
         concept_slug = concept.lower().replace(" ", "_")
@@ -102,30 +180,37 @@ class ManimScriptGenerator:
         
         base_prompt = f"""Create a detailed Manim animation script for teaching: {concept}
 
-Specific Visualization Requirements:
-{specific_requirements}
+        Specific Visualization Requirements:
+        {specific_requirements}
 
-General Requirements:
-1. Start with a title screen showing the concept name
-2. Include step-by-step explanations with text labels
-3. Use color coding to highlight important elements
-4. Add mathematical formulas using MathTex
-5. Include smooth transitions between steps
-6. End with a summary or key points
+        General Requirements:
+        1. Start with a title screen showing the concept name with a visually appealing design
+        2. Include step-by-step explanations with text labels and clear, non-overlapping animations
+        3. Use color coding to highlight important elements consistently throughout the video
+        4. Add mathematical formulas using MathTex with proper alignment and readability
+        5. Include smooth, non-overlapping transitions between steps with appropriate timing
+        6. End with a concise summary or key points screen
+        7. Ensure animations are short, engaging, and easy to understand
+        8. Use high-quality graphics and visual elements to enhance understanding
+        9. Avoid overlapping animations; ensure each animation completes before the next begins
+        10. Maintain a logical flow with proper pacing and timing for each scene
 
-Technical Requirements:
-- Use Python Manim library syntax
-- Create multiple scenes or sections if needed
-- Use appropriate Manim objects (Text, MathTex, Geometry, etc.)
-- Include proper animations (Write, FadeIn, Transform, etc.)
-- Add appropriate wait times between animations
-- Use consistent color scheme
-- Include helpful comments in the code
+        Technical Requirements:
+        - Use Python Manim library syntax
+        - Create multiple scenes or sections if needed, ensuring smooth transitions between them
+        - Use appropriate Manim objects (Text, MathTex, Geometry, etc.) with proper scaling and positioning
+        - Include proper animations (Write, FadeIn, Transform, etc.) without overlapping
+        - Add appropriate wait times between animations to ensure clarity
+        - Use a consistent and visually appealing color scheme
+        - Include detailed comments in the code for each animation step
+        - Optimize the script for a short video duration (1-3 minutes)
+        - Ensure all visual elements are properly aligned and spaced
+        - Use graphics-based visualization to make the concept more intuitive
 
-Subject: {details.get('subject', 'Mathematics')}
-Context: {details.get('question', '')}
+        Subject: {details.get('subject', 'Mathematics')}
+        Context: {details.get('question', '')}
 
-Return only the Python code without any explanations."""
+        Return only the Python code without any explanations."""
         return base_prompt
 
     def _get_concept_requirements(self, concept: str) -> str:
@@ -228,60 +313,6 @@ Return only the Python code without any explanations."""
 - Include examples and counter-examples""")
         
         return "\n".join(requirements)
-
-    async def _generate_manim_script(self, concept: str, details: Dict[str, Any]) -> Optional[str]:
-        """Generate Manim script content using AI"""
-        try:
-            prompt = self._create_visualization_prompt(concept, details)
-            
-            async with AsyncOpenAI(api_key=self.deepseek_key, base_url="https://api.deepseek.com") as client:
-                response = await client.chat.completions.create(
-                    model="deepseek-chat",
-                    messages=[
-                        {"role": "system", "content": """You are an expert in creating educational Manim animations. 
-                            Create a complete Python script with these requirements:
-                            1. Must include 'from manim import *'
-                            2. Must define exactly one Scene class
-                            3. Class name must be derived from the concept name
-                            4. Must include a construct method
-                            5. Use proper indentation (4 spaces)
-                            Return only pure Python code without any markdown or text explanations."""},
-                        {"role": "user", "content": prompt}
-                    ],
-                    temperature=0.7,
-                    max_tokens=3000
-                )
-            
-            if not response.choices or not response.choices[0].message.content:
-                logger.error("No script content generated")
-                return None
-
-            script_content = response.choices[0].message.content.strip()
-            
-            # Validate script content format
-            if not script_content or "class" not in script_content:
-                logger.error("Invalid script content format")
-                return None
-
-            # Clean the script content
-            script_content = self._clean_script_content(script_content)
-            
-            # Create class name from concept
-            class_name = ''.join(x.title() for x in concept.split()) + 'Scene'
-            
-            # Create complete script with error handling
-            complete_script = self._create_complete_script(concept, class_name, script_content)
-            
-            # Validate the complete script
-            if not self._validate_script(complete_script):
-                logger.error("Script validation failed")
-                return None
-            
-            return complete_script
-            
-        except Exception as e:
-            logger.error(f"Error generating Manim script: {str(e)}")
-            return None
 
     def _create_complete_script(self, concept: str, class_name: str, script_content: str) -> str:
         """Create complete Manim script with proper structure and error handling"""
@@ -571,30 +602,5 @@ class ManimRenderer:
         script_name = Path(script_path).stem
         for video_file in self.output_dir.glob(f"*{script_name}*.mp4"):
             return str(video_file)
-        return None
-async def generate_script(self, concept: str, details: Dict[str, Any]) -> Optional[str]:
-    """Generate a Manim script for the given concept"""
-    try:
-        # Clean up old files before generating new ones
-        self._cleanup_directories()
-        
-        # Check if visualization already exists
-        existing_script = self._find_existing_script(concept)
-        if existing_script:
-            logger.info(f"Found existing visualization for {concept}")
-            return existing_script
-        
-        # Generate new script using AI
-        script_content = await self._generate_manim_script(concept, details)
-        if not script_content:
-            return None
-            
-        # Save script
-        script_path = self._save_script(concept, script_content)
-        logger.info(f"Generated new script at: {script_path}")
-        return script_path
-            
-    except Exception as e:
-        logger.error(f"Error generating visualization script: {str(e)}")
         return None
 
