@@ -1,0 +1,54 @@
+# Environment variables and sensitive files
+.env
+.env.local
+.env.*.local
+.env.development
+.env.test
+.env.production
+**/02.env.config
+**/django.config
+**/*.env.config
+
+# Elastic Beanstalk Files
+.elasticbeanstalk/*
+!.elasticbeanstalk/*.cfg.yml
+!.elasticbeanstalk/*.global.yml
+.ebextensions/*.config
+
+# Dependencies
+node_modules/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Build
+dist/
+build/
+*.egg-info/
+
+# Operating System
+.DS_Store
+Thumbs.db
+
+# Secrets and keys
+*.pem
+*.key
+*.cert
+*.crt
+secrets.yaml
+secrets.yml
+secrets.json 
