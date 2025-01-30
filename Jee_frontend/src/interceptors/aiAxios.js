@@ -2,9 +2,6 @@ import axios from 'axios';
 
 const aiInstance = axios.create({
   baseURL: import.meta.env.VITE_AI_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
   withCredentials: true,
   // timeout: 30000, // 30 seconds timeout
 });
