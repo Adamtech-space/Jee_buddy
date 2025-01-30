@@ -611,6 +611,10 @@ const ChatBot = ({
           setIsLoading(false);
           setAbortController(null);
         }
+        // Reset the file input after submission
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
       }
     },
     [
@@ -760,7 +764,8 @@ const ChatBot = ({
         ]);
         setDisplayedResponse(errorMessage);
         setCurrentTypingIndex(errorMessage.length);
-        // Reset file input to allow selecting the same file again
+      } finally {
+        // Reset the file input value after upload
         e.target.value = '';
       }
     }
