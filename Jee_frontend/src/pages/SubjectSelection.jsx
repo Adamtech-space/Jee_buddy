@@ -1,29 +1,14 @@
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { memo, useCallback, useMemo, useState } from 'react';
+import { memo, useCallback, useMemo} from 'react';
 import PropTypes from 'prop-types';
 import { useLoading } from '../context/LoadingContext';
 
 // Predefine subjects to avoid recreation
 const subjects = [
-  {
-    id: 'physics',
-    name: 'Physics',
-    icon: '⚛️',
-    color: 'from-blue-500 to-blue-700',
-  },
-  {
-    id: 'chemistry',
-    name: 'Chemistry',
-    icon: '🧪',
-    color: 'from-green-500 to-green-700',
-  },
-  {
-    id: 'maths',
-    name: 'Mathematics',
-    icon: '📐',
-    color: 'from-purple-500 to-purple-700',
-  },
+  { id: 'physics', name: 'Physics', icon: '⚛️', color: 'from-blue-500 to-blue-700' },
+  { id: 'chemistry', name: 'Chemistry', icon: '🧪', color: 'from-green-500 to-green-700' },
+  { id: 'maths', name: 'Mathematics', icon: '📐', color: 'from-purple-500 to-purple-700' }
 ];
 
 // Optimized animation variants
@@ -31,8 +16,8 @@ const containerVariants = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
-    transition: { duration: 0.2, staggerChildren: 0.05 },
-  },
+    transition: { duration: 0.2, staggerChildren: 0.05 }
+  }
 };
 
 const itemVariants = {
@@ -40,8 +25,8 @@ const itemVariants = {
   visible: {
     y: 0,
     opacity: 1,
-    transition: { type: 'spring', stiffness: 100, duration: 0.15 },
-  },
+    transition: { type: "spring", stiffness: 100, duration: 0.15 }
+  }
 };
 
 const SubjectButton = memo(({ subject, onClick, isLoading }) => (
@@ -61,13 +46,18 @@ const SubjectButton = memo(({ subject, onClick, isLoading }) => (
         {subject.icon}
       </span>
       <div className="text-left">
-        <h3 className="text-xl font-bold text-white">{subject.name}</h3>
+        <h3 className="text-xl font-bold text-white">
+          {subject.name}
+        </h3>
         <span className="text-sm text-gray-200 opacity-80">
           Start learning {subject.name.toLowerCase()}
         </span>
       </div>
     </div>
-    <motion.div className="text-white" whileHover={{ x: 3 }}>
+    <motion.div 
+      className="text-white"
+      whileHover={{ x: 3 }}
+    >
       {isLoading ? '...' : '→'}
     </motion.div>
   </motion.button>
@@ -89,44 +79,39 @@ SubjectButton.displayName = 'SubjectButton';
 const SubjectSelection = () => {
   const navigate = useNavigate();
   const { setIsLoading } = useLoading();
-  const [selectedSubject, setSelectedSubject] = useState(null);
+  
+  const handleSubjectClick = useCallback((subjectId) => {
+    // Immediate navigation with loading state
+    setIsLoading(true);
+    navigate(`/dashboard/${subjectId}/books`, { replace: true });
+    
+    // Clear loading after navigation completes
+    // const timer = setTimeout(() => setIsLoading(false), 500);
+    // return () => clearTimeout(timer);
+  }, [navigate, setIsLoading]);
 
-  const handleSubjectClick = useCallback(
-    (subjectId) => {
-      setSelectedSubject(subjectId);
-      setIsLoading(true);
-
-      // Use setTimeout to ensure the loading state is visible
-      setTimeout(() => {
-        navigate(`/dashboard/${subjectId}/books`, { replace: true });
-        setIsLoading(false);
-      }, 100);
-    },
-    [navigate, setIsLoading]
-  );
-
-  const subjectButtons = useMemo(
-    () =>
-      subjects.map((subject) => (
-        <SubjectButton
-          key={subject.id}
-          subject={subject}
-          onClick={() => handleSubjectClick(subject.id)}
-          isLoading={selectedSubject === subject.id}
-        />
-      )),
-    [handleSubjectClick, selectedSubject]
-  );
+  const subjectButtons = useMemo(() => (
+    subjects.map(subject => (
+      <SubjectButton
+        key={subject.id}
+        subject={subject}
+        onClick={() => handleSubjectClick(subject.id)}
+      />
+    ))
+  ), [handleSubjectClick]);
 
   return (
-    <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
-      <motion.div
+    <div className="min-h-screen bg-black flex items-center justify-center p-4">
+      <motion.div 
         initial="hidden"
         animate="visible"
         variants={containerVariants}
         className="max-w-md w-full space-y-4 p-6"
       >
-        <motion.div variants={itemVariants} className="text-center">
+        <motion.div 
+          variants={itemVariants}
+          className="text-center"
+        >
           <h2 className="text-3xl font-bold text-white mb-2">
             Choose Your Subject
           </h2>
@@ -135,7 +120,9 @@ const SubjectSelection = () => {
           </p>
         </motion.div>
 
-        <div className="grid gap-3">{subjectButtons}</div>
+        <div className="grid gap-3">
+          {subjectButtons}
+        </div>
       </motion.div>
     </div>
   );

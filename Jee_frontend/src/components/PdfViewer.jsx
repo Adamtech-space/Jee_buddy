@@ -32,6 +32,7 @@ const PdfViewer = ({ pdfUrl: propsPdfUrl, subject: propsSubject, onBack }) => {
   const [loading, setLoading] = useState(true);
   const { isChatOpen, isSidebarOpen, setIsChatOpen } = useOutletContext();
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [selectionPosition, setSelectionPosition] = useState(null);
   const { handleTextSelection } = useSelection();
   const [isAreaSelecting, setIsAreaSelecting] = useState(false);
   const [viewerContainerRef, setViewerContainerRef] = useState(null);
@@ -83,6 +84,11 @@ const PdfViewer = ({ pdfUrl: propsPdfUrl, subject: propsSubject, onBack }) => {
         // Get selection coordinates for better popup positioning
         const range = selection.getRangeAt(0);
         const rect = range.getBoundingClientRect();
+        const position = {
+          x: rect.left + rect.width / 2,
+          y: rect.bottom
+        };
+        setSelectionPosition(position);
         
         // Process mathematical notation
         let processedText = selectedText
@@ -133,7 +139,8 @@ const PdfViewer = ({ pdfUrl: propsPdfUrl, subject: propsSubject, onBack }) => {
           processedText = `$${processedText}$`;
         }
 
-        handleTextSelection(e, processedText);
+        // Pass selection position to handleTextSelection
+        handleTextSelection(e, processedText, position);
       }, 250); // Increased debounce time for better control
     },
     [loading, isAreaSelecting, handleTextSelection, isMobile]
@@ -532,6 +539,7 @@ const PdfViewer = ({ pdfUrl: propsPdfUrl, subject: propsSubject, onBack }) => {
       <SelectionPopup
         onSaveToFlashCard={handleSaveToFlashCard}
         onAskAI={handleAskAI}
+        position={selectionPosition}
       />
 
       {/* Confirmation Modal */}
