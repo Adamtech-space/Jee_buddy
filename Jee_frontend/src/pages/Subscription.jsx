@@ -2,17 +2,23 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { aiService } from '../interceptors/ai.service';
 import PropTypes from 'prop-types';
+import { getDecryptedItem, setEncryptedItem } from '../utils/encryption';
 
 // Define plan IDs
 const PLANS = {
-  'BASIC': import.meta.env.VITE_BASIC_PLAN_ID,
-  'PRO': import.meta.env.VITE_PRO_PLAN_ID,
-  'PREMIUM': import.meta.env.VITE_PREMIUM_PLAN_ID
+  BASIC: import.meta.env.VITE_BASIC_PLAN_ID,
+  PRO: import.meta.env.VITE_PRO_PLAN_ID,
+  PREMIUM: import.meta.env.VITE_PREMIUM_PLAN_ID,
 };
 
-const SubscriptionCard = ({ plan, isActive, onSubscribe, subscriptionDetails }) => {
+const SubscriptionCard = ({
+  plan,
+  isActive,
+  onSubscribe,
+  subscriptionDetails,
+}) => {
   const isCurrentPlan = isActive && subscriptionDetails?.plan_id === plan.id;
-  
+
   const getExpiryStatusColor = (status) => {
     switch (status) {
       case 'expiring_soon':
@@ -34,24 +40,29 @@ const SubscriptionCard = ({ plan, isActive, onSubscribe, subscriptionDetails }) 
         return 'Active';
     }
   };
-  
+
   return (
-    <div 
+    <div
       className={`bg-gray-900 rounded-xl p-6 cursor-pointer transition-all duration-300 ${
-        isCurrentPlan ? 'border-2 border-blue-500 shadow-lg shadow-blue-500/20' : 'hover:border-2 hover:border-gray-700'
+        isCurrentPlan
+          ? 'border-2 border-blue-500 shadow-lg shadow-blue-500/20'
+          : 'hover:border-2 hover:border-gray-700'
       }`}
       onClick={() => onSubscribe && onSubscribe(plan)}
     >
       <div className="text-center mb-4">
         <h3 className="text-xl font-bold text-white">{plan.name}</h3>
         <p className="text-3xl font-bold text-white mt-2">
-          ₹{plan.price}<span className="text-sm text-gray-400">/month</span>
+          ₹{plan.price}
+          <span className="text-sm text-gray-400">/month</span>
         </p>
         {isCurrentPlan && subscriptionDetails && (
           <div className="mt-4 p-3 bg-gray-800 rounded-lg">
             <div className="flex justify-between items-center mb-2">
               <p className="text-sm text-gray-300">Subscription Status</p>
-              <span className={`text-sm font-medium ${getExpiryStatusColor(subscriptionDetails.expiry_status)}`}>
+              <span
+                className={`text-sm font-medium ${getExpiryStatusColor(subscriptionDetails.expiry_status)}`}
+              >
                 {getExpiryStatusText(subscriptionDetails.expiry_status)}
               </span>
             </div>
@@ -59,15 +70,17 @@ const SubscriptionCard = ({ plan, isActive, onSubscribe, subscriptionDetails }) 
               {subscriptionDetails.days_remaining} days remaining
             </p>
             <div className="w-full bg-gray-700 rounded-full h-2.5 mt-2">
-              <div 
+              <div
                 className={`h-2.5 rounded-full transition-all duration-300 ${
-                  subscriptionDetails.expiry_status === 'expired' 
-                    ? 'bg-red-500' 
+                  subscriptionDetails.expiry_status === 'expired'
+                    ? 'bg-red-500'
                     : subscriptionDetails.expiry_status === 'expiring_soon'
-                    ? 'bg-yellow-500'
-                    : 'bg-blue-500'
+                      ? 'bg-yellow-500'
+                      : 'bg-blue-500'
                 }`}
-                style={{ width: `${(subscriptionDetails.days_used / subscriptionDetails.total_days) * 100}%` }}
+                style={{
+                  width: `${(subscriptionDetails.days_used / subscriptionDetails.total_days) * 100}%`,
+                }}
               ></div>
             </div>
             <div className="mt-2 space-y-1">
@@ -75,10 +88,12 @@ const SubscriptionCard = ({ plan, isActive, onSubscribe, subscriptionDetails }) 
                 {subscriptionDetails.subscription_progress}
               </p>
               <p className="text-xs text-gray-400">
-                Started: {new Date(subscriptionDetails.start_date).toLocaleDateString()}
+                Started:{' '}
+                {new Date(subscriptionDetails.start_date).toLocaleDateString()}
               </p>
               <p className="text-xs text-gray-400">
-                Expires: {new Date(subscriptionDetails.end_date).toLocaleDateString()}
+                Expires:{' '}
+                {new Date(subscriptionDetails.end_date).toLocaleDateString()}
               </p>
             </div>
             {subscriptionDetails.reminder_message && (
@@ -99,7 +114,7 @@ SubscriptionCard.propTypes = {
     name: PropTypes.string.isRequired,
     price: PropTypes.number.isRequired,
     features: PropTypes.arrayOf(PropTypes.string).isRequired,
-    type: PropTypes.string.isRequired
+    type: PropTypes.string.isRequired,
   }).isRequired,
   isActive: PropTypes.bool.isRequired,
   onSubscribe: PropTypes.func.isRequired,
@@ -112,12 +127,12 @@ SubscriptionCard.propTypes = {
     start_date: PropTypes.string,
     end_date: PropTypes.string,
     expiry_status: PropTypes.oneOf(['active', 'expiring_soon', 'expired']),
-    reminder_message: PropTypes.string
-  })
+    reminder_message: PropTypes.string,
+  }),
 };
 
 SubscriptionCard.defaultProps = {
-  subscriptionDetails: null
+  subscriptionDetails: null,
 };
 
 const Subscription = () => {
@@ -132,7 +147,7 @@ const Subscription = () => {
 
   const loadScript = (src) => {
     return new Promise((resolve) => {
-      const script = document.createElement("script");
+      const script = document.createElement('script');
       script.src = src;
       script.onload = () => {
         resolve(true);
@@ -146,10 +161,8 @@ const Subscription = () => {
 
   const getUserId = () => {
     try {
-      const userDataStr = localStorage.getItem('user');
-      if (!userDataStr) return null;
-      
-      const userData = JSON.parse(userDataStr);
+      const userData = getDecryptedItem('user');
+      if (!userData) return null;
       return userData.id || null;
     } catch (error) {
       console.error('Error getting user ID:', error);
@@ -160,30 +173,38 @@ const Subscription = () => {
   useEffect(() => {
     const initializeSubscription = async () => {
       try {
-        await loadScript("https://checkout.razorpay.com/v1/checkout.js");
+        await loadScript('https://checkout.razorpay.com/v1/checkout.js');
         const userId = getUserId();
-        
+
         if (!userId) {
           navigate('/login');
           return;
         }
-        
-        // Fetch actual subscription status
-        const userData = JSON.parse(localStorage.getItem('user'));
-        if (userData.payment_status === 'completed' && userData.current_plan_id) {
+
+        // Fetch actual subscription status using decryption
+        const userData = getDecryptedItem('user');
+        if (
+          userData?.payment_status === 'completed' &&
+          userData?.current_plan_id
+        ) {
           // Compare plan IDs directly with environment variables
           let planType = 'BASIC';
-          if (userData.current_plan_id === import.meta.env.VITE_PREMIUM_PLAN_ID) {
+          if (
+            userData.current_plan_id === import.meta.env.VITE_PREMIUM_PLAN_ID
+          ) {
             planType = 'PREMIUM';
-          } else if (userData.current_plan_id === import.meta.env.VITE_PRO_PLAN_ID) {
+          } else if (
+            userData.current_plan_id === import.meta.env.VITE_PRO_PLAN_ID
+          ) {
             planType = 'PRO';
           }
-          
+
           setIsSubscribed(true);
           setCurrentPlan({
             type: planType,
             name: `${planType.charAt(0) + planType.slice(1).toLowerCase()} Plan`,
-            price: planType === 'BASIC' ? 499 : planType === 'PRO' ? 1499 : 4999
+            price:
+              planType === 'BASIC' ? 499 : planType === 'PRO' ? 1499 : 4999,
           });
         } else {
           setIsSubscribed(false);
@@ -203,7 +224,7 @@ const Subscription = () => {
         ...prev,
         [plan.type]: true,
       }));
-      
+
       const userId = getUserId();
       if (!userId) {
         alert('Please login first');
@@ -229,21 +250,21 @@ const Subscription = () => {
         ...prev,
         [Object.keys(prev).find((key) => prev[key] === true)]: true,
       }));
-      
+
       const userId = getUserId();
       if (!userId) {
         alert('Please login first');
         return;
       }
 
-      const userData = JSON.parse(localStorage.getItem('user'));
+      const userData = getDecryptedItem('user');
       const requestData = {
         price: Number(price),
         product_name,
         plan_id,
         user_id: userData.id,
         email: userData.email || '',
-        name: userData.name || ''
+        name: userData.name || '',
       };
 
       console.log('Sending subscription request with data:', requestData);
@@ -255,40 +276,40 @@ const Subscription = () => {
         console.error('Invalid server response:', data);
         throw new Error('Invalid response from server');
       }
-      
+
       const options = {
         key: data.razorpay_key,
         subscription_id: data.order.id,
-        name: "JEE Buddy",
+        name: 'JEE Buddy',
         description: `${product_name} Subscription`,
-        image: "https://your-logo-url.png",
-        currency: "INR",
+        image: 'https://your-logo-url.png',
+        currency: 'INR',
         prefill: {
           email: userData.email || '',
           name: userData.name || '',
-          contact: ''
+          contact: '',
         },
         notes: {
           user_id: userId,
           plan_name: product_name,
-          plan_id: plan_id
+          plan_id: plan_id,
         },
-        handler: function(response) {
+        handler: function (response) {
           console.log('Razorpay payment success:', response);
           verifyPayment(response);
         },
         modal: {
-          ondismiss: function() {
+          ondismiss: function () {
             console.log('Payment modal closed');
             setLoadingStates((prev) => ({
               ...prev,
               [Object.keys(prev).find((key) => prev[key] === true)]: false,
             }));
-          }
+          },
         },
         theme: {
-          color: "#000000"
-        }
+          color: '#000000',
+        },
       };
 
       console.log('Initializing Razorpay with options:', options);
@@ -305,7 +326,7 @@ const Subscription = () => {
       console.error('Error details:', {
         message: error.message,
         stack: error.stack,
-        response: error.response?.data
+        response: error.response?.data,
       });
       alert(`Failed to initiate payment: ${error.message}`);
     } finally {
@@ -318,56 +339,57 @@ const Subscription = () => {
 
   const verifyPayment = async (paymentResponse) => {
     try {
-      console.log('Payment response:', paymentResponse);
       const userId = getUserId();
+      if (!userId) {
+        throw new Error('User ID not found');
+      }
+
       const verificationData = {
         razorpay_payment_id: paymentResponse.razorpay_payment_id,
         razorpay_subscription_id: paymentResponse.razorpay_subscription_id,
         razorpay_signature: paymentResponse.razorpay_signature,
-        user_id: userId
+        user_id: userId,
       };
 
-      console.log('Sending verification data:', verificationData);
-      const data = await aiService.verifySubscription(verificationData);
-      console.log('Verification response:', data);
+      const { data } = await aiService.verifySubscription(verificationData);
 
       if (data.status === 'success') {
         // Update local storage with new plan data
-        const userDataStr = localStorage.getItem('user');
-        if (userDataStr) {
-          const userData = JSON.parse(userDataStr);
+        const userData = getDecryptedItem('user');
+        if (userData) {
           const updatedUserData = {
             ...userData,
             payment_status: 'completed',
             current_plan_id: data.plan_id,
-            next_billing_date: data.next_billing_date,
+            subscription_id: data.subscription_id,
             days_remaining: 30, // Reset to full month
             created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
+            updated_at: new Date().toISOString(),
           };
-          localStorage.setItem('user', JSON.stringify(updatedUserData));
+          setEncryptedItem('user', updatedUserData);
         }
 
         setIsSubscribed(true);
         // Update current plan state
-        const planType = Object.keys(PLANS).find(key => PLANS[key] === data.plan_id) || 'BASIC';
+        const planType =
+          Object.keys(PLANS).find((key) => PLANS[key] === data.plan_id) ||
+          'BASIC';
         setCurrentPlan({
           type: planType,
           name: `${planType.charAt(0) + planType.slice(1).toLowerCase()} Plan`,
-          price: planType === 'BASIC' ? 499 : planType === 'PRO' ? 1499 : 4999
+          price: planType === 'BASIC' ? 499 : planType === 'PRO' ? 1499 : 4999,
         });
-        
-        alert('Payment successful! Your plan has been updated.');
-        navigate('/dashboard');
+
+        // Show success message
+        alert('Payment successful! Your subscription is now active.');
       } else {
-        console.error('Verification failed:', data);
-        alert('Payment verification failed. Please contact support.');
+        throw new Error('Payment verification failed');
       }
     } catch (error) {
-      console.error('Verification error:', error);
+      console.error('Payment verification error:', error);
       console.error('Error details:', {
         message: error.message,
-        response: error.response?.data
+        response: error.response?.data,
       });
       alert('Payment verification failed. Please contact support.');
     }
@@ -381,7 +403,7 @@ const Subscription = () => {
           'Access to AI Learning Assistant',
           'Basic Study Materials',
           'Limited AI Usage',
-          'Email Support'
+          'Email Support',
         ];
       case 'PRO':
         return [
@@ -389,7 +411,7 @@ const Subscription = () => {
           'Advanced Materials',
           'Question Bank',
           'Priority Support',
-          'Strength and Weakness Analysis'
+          'Strength and Weakness Analysis',
         ];
       case 'PREMIUM':
         return [
@@ -397,7 +419,7 @@ const Subscription = () => {
           'AI Generated Question Bank',
           'Performance Analytics',
           'Priority Support',
-          'Advanced Analytics'
+          'Advanced Analytics',
         ];
       default:
         return [];

@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import apiInstance from '../../interceptors/axios';
 import { useLoading } from '../../context/LoadingContext';
 import AuthLoader from '../../components/AuthLoader';
+import { setEncryptedItem } from '../../utils/encryption';
 
 const AuthCallback = () => {
   const navigate = useNavigate();
@@ -15,40 +16,45 @@ const AuthCallback = () => {
       setIsLoading(true);
       try {
         const code = new URLSearchParams(window.location.search).get('code');
-        
+
         if (!code) {
           setAuthError('Authentication failed - Missing authorization code');
-          await new Promise(resolve => setTimeout(resolve, 2000)); // Maintain loader for 2s
+          await new Promise((resolve) => setTimeout(resolve, 2000)); // Maintain loader for 2s
           navigate('/login', { replace: true });
           return;
         }
 
         // Clean URL before processing
-        window.history.replaceState({}, document.title, window.location.pathname);
+        window.history.replaceState(
+          {},
+          document.title,
+          window.location.pathname
+        );
 
-        const { data } = await apiInstance.get(`/auth/google/callback?code=${code}`);
-        
+        const { data } = await apiInstance.get(
+          `/auth/google/callback?code=${code}`
+        );
+
         if (!data?.tokens || !data?.user) {
           throw new Error('Invalid authentication response');
         }
 
         // Atomic state update before navigation
         setIsAuthenticated(true);
-        localStorage.setItem('tokens', JSON.stringify(data.tokens));
-        localStorage.setItem('user', JSON.stringify(data.user));
+        setEncryptedItem('tokens', data.tokens);
+        setEncryptedItem('user', data.user);
 
         // Immediate navigation with state flag
-        navigate('/subject-selection', { 
+        navigate('/subject-selection', {
           replace: true,
-          state: { fromAuth: true } 
+          state: { fromAuth: true },
         });
-
       } catch (error) {
         setAuthError(error.message);
-        localStorage.clear();
-        navigate('/login', { 
+        localStorage.clear(); // Keep this to clear any other potential items
+        navigate('/login', {
           replace: true,
-          state: { error: error.message }
+          state: { error: error.message },
         });
       } finally {
         // Sync loading state with navigation completion

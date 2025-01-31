@@ -4,6 +4,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { userLogin, googleSignIn } from '../interceptors/services';
 import { aiService } from '../interceptors/ai.service';
 import { Analytics } from '@vercel/analytics/react';
+import { setEncryptedItem, getDecryptedItem } from '../utils/encryption';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -14,8 +15,8 @@ const Login = () => {
 
   // Check if already authenticated
   useEffect(() => {
-    const tokens = localStorage.getItem('tokens');
-    const user = localStorage.getItem('user');
+    const tokens = getDecryptedItem('tokens');
+    const user = getDecryptedItem('user');
     if (tokens && user) {
       navigate('/subject-selection', { replace: true });
     }
@@ -25,7 +26,7 @@ const Login = () => {
     try {
       const subscriptionData = await aiService.checkSubscriptionStatus(userId);
       console.log('Received subscription data:', subscriptionData); // Debug log
-      
+
       if (subscriptionData && subscriptionData.status === 'success') {
         const subscriptionDetails = {
           is_subscribed: subscriptionData.is_subscribed,
@@ -35,14 +36,14 @@ const Login = () => {
           valid_till: subscriptionData.valid_till,
           days_remaining: subscriptionData.days_remaining,
           next_billing_date: subscriptionData.next_billing_date,
-          status: subscriptionData.status
+          status: subscriptionData.status,
         };
-        
+
         console.log('Storing subscription details:', subscriptionDetails); // Debug log
-        localStorage.setItem('subscription', JSON.stringify(subscriptionDetails));
-        
+        setEncryptedItem('subscription', subscriptionDetails);
+
         // Verify storage
-        const storedData = localStorage.getItem('subscription');
+        const storedData = getDecryptedItem('subscription');
         console.log('Verified stored data:', storedData); // Debug log
       } else {
         console.warn('Invalid subscription data received:', subscriptionData);
@@ -61,26 +62,26 @@ const Login = () => {
       console.log('Submitting login form...');
       const response = await userLogin({ email, password });
       console.log('Login successful:', response);
-      
+
       if (response?.tokens?.access?.token && response?.user) {
         // Store tokens and user data first
-        localStorage.setItem('tokens', JSON.stringify(response.tokens));
-        localStorage.setItem('user', JSON.stringify(response.user));
-        
+        setEncryptedItem('tokens', response.tokens);
+        setEncryptedItem('user', response.user);
+
         // Then fetch and store subscription details
         await fetchAndStoreSubscriptionDetails(response.user.id);
-        
+
         // Verify all data is stored
         const verifyData = {
-          tokens: localStorage.getItem('tokens'),
-          user: localStorage.getItem('user'),
-          subscription: localStorage.getItem('subscription')
+          tokens: getDecryptedItem('tokens'),
+          user: getDecryptedItem('user'),
+          subscription: getDecryptedItem('subscription'),
         };
         console.log('Verified stored data:', verifyData);
-        
+
         // Force a small delay to ensure state updates are processed
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
+        await new Promise((resolve) => setTimeout(resolve, 500));
+
         // Use window.location for a full page refresh
         window.location.href = '/subject-selection';
       } else {
@@ -88,10 +89,12 @@ const Login = () => {
       }
     } catch (err) {
       console.error('Login error:', err);
-      
+
       // Handle network errors specifically
       if (err.message.includes('Unable to connect')) {
-        setError('Unable to connect to server. Please check your internet connection and try again.');
+        setError(
+          'Unable to connect to server. Please check your internet connection and try again.'
+        );
       } else {
         setError(err.message || 'Login failed. Please try again.');
       }
@@ -107,7 +110,7 @@ const Login = () => {
     try {
       const response = await googleSignIn();
       if (response.url) {
-        // Note: For Google sign-in, subscription details will need to be handled 
+        // Note: For Google sign-in, subscription details will need to be handled
         // in the callback route after successful authentication
         window.location.href = response.url;
       }
@@ -120,19 +123,24 @@ const Login = () => {
   return (
     <div className="min-h-screen bg-black flex items-center justify-center p-4">
       <Analytics />
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
         className="max-w-md w-full space-y-8 p-8 bg-gray-900 rounded-xl shadow-xl"
       >
         <div className="text-center">
-          <h2 className="mt-6 text-3xl font-bold text-white">Welcome to JEE Buddy</h2>
+          <h2 className="mt-6 text-3xl font-bold text-white">
+            Welcome to JEE Buddy
+          </h2>
           <p className="mt-2 text-sm text-gray-400">Sign in to your account</p>
         </div>
 
         {error && (
-          <div className="bg-red-500 bg-opacity-10 border border-red-500 text-red-500 px-4 py-3 rounded relative" role="alert">
+          <div
+            className="bg-red-500 bg-opacity-10 border border-red-500 text-red-500 px-4 py-3 rounded relative"
+            role="alert"
+          >
             <span className="block sm:inline">{error}</span>
           </div>
         )}
@@ -170,14 +178,19 @@ const Login = () => {
             <div className="w-full border-t border-gray-700"></div>
           </div>
           <div className="relative flex justify-center text-sm">
-            <span className="px-2 bg-gray-900 text-gray-400">Or sign in with email</span>
+            <span className="px-2 bg-gray-900 text-gray-400">
+              Or sign in with email
+            </span>
           </div>
         </div>
 
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           <div className="space-y-4">
             <div>
-              <label htmlFor="email" className="text-sm font-medium text-gray-300">
+              <label
+                htmlFor="email"
+                className="text-sm font-medium text-gray-300"
+              >
                 Email address
               </label>
               <input
@@ -191,7 +204,10 @@ const Login = () => {
               />
             </div>
             <div>
-              <label htmlFor="password" className="text-sm font-medium text-gray-300">
+              <label
+                htmlFor="password"
+                className="text-sm font-medium text-gray-300"
+              >
                 Password
               </label>
               <input
@@ -204,7 +220,10 @@ const Login = () => {
                 placeholder="Enter your password"
               />
               <div className="flex justify-end mt-1">
-                <Link to="/forgot-password" className="text-sm text-blue-500 hover:text-blue-400">
+                <Link
+                  to="/forgot-password"
+                  className="text-sm text-blue-500 hover:text-blue-400"
+                >
                   Forgot password?
                 </Link>
               </div>
@@ -220,7 +239,7 @@ const Login = () => {
               {isLoading ? (
                 <motion.div
                   animate={{ rotate: 360 }}
-                  transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                  transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
                   className="w-5 h-5 border-2 border-white border-t-transparent rounded-full"
                 />
               ) : (
@@ -232,7 +251,10 @@ const Login = () => {
           <div className="text-center">
             <p className="text-sm text-gray-400">
               Don&apos;t have an account?{' '}
-              <Link to="/register" className="text-blue-500 hover:text-blue-400">
+              <Link
+                to="/register"
+                className="text-blue-500 hover:text-blue-400"
+              >
                 Create account
               </Link>
             </p>

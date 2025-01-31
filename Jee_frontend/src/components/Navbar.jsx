@@ -3,6 +3,7 @@ import { Link, useLocation} from 'react-router-dom';
 import PropTypes from 'prop-types';
 import { motion } from 'framer-motion';
 import { useSubscription } from '../context/SubscriptionContext';
+import { getDecryptedItem } from '../utils/encryption';
 
 const Navbar = ({ isMobileOpen, setIsMobileOpen }) => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -14,9 +15,8 @@ const Navbar = ({ isMobileOpen, setIsMobileOpen }) => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const userStr = localStorage.getItem('user');
-    if (userStr) {
-      const userData = JSON.parse(userStr);
+    const userData = getDecryptedItem('user');
+    if (userData) {
       setUser(userData);
       setIsLoading(false);
     }

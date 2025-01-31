@@ -18,6 +18,7 @@ import PropTypes from 'prop-types';
 import { aiService } from '../interceptors/ai.service';
 import { useSelection } from '../hooks/useSelection';
 import { MathJax } from 'better-react-mathjax';
+import { getDecryptedItem } from '../utils/encryption';
 
 const KeyboardShortcut = ({ shortcut }) => (
   <span className="inline-flex items-center text-[9px] text-gray-500 mt-0.5">
@@ -32,7 +33,7 @@ const KeyboardShortcut = ({ shortcut }) => (
 );
 
 KeyboardShortcut.propTypes = {
-  shortcut: PropTypes.string.isRequired
+  shortcut: PropTypes.string.isRequired,
 };
 
 // Move helpButtons outside component to prevent recreation
@@ -155,17 +156,17 @@ const HelpCarousel = memo(({ activeHelpType, handleHelpClick }) => {
         scrollPosition <
           containerRef.current?.scrollWidth -
             containerRef.current?.clientWidth && (
-        <div className="absolute right-0 top-0 bottom-0 flex items-center">
-          <button
-            onClick={() => scroll('right')}
-            className="p-1.5 bg-gradient-to-l from-gray-900 via-gray-900 to-transparent"
-          >
-            <div className="bg-gray-800 hover:bg-gray-700 rounded-full p-2 transition-all duration-200 transform hover:scale-110 shadow-lg">
-              <ChevronRightIcon className="w-4 h-4 text-white" />
-            </div>
-          </button>
-        </div>
-      )}
+          <div className="absolute right-0 top-0 bottom-0 flex items-center">
+            <button
+              onClick={() => scroll('right')}
+              className="p-1.5 bg-gradient-to-l from-gray-900 via-gray-900 to-transparent"
+            >
+              <div className="bg-gray-800 hover:bg-gray-700 rounded-full p-2 transition-all duration-200 transform hover:scale-110 shadow-lg">
+                <ChevronRightIcon className="w-4 h-4 text-white" />
+              </div>
+            </button>
+          </div>
+        )}
     </div>
   );
 });
@@ -185,11 +186,11 @@ HelpCarousel.displayName = 'HelpCarousel';
 const Message = memo(({ content, className }) => {
   return (
     <MathJax>
-      <div 
+      <div
         className={className}
-        dangerouslySetInnerHTML={{ 
-          __html: content 
-        }} 
+        dangerouslySetInnerHTML={{
+          __html: content,
+        }}
       />
     </MathJax>
   );
@@ -197,7 +198,7 @@ const Message = memo(({ content, className }) => {
 
 Message.propTypes = {
   content: PropTypes.string.isRequired,
-  className: PropTypes.string
+  className: PropTypes.string,
 };
 
 Message.displayName = 'Message';
@@ -217,29 +218,34 @@ const FadeNotification = memo(({ message, type, isEnabled, id }) => {
 
   return (
     <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50 animate-fade-in">
-      <div className={`
+      <div
+        className={`
         px-6 py-4 rounded-xl shadow-2xl backdrop-blur-md
-        ${type === 'deep-think' 
-          ? 'bg-gradient-to-r from-blue-600/90 to-blue-500/90 text-white ring-1 ring-blue-400/30' 
-          : 'bg-gradient-to-r from-gray-900/95 to-gray-800/95 text-white ring-1 ring-white/10'
+        ${
+          type === 'deep-think'
+            ? 'bg-gradient-to-r from-blue-600/90 to-blue-500/90 text-white ring-1 ring-blue-400/30'
+            : 'bg-gradient-to-r from-gray-900/95 to-gray-800/95 text-white ring-1 ring-white/10'
         }
         flex items-center gap-3 min-w-[200px] justify-center
-      `}>
+      `}
+      >
         <div className="flex items-center justify-center w-8 h-8">
           {type === 'deep-think' ? (
-            <span className={`text-2xl transform transition-transform duration-300 ${isEnabled ? 'scale-110' : 'scale-90 opacity-80'}`}>
+            <span
+              className={`text-2xl transform transition-transform duration-300 ${isEnabled ? 'scale-110' : 'scale-90 opacity-80'}`}
+            >
               🧠
             </span>
           ) : (
-            <span className={`text-2xl transform transition-transform duration-300 ${isEnabled ? 'scale-110' : 'scale-90 opacity-80'}`}>
+            <span
+              className={`text-2xl transform transition-transform duration-300 ${isEnabled ? 'scale-110' : 'scale-90 opacity-80'}`}
+            >
               💡
             </span>
           )}
         </div>
         <div className="flex flex-col">
-          <div className="text-sm font-medium">
-            {message}
-          </div>
+          <div className="text-sm font-medium">{message}</div>
           <div className="text-xs opacity-80">
             {isEnabled ? 'Enabled' : 'Disabled'}
           </div>
@@ -253,19 +259,19 @@ FadeNotification.propTypes = {
   message: PropTypes.string.isRequired,
   type: PropTypes.oneOf(['deep-think', 'help']).isRequired,
   isEnabled: PropTypes.bool,
-  id: PropTypes.string.isRequired
+  id: PropTypes.string.isRequired,
 };
 
 FadeNotification.displayName = 'FadeNotification';
 
-const ChatBot = ({ 
-  isOpen, 
-  setIsOpen, 
-  isFullScreen, 
-  setIsFullScreen, 
-  subject, 
-  topic, 
-  onResize 
+const ChatBot = ({
+  isOpen,
+  setIsOpen,
+  isFullScreen,
+  setIsFullScreen,
+  subject,
+  topic,
+  onResize,
 }) => {
   const [chatMessage, setMessage] = useState('');
   const [messages, setMessages] = useState([]);
@@ -310,8 +316,9 @@ const ChatBot = ({
   // Add scroll handler to detect when user is at bottom
   const handleScroll = useCallback(() => {
     if (!messagesContainerRef.current) return;
-    
-    const { scrollTop, scrollHeight, clientHeight } = messagesContainerRef.current;
+
+    const { scrollTop, scrollHeight, clientHeight } =
+      messagesContainerRef.current;
     const isAtBottom = Math.abs(scrollHeight - scrollTop - clientHeight) < 10;
     setShouldAutoScroll(isAtBottom);
   }, []);
@@ -323,10 +330,10 @@ const ChatBot = ({
 
     const scrollToBottom = () => {
       if (!shouldAutoScroll) return;
-      
+
       container.scrollTo({
         top: container.scrollHeight,
-        behavior: 'smooth'
+        behavior: 'smooth',
       });
     };
 
@@ -337,7 +344,7 @@ const ChatBot = ({
 
     // Add scroll listener
     container.addEventListener('scroll', handleScroll, { passive: true });
-    
+
     return () => {
       container.removeEventListener('scroll', handleScroll);
     };
@@ -363,9 +370,7 @@ const ChatBot = ({
           currentTypingIndex + charsPerTick
         );
 
-        setDisplayedResponse(
-          currentMessage.content.slice(0, nextIndex)
-        );
+        setDisplayedResponse(currentMessage.content.slice(0, nextIndex));
         setCurrentTypingIndex(nextIndex);
       }, 5); // Reduced delay from 10ms to 5ms for faster typing
     } else if (isTyping && currentMessage?.sender === 'assistant') {
@@ -383,21 +388,29 @@ const ChatBot = ({
     setEditingContent(content);
   };
 
-  // Save edited message and regenerate response
+  // Get user profile using encryption utility
+  useEffect(() => {
+    const userData = getDecryptedItem('user');
+    if (userData) {
+      setUserProfile(userData);
+    }
+  }, []);
+
+  // Handle save edit with encryption
   const handleSaveEdit = async () => {
     if (!editingContent.trim()) return;
-    
+
     // Find the index of the message being edited
-    const editIndex = messages.findIndex(m => m.id === editingMessageId);
+    const editIndex = messages.findIndex((m) => m.id === editingMessageId);
     if (editIndex === -1) return;
 
     // Keep only messages up to the edited message
-    const updatedMessages = messages.slice(0, editIndex + 1).map(m => 
-      m.id === editingMessageId 
-        ? { ...m, content: editingContent }
-        : m
-    );
-    
+    const updatedMessages = messages
+      .slice(0, editIndex + 1)
+      .map((m) =>
+        m.id === editingMessageId ? { ...m, content: editingContent } : m
+      );
+
     setMessages(updatedMessages);
     setEditingMessageId(null);
     setEditingContent('');
@@ -405,7 +418,7 @@ const ChatBot = ({
     // Generate new response
     setIsLoading(true);
     try {
-      const userData = JSON.parse(localStorage.getItem('user')) || {};
+      const userData = getDecryptedItem('user') || {};
       const sessionId = userData.current_session_id;
 
       const response = await aiService.askQuestion(editingContent, {
@@ -424,7 +437,7 @@ const ChatBot = ({
         type: 'text',
         content: response.solution,
       };
-      
+
       setMessages([...updatedMessages, aiMessage]);
       setDisplayedResponse('');
       setCurrentTypingIndex(0);
@@ -470,7 +483,7 @@ const ChatBot = ({
     }
   }, [abortController, messages, displayedResponse]);
 
-  // Modify handleSubmit to properly handle cancellation
+  // Handle message submission with encryption
   const handleSubmit = useCallback(
     async (e) => {
       e.preventDefault();
@@ -520,7 +533,7 @@ const ChatBot = ({
       setIsLoading(true);
 
       try {
-        const userData = JSON.parse(localStorage.getItem('user')) || {};
+        const userData = getDecryptedItem('user') || {};
         const sessionId = userData.current_session_id;
 
         if (!sessionId) {
@@ -632,14 +645,6 @@ const ChatBot = ({
       isTyping,
     ]
   );
-
-  // Get user profile from localStorage
-  useEffect(() => {
-    const userData = localStorage.getItem('user');
-    if (userData) {
-      setUserProfile(JSON.parse(userData));
-    }
-  }, []);
 
   // Listen for AI questions from other components
   useEffect(() => {
@@ -780,9 +785,9 @@ const ChatBot = ({
         id: Date.now().toString(),
         type: 'help',
         message: `${type} Mode`,
-        isEnabled: newState !== null
+        isEnabled: newState !== null,
       });
-      
+
       // Auto-disable after successful response
       if (newState !== null) {
         const disableAfterResponse = (e) => {
@@ -792,7 +797,7 @@ const ChatBot = ({
               id: Date.now().toString(),
               type: 'help',
               message: `${type} Mode`,
-              isEnabled: false
+              isEnabled: false,
             });
             window.removeEventListener('aiResponse', disableAfterResponse);
           }
@@ -805,14 +810,14 @@ const ChatBot = ({
 
   // Update deep think toggle
   const toggleDeepThink = useCallback(() => {
-    setIsDeepThinkEnabled(prev => !prev);
+    setIsDeepThinkEnabled((prev) => !prev);
     const newState = !isDeepThinkEnabled;
-    
+
     setShowNotification({
       id: Date.now().toString(),
       type: 'deep-think',
       message: 'Deep Think Mode',
-      isEnabled: newState
+      isEnabled: newState,
     });
 
     // Auto-disable after successful response
@@ -824,7 +829,7 @@ const ChatBot = ({
             id: Date.now().toString(),
             type: 'deep-think',
             message: 'Deep Think Mode',
-            isEnabled: false
+            isEnabled: false,
           });
           window.removeEventListener('aiResponse', disableAfterResponse);
         }
@@ -965,14 +970,14 @@ const ChatBot = ({
                   <span className="inline-block w-1 h-1 bg-gray-400 rounded-full"></span>
                   <span>{msg.source}</span>
                 </div>
-                <Message 
+                <Message
                   content={formattedContent}
                   className="text-[15px] break-words"
                 />
               </div>
             ) : (
               <div className="text-[15px] leading-relaxed whitespace-pre-wrap break-words">
-                <Message 
+                <Message
                   content={formattedContent}
                   className="text-[15px] leading-relaxed whitespace-pre-wrap break-words"
                 />
@@ -1078,14 +1083,14 @@ const ChatBot = ({
     setActiveHelpType(null);
   };
 
-  // Add effect to load today's chats automatically
+  // Load today's chats with encryption
   useEffect(() => {
     const loadTodayChats = async () => {
       if (!isOpen) return;
 
       try {
         setIsLoadingHistory(true);
-        const userData = JSON.parse(localStorage.getItem('user')) || {};
+        const userData = getDecryptedItem('user') || {};
         const sessionId = userData.current_session_id;
 
         if (!sessionId) {
@@ -1111,7 +1116,7 @@ const ChatBot = ({
     };
 
     loadTodayChats();
-  }, [isOpen]); // Reload when chat is opened
+  }, [isOpen]);
 
   // Update loadChatsFromPeriod to handle initial load
   const loadChatsFromPeriod = (periodChats) => {
@@ -1421,7 +1426,7 @@ const ChatBot = ({
       />
 
       {/* Messages */}
-      <div 
+      <div
         ref={messagesContainerRef}
         className="flex-1 overflow-y-auto p-2 sm:p-3 md:p-4 bg-gray-900 hide-scrollbar scroll-smooth"
       >
@@ -1429,8 +1434,14 @@ const ChatBot = ({
           <div className="flex flex-col items-center justify-center h-full space-y-3">
             <div className="relative w-12 h-12">
               <div className="absolute inset-0 rounded-full border-t-2 border-blue-500 animate-spin"></div>
-              <div className="absolute inset-2 rounded-full border-t-2 border-blue-400 animate-spin" style={{ animationDuration: '1s' }}></div>
-              <div className="absolute inset-4 rounded-full border-t-2 border-blue-300 animate-spin" style={{ animationDuration: '1.5s' }}></div>
+              <div
+                className="absolute inset-2 rounded-full border-t-2 border-blue-400 animate-spin"
+                style={{ animationDuration: '1s' }}
+              ></div>
+              <div
+                className="absolute inset-4 rounded-full border-t-2 border-blue-300 animate-spin"
+                style={{ animationDuration: '1.5s' }}
+              ></div>
             </div>
             <p className="text-sm text-gray-400">Loading chat history...</p>
           </div>

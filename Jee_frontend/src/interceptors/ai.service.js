@@ -1,4 +1,5 @@
 import aiInstance from './aiAxios';
+import { setEncryptedItem, getDecryptedItem } from '../utils/encryption';
 
 // Utility functions
 const fileToBase64 = async (file) => {
@@ -9,7 +10,7 @@ const fileToBase64 = async (file) => {
       const base64 = reader.result.split(',')[1];
       resolve(base64);
     };
-    reader.onerror = error => reject(error);
+    reader.onerror = (error) => reject(error);
   });
 };
 
@@ -19,9 +20,9 @@ const handleApiError = (error, defaultMessage) => {
     status: error.response?.status,
     data: error.response?.data,
     message: error.message,
-    stack: error.stack
+    stack: error.stack,
   });
-  
+
   if (error.response?.data) {
     throw error.response.data;
   } else if (error.message) {
@@ -55,11 +56,11 @@ const askQuestion = async (message, context, options = {}) => {
           image: context.image || null,
           Deep_think: context.Deep_think || false,
           history_limit: 100,
-          chat_history: []
-        }
+          chat_history: [],
+        },
       };
       headers = {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
       };
     }
 
@@ -67,8 +68,8 @@ const askQuestion = async (message, context, options = {}) => {
       ...options,
       headers: {
         ...headers,
-        ...options.headers
-      }
+        ...options.headers,
+      },
     });
     return response.data;
   } catch (error) {
@@ -79,7 +80,9 @@ const askQuestion = async (message, context, options = {}) => {
 const getHelpResponse = async (type, context) => {
   try {
     const requestData = {
-      question: context.question ? `${context.question} (${type})` : `Help me with: ${type}`,
+      question: context.question
+        ? `${context.question} (${type})`
+        : `Help me with: ${type}`,
       context: {
         user_id: context.user_id,
         session_id: context.session_id,
@@ -91,8 +94,8 @@ const getHelpResponse = async (type, context) => {
         image: context.image || null,
         Deep_think: context.Deep_think || false,
         history_limit: 100,
-        chat_history: []
-      }
+        chat_history: [],
+      },
     };
 
     const response = await aiInstance.post('api/solve-math/', requestData);
@@ -117,8 +120,8 @@ const analyzeFile = async (file, context) => {
         selectedText: '',
         image: base64File,
         history_limit: 100,
-        chat_history: []
-      }
+        chat_history: [],
+      },
     };
 
     const response = await aiInstance.post('api/solve-math/', requestData);
@@ -134,23 +137,28 @@ const checkSubscriptionStatus = async (userId) => {
     if (!userId) {
       throw new Error('User ID is required');
     }
-    
+
     // Check if we have cached subscription data
-    const cachedData = localStorage.getItem('subscription');
+    const cachedData = getDecryptedItem('subscription');
     if (cachedData) {
-      const parsedData = JSON.parse(cachedData);
       // Only return cached data if it's valid and not expired
-      if (parsedData && parsedData.valid_till && new Date(parsedData.valid_till) > new Date()) {
-        return parsedData;
+      if (
+        cachedData &&
+        cachedData.valid_till &&
+        new Date(cachedData.valid_till) > new Date()
+      ) {
+        return cachedData;
       }
     }
 
-    const response = await aiInstance.get(`api/subscription/status/?user_id=${userId}`);
+    const response = await aiInstance.get(
+      `api/subscription/status/?user_id=${userId}`
+    );
     console.log('Subscription API response:', response); // Debug log
-    
+
     if (response.data) {
-      // Store the fresh data in localStorage
-      localStorage.setItem('subscription', JSON.stringify(response.data));
+      // Store the fresh data with encryption
+      setEncryptedItem('subscription', response.data);
       return response.data;
     } else {
       throw new Error('Invalid response from subscription API');
@@ -161,19 +169,26 @@ const checkSubscriptionStatus = async (userId) => {
     return {
       status: 'error',
       is_subscribed: false,
-      message: error.message || 'Failed to check subscription status'
+      message: error.message || 'Failed to check subscription status',
     };
   }
 };
 
 const createSubscription = async (subscriptionData) => {
   try {
-    if (!subscriptionData.price || !subscriptionData.product_name || 
-        !subscriptionData.plan_id || !subscriptionData.user_id) {
+    if (
+      !subscriptionData.price ||
+      !subscriptionData.product_name ||
+      !subscriptionData.plan_id ||
+      !subscriptionData.user_id
+    ) {
       throw new Error('Missing required subscription data');
     }
 
-    const response = await aiInstance.post('api/subscription/create/', subscriptionData);
+    const response = await aiInstance.post(
+      'api/subscription/create/',
+      subscriptionData
+    );
     return response.data;
   } catch (error) {
     handleApiError(error, 'Failed to create subscription');
@@ -182,18 +197,25 @@ const createSubscription = async (subscriptionData) => {
 
 const verifySubscription = async (verificationData) => {
   try {
-    if (!verificationData.razorpay_payment_id || !verificationData.razorpay_subscription_id || 
-        !verificationData.razorpay_signature || !verificationData.user_id) {
+    if (
+      !verificationData.razorpay_payment_id ||
+      !verificationData.razorpay_subscription_id ||
+      !verificationData.razorpay_signature ||
+      !verificationData.user_id
+    ) {
       throw new Error('Missing required verification data');
     }
 
-    const response = await aiInstance.post('api/subscription/callback/', verificationData);
-    
-    // Update localStorage with new subscription data if verification is successful
+    const response = await aiInstance.post(
+      'api/subscription/callback/',
+      verificationData
+    );
+
+    // Update encrypted storage with new subscription data if verification is successful
     if (response.data.status === 'success') {
-      localStorage.setItem('subscription', JSON.stringify(response.data));
+      setEncryptedItem('subscription', response.data);
     }
-    
+
     return response.data;
   } catch (error) {
     handleApiError(error, 'Failed to verify subscription');
