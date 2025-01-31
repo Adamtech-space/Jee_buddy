@@ -41,3 +41,5 @@ staticfiles/
 # Vercel
 .vercel/
 .vercel
+
+.venv/
