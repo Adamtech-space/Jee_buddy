@@ -51,4 +51,9 @@ Thumbs.db
 *.crt
 secrets.yaml
 secrets.yml
-secrets.json 
+secrets.json
+
+# FFmpeg files
+Jee_buddy_ai_backend/ffmpeg/
+*.exe
+ffmpeg.zip 
