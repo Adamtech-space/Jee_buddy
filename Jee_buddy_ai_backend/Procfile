@@ -1,1 +1,9 @@
+<<<<<<< HEAD
+<<<<<<< HEAD
+web: gunicorn main.wsgi --log-file - 
+=======
+web: waitress-serve --port=8000 core.wsgi:application 
+>>>>>>> 510a5637e79fe504f442834022d9db4a8f774a73
+=======
 web: waitress-serve --port=8000 core.wsgi:application
+>>>>>>> 678225a023db042a2589713d3a262852255f01a6

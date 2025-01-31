@@ -35,6 +35,14 @@ DEBUG = os.getenv('DEBUG', 'False') == 'True'
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 
 
+<<<<<<< HEAD
+DEBUG = os.getenv('DEBUG', 'False') == 'True'
+
+<<<<<<< HEAD
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '.vercel.app,localhost,127.0.0.1').split(',')
+=======
+=======
+>>>>>>> 678225a023db042a2589713d3a262852255f01a6
 ALLOWED_HOSTS = [
     'localhost',
     'python-backend-env-1.eba-5hzqwm2u.ap-south-1.elasticbeanstalk.com',
@@ -43,6 +51,10 @@ ALLOWED_HOSTS = [
     '.amazonaws.com',
     '.vercel.app'
 ]
+<<<<<<< HEAD
+>>>>>>> 510a5637e79fe504f442834022d9db4a8f774a73
+=======
+>>>>>>> 678225a023db042a2589713d3a262852255f01a6
 
 
 # Application definition
@@ -67,7 +79,14 @@ ASGI_APPLICATION = 'config.asgi.application'
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
     'whitenoise.middleware.WhiteNoiseMiddleware',
+>>>>>>> 510a5637e79fe504f442834022d9db4a8f774a73
+=======
+    'whitenoise.middleware.WhiteNoiseMiddleware',
+>>>>>>> 678225a023db042a2589713d3a262852255f01a6
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -189,8 +208,16 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
+>>>>>>> 510a5637e79fe504f442834022d9db4a8f774a73
+=======
 STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.StaticFilesStorage'
 
+>>>>>>> 678225a023db042a2589713d3a262852255f01a6
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
