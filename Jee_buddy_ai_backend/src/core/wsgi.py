@@ -8,7 +8,6 @@ https://docs.djangoproject.com/en/5.1/howto/deployment/wsgi/
 """
 
 import os
-<<<<<<< HEAD
 import django
 from django.core.wsgi import get_wsgi_application
 from django.core.handlers.wsgi import WSGIHandler
@@ -35,10 +34,3 @@ application = VercelWSGIHandler()
 
 # For Vercel
 app = application
-=======
-from django.core.wsgi import get_wsgi_application
-
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "core.settings")
-
-application = get_wsgi_application()
->>>>>>> 510a5637e79fe504f442834022d9db4a8f774a73
