@@ -2,23 +2,26 @@
     "version": 2,
     "builds": [
         {
-            "src": "src/core/wsgi.py",
-            "use": "@vercel/python",
+            "src": "Jee_buddy_ai_backend/wsgi.py",
+            "use": "@vercel/python@1.9.1",
             "config": {
                 "maxLambdaSize": "15mb",
                 "runtime": "python3.9"
             }
         }
     ],
-    "functions": {
-        "src/core/wsgi.py": {
-            "maxDuration": 200
-        }
-    },
     "routes": [
         {
+            "src": "/api/.*",
+            "dest": "Jee_buddy_ai_backend/wsgi.py",
+            "methods": ["GET", "POST", "PUT", "DELETE"],
+            "headers": {
+                "Content-Type": "application/json"
+            }
+        },
+        {
             "src": "/(.*)",
-            "dest": "src/core/wsgi.py"
+            "dest": "/static/$1"
         }
     ],
     "env": {

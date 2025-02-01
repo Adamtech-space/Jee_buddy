@@ -8,7 +8,7 @@ from .agents.math_agent import MathAgent
 import asyncio
 import logging
 import json
-from .models import ChatHistory, UserProfile
+from .models import ChatHistory
 import base64
 import uuid
 from django.db import connections
@@ -116,38 +116,35 @@ def save_chat_interaction(user_id, session_id, question, response, context_data)
 async def process_math_problem(request_data):
     try:
         # Extract data from request
-        question = request_data.get('question')
+        question = request_data.get('question', '')
         if not question:
             return {
                 'error': 'Question is required'
             }, 400
-        
-        # Handle context data
-        context_data = request_data.get('context', {})
-        
-        # Get user and session info
-        user_id = context_data.get('user_id')
-        session_id = context_data.get('session_id')
-        history_limit = context_data.get('history_limit', 100)
 
+        # Create context dictionary from form data
+        context = {
+            'user_id': request_data.get('user_id'),
+            'session_id': request_data.get('session_id'),
+            'subject': request_data.get('subject', ''),
+            'topic': request_data.get('topic', ''),
+            'interaction_type': request_data.get('type', ''),
+            'pinnedText': request_data.get('pinnedText', ''),
+            'selectedText': request_data.get('selectedText', ''),
+            'Deep_think': request_data.get('Deep_think', False),
+            'image': request_data.get('image'),  # This will contain the base64 image
+            'source': request_data.get('source', 'Chat')
+        }
+        
         # Get chat history
         chat_history = []
-        if user_id and session_id:
-            chat_history = await get_chat_history(user_id, session_id, history_limit)
-        
-        # Create context
-        context = {
-            'user_id': user_id,
-            'session_id': session_id,
-            'chat_history': chat_history,
-            'history_limit': history_limit,
-            'image': None,
-            'interaction_type': context_data.get('interaction_type', 'solve'),
-            'pinnedText': context_data.get('pinnedText', ''),
-            'selectedText': context_data.get('selectedText', ''),
-            'subject': context_data.get('subject', ''),
-            'topic': context_data.get('topic', '')
-        }
+        if context['user_id'] and context['session_id']:
+            chat_history = await get_chat_history(
+                context['user_id'], 
+                context['session_id'], 
+                request_data.get('history_limit', 100)
+            )
+        context['chat_history'] = chat_history
 
         # Initialize math agent and get solution
         agent = await MathAgent.create()
@@ -160,34 +157,38 @@ async def process_math_problem(request_data):
             }, 500
 
         # Save interaction
-        if user_id and session_id:
+        if context['user_id'] and context['session_id']:
             await save_chat_interaction(
-                user_id=user_id,
-                session_id=session_id,
+                user_id=context['user_id'],
+                session_id=context['session_id'],
                 question=question,
                 response=solution['solution'],
                 context_data={
-                    'subject': context.get('subject'),
-                    'topic': context.get('topic'),
-                    'interaction_type': context.get('interaction_type'),
-                    'pinned_text': context.get('pinnedText'),
+                    'subject': context['subject'],
+                    'topic': context['topic'],
+                    'interaction_type': context['interaction_type'],
+                    'pinned_text': context['pinnedText'],
                 }
             )
 
         # Get updated history
         updated_chat_history = []
-        if user_id and session_id:
-            updated_chat_history = await get_chat_history(user_id, session_id, history_limit)
+        if context['user_id'] and context['session_id']:
+            updated_chat_history = await get_chat_history(
+                context['user_id'], 
+                context['session_id'], 
+                request_data.get('history_limit', 100)
+            )
 
         return {
             'solution': solution['solution'],
             'context': {
                 'current_question': question,
                 'response': solution['solution'],
-                'user_id': user_id,
-                'session_id': session_id,
-                'subject': context.get('subject'),
-                'topic': context.get('topic'),
+                'user_id': context['user_id'],
+                'session_id': context['session_id'],
+                'subject': context['subject'],
+                'topic': context['topic'],
                 'chat_history': updated_chat_history
             }
         }, 200
@@ -201,57 +202,42 @@ async def process_math_problem(request_data):
 
 @csrf_exempt
 @api_view(['POST'])
+@parser_classes([MultiPartParser, FormParser, JSONParser])
 def solve_math_problem(request):
     try:
-        # Debug logging
         logger.info(f"Request Content-Type: {request.content_type}")
         
-        # Get the raw request body and clean it
-        body = request.body.decode('utf-8').strip()
-        logger.info(f"Raw request body: {body}")
-        
-        # Try to parse JSON directly from request body
-        try:
-            # Use json.loads with custom parser to handle null values
-            data = json.loads(
-                body,
-                parse_constant=lambda x: None if x.lower() == 'null' else x
-            )
-            logger.info(f"Parsed data: {data}")
-        except json.JSONDecodeError as e:
-            logger.error(f"JSON decode error at position {e.pos}: {e.msg}")
-            logger.error(f"JSON string: {e.doc}")
+        # Handle form data
+        if request.content_type.startswith('multipart/form-data'):
+            data = request.data.copy()  # Get mutable copy of request data
+            
+            # Handle image if present
+            if 'image' in request.FILES:
+                image_file = request.FILES['image']
+                # Convert image to base64
+                image_data = base64.b64encode(image_file.read()).decode('utf-8')
+                data['image'] = image_data
+            
+            # Convert boolean fields
+            if 'Deep_think' in data:
+                data['Deep_think'] = data['Deep_think'].lower() == 'true'
+                
+        elif request.content_type == 'application/json':
+            data = json.loads(request.body.decode('utf-8'))
+        else:
             return JsonResponse({
-                'error': 'Invalid JSON format',
-                'details': f'JSON parse error at position {e.pos}: {e.msg}'
+                'error': 'Unsupported content type',
+                'details': 'Only multipart/form-data and application/json are supported'
             }, status=400)
 
         # Validate required fields
-        if not isinstance(data, dict):
-            return JsonResponse({
-                'error': 'Invalid request format',
-                'details': 'Request body must be a JSON object'
-            }, status=400)
-
-        if 'question' not in data:
+        if not data.get('question'):
             return JsonResponse({
                 'error': 'Missing required field',
                 'details': 'Question field is required'
             }, status=400)
 
-        if 'context' not in data:
-            return JsonResponse({
-                'error': 'Missing required field',
-                'details': 'Context field is required'
-            }, status=400)
-
-        # Clean up the context data
-        if 'context' in data and isinstance(data['context'], dict):
-            context = data['context']
-            if 'image' in context and context['image'] == 'null':
-                context['image'] = None
-
-        # Use async_to_sync to properly handle the event loop
+        # Process the request
         response_data, status_code = async_to_sync(process_math_problem)(data)
         return JsonResponse(response_data, status=status_code)
             

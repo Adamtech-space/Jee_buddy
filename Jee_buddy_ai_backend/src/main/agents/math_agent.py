@@ -249,19 +249,10 @@ class MathAgent:
             context_data = self._extract_context(context)
             
             # Check if this is a visualization request
-            is_image_request = bool(context and context.get('image'))
+            needs_visual = self._needs_visualization(question, context)
             
-            if is_image_request:
-                # Handle image upload
-                image_file = context.get('image') 
-                logger.info("Image detected in context, processing with MathSolver.")
-                solution = await self.image_solver.solve(image_file, question)  # Use MathSolver to process the image
-            else:
-                # Check if this is a visualization request
-                needs_visual = self._needs_visualization(question, context)
-
-                # Handle visualization if needed
-                visualization_data = None
+            # Handle visualization if needed
+            visualization_data = None
             if needs_visual:
                 try:
                     # Extract concept from question (e.g., "show me how pythagoras theorem works" -> "pythagoras theorem")

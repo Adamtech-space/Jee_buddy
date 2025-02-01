@@ -1,5 +1,10 @@
-import { useState, useEffect } from 'react';
-import { useParams, useLocation, useNavigate, useOutletContext } from 'react-router-dom';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import {
+  useParams,
+  useLocation,
+  useNavigate,
+  useOutletContext,
+} from 'react-router-dom';
 import { message, Modal } from 'antd';
 import {
   ArrowLeftOutlined,
@@ -19,22 +24,143 @@ import html2canvas from 'html2canvas';
 // Import styles
 import '@react-pdf-viewer/core/lib/styles/index.css';
 
-const PdfViewer = () => {
-  const { pdfUrl: encodedUrl, subject } = useParams();
+const PdfViewer = ({ pdfUrl: propsPdfUrl, subject: propsSubject, onBack }) => {
+  const { pdfUrl: encodedUrl, subject: routeSubject } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
   const { isChatOpen, isSidebarOpen, setIsChatOpen } = useOutletContext();
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [selectionPosition, setSelectionPosition] = useState(null);
   const { handleTextSelection } = useSelection();
   const [isAreaSelecting, setIsAreaSelecting] = useState(false);
   const [viewerContainerRef, setViewerContainerRef] = useState(null);
   const [capturedImage, setCapturedImage] = useState(null);
   const [showConfirmation, setShowConfirmation] = useState(false);
 
-  // Get the actual URL from either state or params
-  const pdfUrl = location.state?.pdfUrl || decodeURIComponent(encodedUrl);
+  // Refs
+  const selectionTimerRef = useRef(null);
+  const containerRef = useRef(null);
+
+  // Memoized selection handler
+  const handleSelection = useCallback(
+    (e) => {
+      // Don't handle selection if clicking on controls or during loading
+      if (
+        loading ||
+        e.target instanceof HTMLButtonElement ||
+        e.target instanceof HTMLInputElement ||
+        e.target.closest('.rpv-core__viewer-navigation') ||
+        e.target.closest('.rpv-core__viewer-toolbar') ||
+        isAreaSelecting
+      ) {
+        return;
+      }
+
+      // Clear any existing timer
+      if (selectionTimerRef.current) {
+        clearTimeout(selectionTimerRef.current);
+      }
+
+      // Set a new timer to handle the selection
+      selectionTimerRef.current = setTimeout(() => {
+        const selection = window.getSelection();
+        const selectedText = selection?.toString()?.trim();
+
+        // Different length thresholds for mobile and desktop
+        const minLength = isMobile ? 1 : 2;
+        const maxLength = isMobile ? 500 : 1000;
+
+        // Ignore if selection is too short or too long
+        if (
+          !selectedText ||
+          selectedText.length < minLength ||
+          selectedText.length > maxLength
+        ) {
+          return;
+        }
+
+        // Get selection coordinates for better popup positioning
+        const range = selection.getRangeAt(0);
+        const rect = range.getBoundingClientRect();
+        const position = {
+          x: rect.left + rect.width / 2,
+          y: rect.bottom
+        };
+        setSelectionPosition(position);
+        
+        // Process mathematical notation
+        let processedText = selectedText
+          .replace(/÷/g, '\\div')
+          .replace(/×/g, '\\times')
+          .replace(/√/g, '\\sqrt')
+          .replace(/∞/g, '\\infty')
+          .replace(/≠/g, '\\neq')
+          .replace(/≤/g, '\\leq')
+          .replace(/≥/g, '\\geq')
+          .replace(/±/g, '\\pm')
+          .replace(/∓/g, '\\mp')
+          .replace(/∑/g, '\\sum')
+          .replace(/∏/g, '\\prod')
+          .replace(/∫/g, '\\int')
+          .replace(/∂/g, '\\partial')
+          .replace(/∇/g, '\\nabla')
+          .replace(/∆/g, '\\Delta')
+          .replace(/π/g, '\\pi')
+          .replace(/θ/g, '\\theta')
+          .replace(/α/g, '\\alpha')
+          .replace(/β/g, '\\beta')
+          .replace(/γ/g, '\\gamma')
+          .replace(/δ/g, '\\delta')
+          .replace(/ε/g, '\\epsilon')
+          .replace(/ζ/g, '\\zeta')
+          .replace(/η/g, '\\eta')
+          .replace(/λ/g, '\\lambda')
+          .replace(/μ/g, '\\mu')
+          .replace(/ν/g, '\\nu')
+          .replace(/ξ/g, '\\xi')
+          .replace(/ρ/g, '\\rho')
+          .replace(/σ/g, '\\sigma')
+          .replace(/τ/g, '\\tau')
+          .replace(/φ/g, '\\phi')
+          .replace(/χ/g, '\\chi')
+          .replace(/ψ/g, '\\psi')
+          .replace(/ω/g, '\\omega')
+          // Process fractions
+          .replace(/(\d+)\/(\d+)/g, '\\frac{$1}{$2}')
+          // Process superscripts
+          .replace(/\^(\d+)/g, '^{$1}')
+          // Process subscripts
+          .replace(/_(\d+)/g, '_{$1}');
+
+        // Wrap in math delimiters if it contains math symbols
+        if (processedText.match(/[+\-*/=<>≠≤≥±∓∑∏∫∂∇∆π\\]/)) {
+          processedText = `$${processedText}$`;
+        }
+
+        // Pass selection position to handleTextSelection
+        handleTextSelection(e, processedText, position);
+      }, 250); // Increased debounce time for better control
+    },
+    [loading, isAreaSelecting, handleTextSelection, isMobile]
+  );
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (selectionTimerRef.current) {
+        clearTimeout(selectionTimerRef.current);
+      }
+    };
+  }, []);
+
+  // Get the actual URL from props, state, or params
+  const pdfUrl =
+    propsPdfUrl ||
+    location.state?.pdfUrl ||
+    decodeURIComponent(encodedUrl || '');
+  const subject = propsSubject || routeSubject;
   const pdfTitle = decodeURIComponent(
     pdfUrl.split('/').pop().replace('.pdf', '')
   );
@@ -62,13 +188,13 @@ const PdfViewer = () => {
           if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
           }
-        setLoading(false);
-      })
+          setLoading(false);
+        })
         .catch((err) => {
-        console.error('Error checking PDF URL:', err);
-        setError(`Failed to access PDF: ${err.message}`);
-        setLoading(false);
-      });
+          console.error('Error checking PDF URL:', err);
+          setError(`Failed to access PDF: ${err.message}`);
+          setLoading(false);
+        });
     }
   }, [pdfUrl, navigate, subject]);
 
@@ -215,82 +341,6 @@ const PdfViewer = () => {
     setIsAreaSelecting(false);
   };
 
-  // Enhanced text selection handler
-  const handleSelection = (e) => {
-    // Don't handle selection if clicking on controls or during loading
-    if (
-      loading ||
-      e.target instanceof HTMLButtonElement ||
-      e.target instanceof HTMLInputElement ||
-      e.target.closest('.rpv-core__viewer-navigation') ||
-      e.target.closest('.rpv-core__viewer-toolbar')
-    ) {
-      return;
-    }
-
-    // Use requestAnimationFrame to ensure selection is complete
-    requestAnimationFrame(() => {
-      const selection = window.getSelection();
-      if (!selection || !selection.toString().trim()) return;
-
-      let selectedText = selection.toString().trim();
-
-      // Process mathematical notation
-      if (selectedText) {
-        // Replace common math symbols with LaTeX notation
-        selectedText = selectedText
-          .replace(/÷/g, '\\div')
-          .replace(/×/g, '\\times')
-          .replace(/√/g, '\\sqrt')
-          .replace(/∞/g, '\\infty')
-          .replace(/≠/g, '\\neq')
-          .replace(/≤/g, '\\leq')
-          .replace(/≥/g, '\\geq')
-          .replace(/±/g, '\\pm')
-          .replace(/∓/g, '\\mp')
-          .replace(/∑/g, '\\sum')
-          .replace(/∏/g, '\\prod')
-          .replace(/∫/g, '\\int')
-          .replace(/∂/g, '\\partial')
-          .replace(/∇/g, '\\nabla')
-          .replace(/∆/g, '\\Delta')
-          .replace(/π/g, '\\pi')
-          .replace(/θ/g, '\\theta')
-          .replace(/α/g, '\\alpha')
-          .replace(/β/g, '\\beta')
-          .replace(/γ/g, '\\gamma')
-          .replace(/δ/g, '\\delta')
-          .replace(/ε/g, '\\epsilon')
-          .replace(/ζ/g, '\\zeta')
-          .replace(/η/g, '\\eta')
-          .replace(/λ/g, '\\lambda')
-          .replace(/μ/g, '\\mu')
-          .replace(/ν/g, '\\nu')
-          .replace(/ξ/g, '\\xi')
-          .replace(/ρ/g, '\\rho')
-          .replace(/σ/g, '\\sigma')
-          .replace(/τ/g, '\\tau')
-          .replace(/φ/g, '\\phi')
-          .replace(/χ/g, '\\chi')
-          .replace(/ψ/g, '\\psi')
-          .replace(/ω/g, '\\omega')
-          // Process fractions
-          .replace(/(\d+)\/(\d+)/g, '\\frac{$1}{$2}')
-          // Process superscripts
-          .replace(/\^(\d+)/g, '^{$1}')
-          // Process subscripts
-          .replace(/_(\d+)/g, '_{$1}');
-
-        // Wrap the text in math delimiters if it contains math symbols
-        if (selectedText.match(/[+\-*/=<>≠≤≥±∓∑∏∫∂∇∆π\\]/)) {
-          selectedText = `$${selectedText}$`;
-        }
-      }
-
-      handleTextSelection(e, selectedText);
-    });
-  };
-
   if (!pdfUrl) return null;
 
   return (
@@ -302,14 +352,14 @@ const PdfViewer = () => {
         right: isMobile ? '0' : isChatOpen ? '450px' : '0',
         bottom: '0',
       }}
-      onMouseUp={handleSelection}
-      onTouchEnd={handleSelection}
       ref={setViewerContainerRef}
     >
       {/* Back button - Left side */}
       <div className="absolute top-4 left-4 z-10">
         <button
-          onClick={() => navigate(`/dashboard/${subject}/books`)}
+          onClick={() =>
+            onBack ? onBack() : navigate(`/dashboard/${subject}/books`)
+          }
           className="flex items-center gap-1 px-3 py-1.5 text-white hover:text-blue-500 transition-colors bg-gray-800/80 backdrop-blur rounded-lg"
         >
           <ArrowLeftOutlined />
@@ -397,68 +447,52 @@ const PdfViewer = () => {
             }
           }}
           className={`
-            group relative px-4 py-2 rounded-full transition-all duration-300 ease-in-out
+            group relative px-3 py-1.5 rounded-full transition-all duration-300 ease-in-out
             ${
               isAreaSelecting
                 ? 'bg-red-500/90 hover:bg-red-600/90 shadow-lg shadow-red-500/30'
                 : 'bg-gray-800/90 hover:bg-gray-700/90'
             }
-            backdrop-blur-sm border border-white/10 shadow-lg
+            backdrop-blur-sm border border-white/10 shadow-lg scale-90 touch-manipulation
           `}
+          style={{ WebkitTapHighlightColor: 'transparent' }}
         >
-          <div className="relative flex items-center gap-3">
+          <div className="relative flex items-center gap-2">
             <span
               className={`flex items-center justify-center ${isAreaSelecting ? 'text-white' : 'text-blue-400'}`}
             >
               {isAreaSelecting ? (
-                <CloseOutlined className="text-lg" />
+                <CloseOutlined className="text-base" />
               ) : (
                 <div className="relative">
-                  <CameraOutlined className="text-lg" />
-                  <div className="absolute -right-1 -bottom-1 text-xs group-hover:translate-x-0.5 group-hover:translate-y-0.5 transition-transform duration-300">
-                    <svg
-                      width="8"
-                      height="8"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      xmlns="http://www.w3.org/2000/svg"
-                    >
-                      <path
-                        d="M14 5L21 12M21 12L14 19M21 12H3"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  </div>
+                  <CameraOutlined className="text-base" />
                 </div>
               )}
             </span>
             <span
-              className={`text-sm font-medium flex items-center gap-1 ${isAreaSelecting ? 'text-white' : 'text-gray-300 group-hover:text-white'}`}
+              className={`text-xs font-medium ${isAreaSelecting ? 'text-white' : 'text-gray-300'}`}
             >
-              {isAreaSelecting ? (
-                'Cancel'
-              ) : (
-                <>
-                  Drag to capture
-                  <span className="text-[10px] opacity-60 bg-white/10 px-1.5 py-0.5 rounded">
-                    Click
-                  </span>
-                </>
-              )}
+              {isAreaSelecting ? 'Cancel' : 'Capture'}
             </span>
           </div>
         </button>
       </div>
 
-      {/* Area Selector */}
+      {/* Area Selector with Touch Support */}
       {isAreaSelecting && (
-        <div className="fixed inset-0" style={{ zIndex: 40 }}>
+        <div 
+          className="fixed inset-0 touch-none" 
+          style={{ 
+            zIndex: 40,
+            touchAction: 'none',
+            userSelect: 'none',
+            WebkitUserSelect: 'none'
+          }}
+        >
           <AreaSelector
             onAreaSelected={handleAreaSelected}
             onCancel={handleCancelAreaSelection}
+            isMobile={isMobile}
           />
         </div>
       )}
@@ -473,31 +507,39 @@ const PdfViewer = () => {
 
       {/* PDF Viewer */}
       <div
-        className="absolute inset-0 bg-gray-900"
-        style={{ top: isMobile ? '56px' : 0 }}
+        ref={containerRef}
+        className="absolute inset-0 overflow-auto bg-gray-900 scroll-smooth"
+        style={{
+          top: isMobile ? '56px' : 0,
+          paddingTop: '1rem',
+          paddingBottom: '1rem',
+        }}
+        onMouseUp={handleSelection}
+        onTouchEnd={handleSelection}
       >
         <Worker workerUrl="https://unpkg.com/pdfjs-dist@3.4.120/build/pdf.worker.min.js">
-            <Viewer
-              fileUrl={pdfUrl}
+          <Viewer
+            fileUrl={pdfUrl}
             defaultScale={isMobile ? 1 : 'PageWidth'}
             theme="dark"
             className="h-full"
-              renderLoader={(percentages) => (
-                <div className="flex items-center justify-center h-full">
+            renderLoader={(percentages) => (
+              <div className="flex items-center justify-center h-full">
                 <div className="text-center text-white">
-                    <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-500 mb-4"></div>
+                  <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-500 mb-4"></div>
                   <p>Loading PDF... {Math.round(percentages)}%</p>
                 </div>
-                </div>
-              )}
-            />
-          </Worker>
+              </div>
+            )}
+          />
+        </Worker>
       </div>
 
       {/* Selection Popup */}
       <SelectionPopup
         onSaveToFlashCard={handleSaveToFlashCard}
         onAskAI={handleAskAI}
+        position={selectionPosition}
       />
 
       {/* Confirmation Modal */}
@@ -522,8 +564,8 @@ const PdfViewer = () => {
                   maxWidth: '100%',
                 }}
               />
-        </div>
-      )}
+            </div>
+          )}
           <div className="flex justify-end gap-2 mt-4">
             <button
               onClick={handleReselect}
@@ -545,8 +587,9 @@ const PdfViewer = () => {
 };
 
 PdfViewer.propTypes = {
-  onClick: PropTypes.func,
-  scale: PropTypes.number,
+  pdfUrl: PropTypes.string,
+  subject: PropTypes.string,
+  onBack: PropTypes.func,
 };
 
-export default PdfViewer; 
+export default PdfViewer;

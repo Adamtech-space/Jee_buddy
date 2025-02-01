@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { handleGoogleCallback } from '../interceptors/services';
+import { setEncryptedItem } from '../utils/encryption';
 
 const AuthCallback = () => {
   const navigate = useNavigate();
@@ -10,9 +11,12 @@ const AuthCallback = () => {
       try {
         const urlParams = new URLSearchParams(window.location.search);
         const code = urlParams.get('code');
-        
+
         if (code) {
-          await handleGoogleCallback(code);
+          const response = await handleGoogleCallback(code);
+          if (response?.user) {
+            setEncryptedItem('user', response.user);
+          }
           navigate('/subject-selection', { replace: true });
         } else {
           navigate('/login', { replace: true });

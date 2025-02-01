@@ -2,6 +2,7 @@ import { createContext, useState, useContext, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { aiService } from '../interceptors/ai.service';
 import PropTypes from 'prop-types';
+import { getDecryptedItem } from '../utils/encryption';
 
 const SubscriptionContext = createContext();
 
@@ -20,9 +21,8 @@ export const SubscriptionProvider = ({ children }) => {
 
   const getUserId = () => {
     try {
-      const userDataStr = localStorage.getItem('user');
-      if (!userDataStr) return null;
-      const userData = JSON.parse(userDataStr);
+      const userData = getDecryptedItem('user');
+      if (!userData) return null;
       return userData.id || null;
     } catch (error) {
       console.error('Error getting user ID:', error);
@@ -41,7 +41,7 @@ export const SubscriptionProvider = ({ children }) => {
 
       const response = await aiService.checkSubscriptionStatus(userId);
       console.log('Subscription status:', response);
-      
+
       if (response.status === 'success') {
         setIsSubscribed(response.is_subscribed);
         if (!response.is_subscribed) {
@@ -66,7 +66,7 @@ export const SubscriptionProvider = ({ children }) => {
 
   // Check if current route is public
   const isPublicRoute = () => {
-    return PUBLIC_ROUTES.some(route => location.pathname.startsWith(route));
+    return PUBLIC_ROUTES.some((route) => location.pathname.startsWith(route));
   };
 
   useEffect(() => {
@@ -91,7 +91,7 @@ export const SubscriptionProvider = ({ children }) => {
     loading,
     handleSubscribe,
     checkSubscriptionStatus,
-    forceSubscribe
+    forceSubscribe,
   };
 
   if (loading) {
@@ -108,7 +108,9 @@ export const SubscriptionProvider = ({ children }) => {
               Subscription Required
             </h2>
             <p className="text-gray-300 mb-6">
-              To continue using JEE Buddy's features, please subscribe to one of our plans. This will give you access to all our premium features and AI assistance.
+              To continue using JEE Buddy's features, please subscribe to one of
+              our plans. This will give you access to all our premium features
+              and AI assistance.
             </p>
             <div className="flex justify-end">
               <button

@@ -189,11 +189,7 @@ const handleGoogleCallback = async (code) => {
 
     return {
       user: {
-        id: profile.id,
-        email: profile.email,
-        name: profile.name,
-        avatar_url: googleUser.picture,
-        current_session_id: sessionId
+        ...profile
       },
       tokens: {
         access: {
@@ -291,7 +287,9 @@ const loginUserWithEmailAndPassword = async (email, password) => {
       });
 
       return {
-        user: updatedProfile,
+        user: {
+          ...updatedProfile
+        },
         tokens
       };
     }
@@ -369,7 +367,9 @@ const loginUserWithEmailAndPassword = async (email, password) => {
     });
 
     return {
-      user: updatedProfile,
+      user: {
+        ...updatedProfile
+      },
       tokens
     };
   } catch (error) {
@@ -544,9 +544,7 @@ const createUser = async (userInput) => {
           phone_number: userInput.phonenumber,
           created_at: now,
           updated_at: now,
-          current_session_id: null,
-          payment_status: null,
-          total_tokens: '0'
+          current_session_id: null
         }])
         .select()
         .single();
@@ -589,7 +587,9 @@ const createUser = async (userInput) => {
     });
 
     return {
-      user: profile,
+      user: {
+        ...profile
+      },
       tokens
     };
   } catch (error) {

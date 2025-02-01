@@ -1,4 +1,9 @@
 import apiInstance from "./axios.jsx";
+import {
+  setEncryptedItem,
+  getDecryptedItem,
+  removeItem,
+} from '../utils/encryption';
 
 // User authentication services
 export const userLogin = async (data) => {
@@ -9,14 +14,14 @@ export const userLogin = async (data) => {
     console.log('Login response:', response.data);
     
     if (response.data.tokens && response.data.user) {
-      // Store tokens and user data
-      localStorage.setItem("tokens", JSON.stringify(response.data.tokens));
-      localStorage.setItem("user", JSON.stringify(response.data.user));
-      
+      // Store tokens and user data with encryption
+      setEncryptedItem('tokens', response.data.tokens);
+      setEncryptedItem('user', response.data.user);
+
       // Set the auth header for subsequent requests
-      apiInstance.defaults.headers.common['Authorization'] = 
+      apiInstance.defaults.headers.common['Authorization'] =
         `Bearer ${response.data.tokens.access.token}`;
-      
+
       return response.data;
     }
     throw new Error('Invalid response from server');
@@ -40,8 +45,8 @@ export const userRegister = async (data) => {
   try {
     const response = await apiInstance.post("/auth/register", data);
     if (response.data.tokens) {
-      localStorage.setItem("tokens", JSON.stringify(response.data.tokens));
-      localStorage.setItem("user", JSON.stringify(response.data.user));
+      setEncryptedItem('tokens', response.data.tokens);
+      setEncryptedItem('user', response.data.user);
     }
     return response.data;
   } catch (error) {
@@ -62,7 +67,7 @@ export const handleGoogleCallback = async (code) => {
   try {
     const response = await apiInstance.get(`/auth/google/callback?code=${code}`);
     if (response.data.tokens) {
-      localStorage.setItem("tokens", JSON.stringify(response.data.tokens));
+      setEncryptedItem('tokens', response.data.tokens);
       return response.data;
     }
     throw new Error("No tokens received");
@@ -92,18 +97,17 @@ export const resetPassword = async (token, password) => {
 export const logout = async () => {
   try {
     await apiInstance.post("/auth/logout");
-    localStorage.removeItem("tokens");
+    removeItem('tokens');
     window.location.href = "/login";
   } catch (error) {
-    localStorage.removeItem("tokens");
+    removeItem('tokens');
     window.location.href = "/login";
   }
 };
 
 export const getCurrentUser = () => {
   try {
-    const user = localStorage.getItem("user");
-    return user ? JSON.parse(user) : null;
+    return getDecryptedItem('user');
   } catch (error) {
     return null;
   }
@@ -111,7 +115,7 @@ export const getCurrentUser = () => {
 
 export const isAuthenticated = () => {
   try {
-    const tokens = JSON.parse(localStorage.getItem("tokens"));
+    const tokens = getDecryptedItem('tokens');
     return !!tokens?.access?.token;
   } catch {
     return false;

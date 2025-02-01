@@ -264,7 +264,7 @@ const DefaultLayout = ({ children }) => {
           <main
             className={`flex-1 w-full transition-all duration-300 ease-in-out ${
               isDashboard && !isFullScreen && isSidebarOpen ? 'md:pl-64' : ''
-            } px-2 sm:px-4 md:px-6`}
+            } `}
             style={{
               paddingRight:
                 isDashboard &&
