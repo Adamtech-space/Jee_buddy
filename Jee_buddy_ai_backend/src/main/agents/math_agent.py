@@ -1,11 +1,18 @@
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 import logging
 from asgiref.sync import sync_to_async
 from openai import AsyncOpenAI
 from contextlib import asynccontextmanager
 import os
 from main.models import ChatHistory
-
+from .math_visualization_agent import ManimScriptGenerator
+from .math_visualization_agent import ManimRenderer
+from pathlib import Path
+from django.conf import settings
+import uuid
+import base64
+from io import BytesIO
+from .math_image_agent import MathSolver
 logger = logging.getLogger(__name__)
 
 class ResponseTemplates:
@@ -136,6 +143,9 @@ class MathAgent:
         self.api_key = api_key
         self.templates = ResponseTemplates()
         self._setup_agent()
+        self.visualization_agent = ManimScriptGenerator()
+        self.renderer = ManimRenderer()
+        self.image_solver = MathSolver(api_key)  # Initialize MathSolver
 
     @classmethod
     async def create(cls):
@@ -207,13 +217,76 @@ class MathAgent:
                 "stream": False
             }
 
+    async def _save_uploaded_image(self, base64_image: str) -> str:
+        """Save base64 image and return the file path"""
+        try:
+            # Create media directory if it doesn't exist
+            media_path = Path(settings.MEDIA_ROOT) / 'math_images'
+            media_path.mkdir(parents=True, exist_ok=True)
+            
+            # Generate unique filename
+            filename = f"math_image_{uuid.uuid4()}.png"
+            file_path = media_path / filename
+            
+            # Decode and save image
+            image_data = base64.b64decode(base64_image)
+            with open(file_path, 'wb') as f:
+                f.write(image_data)
+            
+            # Return relative path for database storage
+            return f'math_images/{filename}'
+            
+        except Exception as e:
+            logger.error(f"Error saving image: {str(e)}")
+            raise
+
     async def solve(self, question: str, context: Dict[Any, Any]) -> dict:
         try:
             logger.info(f"Processing question: {question}")
             logger.info(f"Context received: {context}")
 
-            # Extract context
+            # Extract context first
             context_data = self._extract_context(context)
+            
+            # Check if this is a visualization request
+            is_image_request = bool(context and context.get('image'))
+            
+            if is_image_request:
+                # Handle image upload
+                image_file = context.get('image') 
+                logger.info("Image detected in context, processing with MathSolver.")
+                solution = await self.image_solver.solve(image_file, question)  # Use MathSolver to process the image
+            else:
+                # Check if this is a visualization request
+                needs_visual = self._needs_visualization(question, context)
+
+                # Handle visualization if needed
+                visualization_data = None
+            if needs_visual:
+                try:
+                    # Extract concept from question (e.g., "show me how pythagoras theorem works" -> "pythagoras theorem")
+                    concept = question.lower()
+                    concept = concept.replace('show me how', '').replace('visualize', '')
+                    concept = concept.replace('demonstrate', '').replace('works', '')
+                    concept = concept.strip(' ()?')
+                    
+                    # Generate visualization
+                    script_path = await self.visualization_agent.generate_script(
+                        concept=concept,
+                        details={
+                            'subject': context_data['subject'],
+                            'question': question,
+                            'deep_think': context_data['deep_think']
+                        }
+                    )
+                    
+                    if script_path:
+                        # Render the visualization
+                        visualization_data = await self.renderer.render_animation(script_path)
+                        logger.info(f"Generated visualization: {visualization_data}")
+                except Exception as e:
+                    logger.error(f"Error generating visualization: {str(e)}")
+                    # Continue with text response even if visualization fails
             
             # Get system message
             system_message = self._get_system_message(context_data)
@@ -223,18 +296,25 @@ class MathAgent:
             
             # Get model configuration
             model_config = self._get_model_config(context_data['deep_think'])
-
-            # Make API call
-            solution = await self._make_api_call(messages, model_config)
             
-            # Save chat history
-            await self._save_chat_history(question, solution, context_data)
+            # Make API call
+            solution = await self._make_api_call(messages, model_config, context)
             
             # Prepare response
-            result = self._prepare_response(question, solution, context_data)
-
-            logger.info("Successfully processed request")
-            return result
+            response = {
+                "solution": solution,
+                "context": {
+                    "current_question": question,
+                    "response": solution,
+                    **context_data
+                }
+            }
+            
+            # Add visualization data if available
+            if visualization_data:
+                response["visualization"] = visualization_data
+            
+            return response
 
         except Exception as e:
             logger.error(f"Error in solve method: {str(e)}", exc_info=True)
@@ -287,78 +367,99 @@ class MathAgent:
         
         return messages
 
-    async def _make_api_call(self, messages: list, model_config: Dict[str, Any]) -> str:
+    async def _make_api_call(self, messages: list, model_config: Dict[str, Any], context: Dict[Any, Any] = None) -> str:
         """Make API call and get response"""
         last_error = None
         
-        # Try DeepSeek first
-        try:
-            async with self._get_client() as client:
-                try:
-                    response = await client.chat.completions.create(
-                        messages=messages,
-                        **model_config
-                    )
-                    
-                    if not response or not response.choices:
-                        raise ValueError("Empty response received from API")
-                        
-                    return response.choices[0].message.content
-                except Exception as api_error:
-                    last_error = api_error
-                    logger.error(f"DeepSeek API call failed: {str(api_error)}")
-                    raise
-        except Exception as e:
-            # If DeepSeek fails, try OpenAI
+        # Check if this is an image-based request
+        is_image_request = bool(context and context.get('image'))
+        
+        # Try DeepSeek first for non-image requests
+        if not is_image_request:
             try:
-                openai_key = os.getenv('OPENAI_API_KEY')
-                if not openai_key:
-                    raise ValueError("OPENAI_API_KEY environment variable is not set")
-                
-                # Update model config for OpenAI
-                openai_config = {
-                    "model": "deepseek-chat" if model_config.get("model") == "deepseek-reasoner" else "gpt-3.5-turbo",
-                    "temperature": model_config.get("temperature", 0.7),
-                    "max_tokens": model_config.get("max_tokens", 2000),
-                    "stream": False
-                }
-                
-                async with AsyncOpenAI(api_key=openai_key) as openai_client:
-                    response = await openai_client.chat.completions.create(
-                        messages=messages,
-                        **openai_config
-                    )
-                    
-                    if not response or not response.choices:
-                        raise ValueError("Empty response received from OpenAI API")
+                async with self._get_client() as client:
+                    try:
+                        response = await client.chat.completions.create(
+                            messages=messages,
+                            **model_config
+                        )
                         
-                    return response.choices[0].message.content
+                        if not response or not response.choices:
+                            raise ValueError("Empty response received from API")
+                            
+                        return response.choices[0].message.content
+                    except Exception as api_error:
+                        last_error = api_error
+                        logger.error(f"DeepSeek API call failed: {str(api_error)}")
+                        raise
+            except Exception as e:
+                logger.warning(f"DeepSeek API failed, falling back to OpenAI: {str(e)}")
+        
+        # For image requests or if DeepSeek fails, use OpenAI
+        try:
+            openai_key = os.getenv('OPENAI_API_KEY')
+            if not openai_key:
+                raise ValueError("OPENAI_API_KEY environment variable is not set")
+            
+            # Update model config for OpenAI
+            openai_config = {
+                # Use GPT-4 models for image requests, otherwise use fallback config
+                "model": "gpt-4" if is_image_request else (
+                    "deepseek-chat" if model_config.get("model") == "deepseek-reasoner" 
+                    else "gpt-3.5-turbo-16k"
+                ),
+                "temperature": model_config.get("temperature", 0.7),
+                "max_tokens": model_config.get("max_tokens", 2000),
+                "stream": False
+            }
+            
+            async with AsyncOpenAI(api_key=openai_key) as openai_client:
+                response = await openai_client.chat.completions.create(
+                    messages=messages,
+                    **openai_config
+                )
+                
+                if not response or not response.choices:
+                    raise ValueError("Empty response received from OpenAI API")
                     
-            except Exception as openai_error:
-                logger.error(f"Both APIs failed. DeepSeek error: {last_error}, OpenAI error: {openai_error}")
-                raise ValueError(f"API calls failed: DeepSeek - {last_error}, OpenAI - {openai_error}")
+                return response.choices[0].message.content
+                
+        except Exception as openai_error:
+            error_msg = f"API calls failed. "
+            if last_error:
+                error_msg += f"DeepSeek error: {last_error}, "
+            error_msg += f"OpenAI error: {openai_error}"
+            logger.error(error_msg)
+            raise ValueError(error_msg)
 
     async def _save_chat_history(self, question: str, solution: str, context_data: Dict[Any, Any]):
         """Save interaction to chat history"""
         try:
             if context_data['user_id'] and context_data['session_id']:
+                # Create context dictionary with all necessary data
+                context_dict = {
+                    'subject': context_data['subject'],
+                    'topic': context_data['topic'],
+                    'interaction_type': context_data['interaction_type'],
+                    'selected_text': context_data['selected_text'],
+                    'Deep_think': context_data['deep_think']
+                }
+
+                # Add visualization data to context if available
+                if context_data.get('visualization'):
+                    context_dict['visualization'] = context_data['visualization']
+
+                # Create chat history entry
                 chat = await sync_to_async(ChatHistory.objects.create)(
                     user_id=context_data['user_id'],
                     session_id=context_data['session_id'],
                     question=question,
                     response=solution,
-                    context={
-                        'subject': context_data['subject'],
-                        'topic': context_data['topic'],
-                        'interaction_type': context_data['interaction_type'],
-                        'selected_text': context_data['selected_text'],
-                        'Deep_think': context_data['deep_think']
-                    }
+                    context=context_dict
                 )
                 logger.info(f"Saved chat history for user {context_data['user_id']}")
         except Exception as e:
             logger.error(f"Error saving chat history: {str(e)}")
-            # Don't raise the error to avoid breaking the main flow
 
     def _prepare_response(self, question: str, solution: str, context_data: Dict[Any, Any]) -> dict:
         """Prepare final response"""
@@ -385,6 +486,62 @@ class MathAgent:
                 "chat_history": context.get('chat_history', []),
                 "selected_text": context.get('selectedText', ''),
                 "interaction_type": context.get('interaction_type', 'solve'),
-                "Deep_think": context.get('Deep_think', False)
+                "Deep_think": context.get('Deep_think', False),
+                "image_path": context.get('image_path', '')
             }
         }
+
+    def _needs_visualization(self, question: str, context: Dict[Any, Any]) -> bool:
+        """Determine if visualization is needed based on question and context"""
+        try:
+            # Keywords that suggest visualization would be helpful
+            visualization_keywords = [
+                'show me how', 'visualize', 'demonstrate', 'draw',
+                'sketch', 'diagram', 'plot', 'graph', 'visual'
+            ]
+            
+            # Mathematical concepts that should be visualized
+            visual_concepts = [
+                'theorem', 'geometry', 'trigonometry', 'calculus',
+                'vector', 'matrix', 'function', 'graph'
+            ]
+            
+            question_lower = question.lower()
+            
+            # Check for direct visualization requests
+            if any(keyword in question_lower for keyword in visualization_keywords):
+                return True
+            
+            # Check for mathematical concepts that benefit from visualization
+            if any(concept in question_lower for concept in visual_concepts):
+                return True
+            
+            return False
+            
+        except Exception as e:
+            logger.error(f"Error in _needs_visualization: {str(e)}")
+            return False
+    async def _generate_visualization(self, concept: str, details: Dict[str, Any]) -> Optional[Dict[str, str]]:
+        """Generate visualization for mathematical concepts"""
+        try:
+            # Generate animation script
+            script_path = await self.visualization_agent.generate_script(concept, details)
+            if not script_path:
+                logger.warning(f"Failed to generate visualization script for {concept}")
+                return None
+
+            # Render animation
+            visualization = await self.renderer.render_animation(script_path)
+            if not visualization:
+                logger.warning(f"Failed to render visualization for {concept}")
+                return None
+
+            return {
+                'script_path': script_path,
+                'video_path': visualization.get('local_path'),
+                'video_url': visualization.get('public_url')
+            }
+
+        except Exception as e:
+            logger.error(f"Error generating visualization: {str(e)}")
+            return None
