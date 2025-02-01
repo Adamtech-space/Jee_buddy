@@ -92,3 +92,37 @@ class MathSolver:
 
         Format your response using these exact headings for clarity.
         """
+
+    def _get_prompt(self) -> str:
+        """Get the prompt template"""
+        return """
+        You are a JEE expert tutor. Analyze this math/physics problem image and provide:
+
+        1. PROBLEM IDENTIFICATION
+        - Clearly state what the problem is asking
+        - Identify key information given
+        - Note any relevant formulas or concepts needed
+
+        2. STEP-BY-STEP SOLUTION
+        - Break down the solution into clear steps
+        - Show all calculations and working
+        - Explain each step's reasoning
+        - Include relevant formulas and their application
+
+        3. CONCEPTS USED
+        - List all mathematical/physical concepts involved
+        - Explain how these concepts connect
+        - Mention any important theorems or principles
+
+        4. FINAL ANSWER
+        - State the final answer clearly
+        - Include units if applicable
+        - Verify the answer makes sense
+
+        5. JEE TIPS
+        - Note common variations of this problem type
+        - Highlight key points for JEE exam perspective
+        - Mention any shortcuts or tricks
+
+        Format your response using these exact headings for clarity.
+        """
