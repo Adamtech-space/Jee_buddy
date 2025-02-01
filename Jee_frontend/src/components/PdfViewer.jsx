@@ -21,7 +21,7 @@ import { useSelection } from '../hooks/useSelection';
 import PropTypes from 'prop-types';
 import html2canvas from 'html2canvas';
 
-// Import styles
+
 import '@react-pdf-viewer/core/lib/styles/index.css';
 
 const PdfViewer = ({ pdfUrl: propsPdfUrl, subject: propsSubject, onBack }) => {

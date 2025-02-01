@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import PropTypes from 'prop-types';
+import debounce from 'lodash.debounce'; // Import debounce from lodash
 
 const AreaSelector = ({ onAreaSelected, onCancel, isMobile }) => {
   const [isSelecting, setIsSelecting] = useState(false);
@@ -34,11 +35,11 @@ const AreaSelector = ({ onAreaSelected, onCancel, isMobile }) => {
   }, [getEventCoordinates]);
 
   const handleMove = useCallback(
-    (e) => {
+    debounce((e) => {
       if (!isSelecting) return;
       e.preventDefault(); // Prevent scrolling on touch devices
       setCurrentPos(getEventCoordinates(e));
-    },
+    }, 50), // Debounce time in milliseconds
     [isSelecting, getEventCoordinates]
   );
 
@@ -53,8 +54,8 @@ const AreaSelector = ({ onAreaSelected, onCancel, isMobile }) => {
     };
 
     // Adjust minimum area requirement for mobile
-    const minWidth = isMobile ? 5 : 10;
-    const minHeight = isMobile ? 5 : 10;
+    const minWidth = isMobile ? 10 : 20;
+    const minHeight = isMobile ? 10 : 20;
 
     // Only trigger if area is large enough
     if (rect.width > minWidth && rect.height > minHeight) {
