@@ -29,20 +29,19 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-dd16kn&trh7p3@j5r8917v9ac4z4!2&49f-544+4d6f1#d)4uv'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
 
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 
 
-# Combine all allowed hosts
+DEBUG = os.getenv('DEBUG', 'False') == 'True'
+
 ALLOWED_HOSTS = [
     'localhost',
-    'python-backend-env-1.eba-5hzqwm2u.ap-south-1.elasticbeanstalk.com',
+    'http://python-backend-env-1.eba-5hzqwm2u.ap-south-1.elasticbeanstalk.com/',  # Replace with your actual EB domain
     '127.0.0.1',
     '[::1]',  # IPv6 localhost
-    '.amazonaws.com',
-    '.vercel.app'
+    '.amazonaws.com'
 ]
 
 
