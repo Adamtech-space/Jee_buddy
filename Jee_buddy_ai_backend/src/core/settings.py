@@ -41,7 +41,8 @@ ALLOWED_HOSTS = [
     'http://python-backend-env-1.eba-5hzqwm2u.ap-south-1.elasticbeanstalk.com/',  # Replace with your actual EB domain
     '127.0.0.1',
     '[::1]',  # IPv6 localhost
-    '.amazonaws.com'
+    '.amazonaws.com',
+    'python.jeebuddy.in'
 ]
 
 
