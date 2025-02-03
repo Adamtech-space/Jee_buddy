@@ -38,11 +38,11 @@ DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
 ALLOWED_HOSTS = [
     'localhost',
-    'http://python-backend-env-1.eba-5hzqwm2u.ap-south-1.elasticbeanstalk.com/',  # Replace with your actual EB domain
     '127.0.0.1',
-    '[::1]',  # IPv6 localhost
+    '[::1]',
     '.amazonaws.com',
-    'python.jeebuddy.in'
+    'python.jeebuddy.in',
+    'python-backend-env-1.eba-5hzqwm2u.ap-south-1.elasticbeanstalk.com',  # No trailing slash
 ]
 
 
