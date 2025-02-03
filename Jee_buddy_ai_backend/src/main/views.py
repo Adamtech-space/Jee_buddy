@@ -23,6 +23,7 @@ from django.utils.decorators import method_decorator
 from django.http import JsonResponse
 from functools import wraps
 from django.utils import timezone
+from .agents.math_token_set_limit_agent import MathTokenLimitAgent
 logger = logging.getLogger(__name__)
 
 def async_view(view_func):
@@ -207,20 +208,29 @@ async def process_math_problem(request_data):
 @parser_classes([MultiPartParser, FormParser, JSONParser])
 def solve_math_problem(request):
     try:
-        api_url = "http://127.0.0.1:3999/ask"
-        print("request.data", request.data)
-        data = {"user_id": request.data.get('user_id'), "prompt": request.data.get('question')}
-        body=json.dumps(data)
-        print("body", body)
-        response = requests.post(api_url, json=data, headers={"Content-Type": "application/json"})
-        print("response", response)
-        if response.status_code != 200:
-            return JsonResponse(
-                {"error": f"External API returned status {response.status_code}"},
-                status=400
-            )
-        logger.info(f"Request: {request.user}") 
-        logger.info(f"Request Content-Type: {request.content_type}")
+        token_agent = MathTokenLimitAgent()
+
+        # Process the token limit check
+        user_id = request.data.get('user_id')
+        prompt = request.data.get('question')
+        token_response = token_agent.process_query(user_id, prompt)
+        print("token_response", token_response)
+
+        # If there's an error in token processing, return it
+        if token_response.get('error'):
+            return JsonResponse(token_response, status=400)
+
+        # If the user has exceeded the token limit, return the message
+        if token_response.get('message'):
+            return JsonResponse(token_response, status=403)
+        
+        # if response.status_code != 200:
+        #     return JsonResponse(
+        #         {"error": f"External API returned status {response.status_code}"},
+        #         status=400
+        #     )
+        # logger.info(f"Request: {request.user}") 
+        # logger.info(f"Request Content-Type: {request.content_type}")
         
         # Handle form data
         if request.content_type.startswith('multipart/form-data'):
