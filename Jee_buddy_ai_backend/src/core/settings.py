@@ -201,13 +201,17 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # AWS Lambda Settings
 if 'LAMBDA_TASK_ROOT' in os.environ:
-    ALLOWED_HOSTS = ['*']
+    ALLOWED_HOSTS = [
+        'python.jeebuddy.in',
+        'python-backend-env-1.eba-5hzqwm2u.ap-south-1.elasticbeanstalk.com',
+        # Add additional domains as needed.
+    ]
     DEBUG = False
-    
+
     # Static files
     STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
     STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
-    
+
     # Security settings
     SECURE_SSL_REDIRECT = True
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
