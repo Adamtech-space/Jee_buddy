@@ -86,8 +86,8 @@ REST_FRAMEWORK = {
 }
 
 # CORS settings
-CORS_ALLOW_ALL_ORIGINS = True  # Change this to False
-CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_ALL_ORIGINS = False  # Change this to False
+CORS_ALLOW_CREDENTIALS = False
 
 
 
