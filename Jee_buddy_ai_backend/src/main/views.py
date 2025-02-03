@@ -7,6 +7,7 @@ from rest_framework import status
 from .agents.math_agent import MathAgent
 import asyncio
 import logging
+import requests
 import json
 from .models import ChatHistory
 import base64
@@ -115,6 +116,7 @@ def save_chat_interaction(user_id, session_id, question, response, context_data)
 
 async def process_math_problem(request_data):
     try:
+        print("request_data", request_data)
         # Extract data from request
         question = request_data.get('question', '')
         if not question:
@@ -145,7 +147,7 @@ async def process_math_problem(request_data):
                 request_data.get('history_limit', 100)
             )
         context['chat_history'] = chat_history
-
+        print("context", context)
         # Initialize math agent and get solution
         agent = await MathAgent.create()
         solution = await agent.solve(question, context)
@@ -205,6 +207,19 @@ async def process_math_problem(request_data):
 @parser_classes([MultiPartParser, FormParser, JSONParser])
 def solve_math_problem(request):
     try:
+        api_url = "http://127.0.0.1:3999/ask"
+        print("request.data", request.data)
+        data = {"user_id": request.data.get('user_id'), "prompt": request.data.get('question')}
+        body=json.dumps(data)
+        print("body", body)
+        response = requests.post(api_url, json=data, headers={"Content-Type": "application/json"})
+        print("response", response)
+        if response.status_code != 200:
+            return JsonResponse(
+                {"error": f"External API returned status {response.status_code}"},
+                status=400
+            )
+        logger.info(f"Request: {request.user}") 
         logger.info(f"Request Content-Type: {request.content_type}")
         
         # Handle form data

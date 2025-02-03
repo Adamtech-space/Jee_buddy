@@ -243,6 +243,7 @@ class MathAgent:
     async def solve(self, question: str, context: Dict[Any, Any]) -> dict:
         try:
             logger.info(f"Processing question: {question}")
+            logger.info(f"question: {question}")
             logger.info(f"Context received: {context}")
 
             # Extract context first
@@ -288,8 +289,13 @@ class MathAgent:
             # Get model configuration
             model_config = self._get_model_config(context_data['deep_think'])
             
+            print("messages", messages)
+            print("model_config", model_config)
+            print("context", context)
             # Make API call
             solution = await self._make_api_call(messages, model_config, context)
+            print("solution", solution)
+
             
             # Prepare response
             response = {
@@ -312,7 +318,7 @@ class MathAgent:
             return self._get_error_response(question, str(e), context)
 
     def _extract_context(self, context: Dict[Any, Any]) -> Dict[Any, Any]:
-        """Extract and organize context data"""
+        """Extract and organize context data""" 
         return {
             'user_id': context.get('user_id'),
             'session_id': context.get('session_id'),
@@ -364,7 +370,26 @@ class MathAgent:
         
         # Check if this is an image-based request
         is_image_request = bool(context and context.get('image'))
-        
+        print("is_image_request", is_image_request)
+        if is_image_request:
+            try:
+                # Process the image using MathSolver
+                image_file = context.get('image')  # Get the image from context
+                question = messages[0]['content'] 
+                print("question", question)
+                print("image_file", image_file) # Assuming the question is in the first message
+                
+                # Call the MathSolver to process the image and generate a solution
+                solution = await self.image_solver.solve(image_file)
+                print("solution", solution)
+                return solution  # Return the solution directly for image requests
+                
+            except Exception as e:
+                logger.error(f"Error processing image request: {str(e)}")
+                raise ValueError("Failed to process image request.")
+    
+    # For non-image requests, proceed with the API call
+    
         # Try DeepSeek first for non-image requests
         if not is_image_request:
             try:
@@ -395,15 +420,16 @@ class MathAgent:
             # Update model config for OpenAI
             openai_config = {
                 # Use GPT-4 models for image requests, otherwise use fallback config
-                "model": "gpt-4" if is_image_request else (
+                "model": "gpt-4-turbo" if is_image_request else (
                     "deepseek-chat" if model_config.get("model") == "deepseek-reasoner" 
                     else "gpt-3.5-turbo-16k"
                 ),
                 "temperature": model_config.get("temperature", 0.7),
-                "max_tokens": model_config.get("max_tokens", 2000),
+                "max_tokens": model_config.get("max_tokens", 380),
                 "stream": False
             }
-            
+            print("openai_config", openai_config)
+            print("messages", messages)
             async with AsyncOpenAI(api_key=openai_key) as openai_client:
                 response = await openai_client.chat.completions.create(
                     messages=messages,

@@ -747,29 +747,60 @@ class ManimScriptGenerator:
         except Exception as e:
             logger.error(f"Error generating Manim script: {str(e)}")
             return None
-
     def _cleanup_directories(self):
-        """Clean up old animation files and directories"""
         try:
             base_dir = Path(os.path.abspath(os.path.dirname(__file__)))
             media_dir = base_dir.parent.parent.parent / "media"
             animations_dir = base_dir.parent.parent.parent / "manim_animations"
             
-            # Clean up media directory
-            if media_dir.exists():
+            # Ensure media directory exists
+            if not media_dir.exists():
+                logger.info(f"Media directory does not exist. Creating: {media_dir}")
+                media_dir.mkdir(parents=True, exist_ok=True)
+            else:
+                # Clean up media directory
                 shutil.rmtree(media_dir)
-            media_dir.mkdir(parents=True, exist_ok=True)
+                logger.info(f"Cleaned up media directory: {media_dir}")
+                media_dir.mkdir(parents=True, exist_ok=True)  # Recreate the directory after cleanup
             
-            # Clean up animations directory
-            if animations_dir.exists():
+            # Ensure animations directory exists
+            if not animations_dir.exists():
+                logger.info(f"Animations directory does not exist. Creating: {animations_dir}")
+                animations_dir.mkdir(parents=True, exist_ok=True)
+            else:
+                # Clean up animations directory
                 for file in animations_dir.glob('*.py'):
                     if file.name != '__init__.py':
                         file.unlink()
-                        
+                        logger.info(f"Deleted file: {file}")
+            
             logger.info("Successfully cleaned up directories")
             
         except Exception as e:
             logger.error(f"Error cleaning directories: {str(e)}")
+
+    # def _cleanup_directories(self):
+    #     """Clean up old animation files and directories"""
+    #     try:
+    #         base_dir = Path(os.path.abspath(os.path.dirname(__file__)))
+    #         media_dir = base_dir.parent.parent.parent / "media"
+    #         animations_dir = base_dir.parent.parent.parent / "manim_animations"
+            
+    #         # Clean up media directory
+    #         if media_dir.exists():
+    #             shutil.rmtree(media_dir)
+    #         media_dir.mkdir(parents=True, exist_ok=True)
+            
+    #         # Clean up animations directory
+    #         if animations_dir.exists():
+    #             for file in animations_dir.glob('*.py'):
+    #                 if file.name != '__init__.py':
+    #                     file.unlink()
+                        
+    #         logger.info("Successfully cleaned up directories")
+            
+    #     except Exception as e:
+    #         logger.error(f"Error cleaning directories: {str(e)}")
         
     def _find_existing_script(self, concept: str) -> Optional[str]:
         """Check if visualization already exists for concept"""
