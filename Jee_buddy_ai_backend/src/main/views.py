@@ -147,7 +147,7 @@ async def process_math_problem(request_data):
                 context['session_id'], 
                 request_data.get('history_limit', 100)
             )
-        context['chat_history'] = chat_historyz
+        context['chat_history'] = chat_history
         print("context", context)
         # Initialize math agent and get solution
         agent = await MathAgent.create()
