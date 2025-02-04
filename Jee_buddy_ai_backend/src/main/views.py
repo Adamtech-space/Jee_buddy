@@ -200,7 +200,7 @@ async def process_math_problem(request_data):
         logger.error(f"Error in process_math_problem: {str(e)}", exc_info=True)
         return {
             'error': str(e),
-            'details': 'An unexpected error occurred while processing your request.'
+            'details': 'An unexpected error occurred while processing your request.process_math_problem'
         }, 500
 
 @csrf_exempt
@@ -270,7 +270,7 @@ def solve_math_problem(request):
         logger.error(f"Error in solve_math_problem: {str(e)}", exc_info=True)
         return JsonResponse({
             'error': str(e),
-            'details': 'An unexpected error occurred while processing your request.'
+            'details': 'An unexpected error occurred while processing your request. solve_math_problem.'
         }, status=500)
 
 @api_view(['GET'])
