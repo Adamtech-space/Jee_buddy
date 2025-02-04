@@ -145,17 +145,30 @@ WSGI_APPLICATION = 'core.wsgi.application'
 
 
 
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.postgresql',
+#         'NAME': os.getenv('SUPABASE_DB_NAME', 'postgres'),
+#         'USER': os.getenv('SUPABASE_DB_USER', 'postgres'),
+#         'PASSWORD': os.getenv('SUPABASE_DB_PASSWORD'),
+#         'HOST': os.getenv('SUPABASE_DB_HOST'),
+#         'PORT': os.getenv('SUPABASE_DB_PORT', '5432'),
+#         'OPTIONS': {
+#             'sslmode': 'require' if os.getenv('DATABASE_SSL_REQUIRE', 'true').lower() == 'true' else 'disable',
+#         }
+#     }
+# }
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.getenv('SUPABASE_DB_NAME', 'postgres'),
-        'USER': os.getenv('SUPABASE_DB_USER', 'postgres'),
+        'NAME': os.getenv('SUPABASE_DB_NAME'),
+        'USER': os.getenv('SUPABASE_DB_USER'),
         'PASSWORD': os.getenv('SUPABASE_DB_PASSWORD'),
         'HOST': os.getenv('SUPABASE_DB_HOST'),
-        'PORT': os.getenv('SUPABASE_DB_PORT', '5432'),
+        'PORT': os.getenv('SUPABASE_DB_PORT'),
         'OPTIONS': {
-            'sslmode': 'require' if os.getenv('DATABASE_SSL_REQUIRE', 'true').lower() == 'true' else 'disable',
-        }
+            'sslmode': 'require',  # Ensure SSL mode is enabled
+        },
     }
 }
 
@@ -175,7 +188,7 @@ AUTH_PASSWORD_VALIDATORS = [
     {
         'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
     },
-]
+]               
 
 
 # Internationalization
