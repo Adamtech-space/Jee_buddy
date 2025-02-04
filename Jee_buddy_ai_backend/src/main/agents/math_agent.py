@@ -4,9 +4,9 @@ from asgiref.sync import sync_to_async
 from openai import AsyncOpenAI
 from contextlib import asynccontextmanager
 import os
-from main.models import ChatHistory
-from .math_visualization_agent import ManimScriptGenerator
-from .math_visualization_agent import ManimRenderer
+# from main.models import ChatHistory
+# from .math_visualization_agent import ManimScriptGenerator
+# from .math_visualization_agent import ManimRenderer
 from pathlib import Path
 from django.conf import settings
 import uuid
@@ -508,57 +508,57 @@ class MathAgent:
             }
         }
 
-    def _needs_visualization(self, question: str, context: Dict[Any, Any]) -> bool:
-        """Determine if visualization is needed based on question and context"""
-        try:
-            # Keywords that suggest visualization would be helpful
-            visualization_keywords = [
-                'show me how', 'visualize', 'demonstrate', 'draw',
-                'sketch', 'diagram', 'plot', 'graph', 'visual'
-            ]
+    # def _needs_visualization(self, question: str, context: Dict[Any, Any]) -> bool:
+    #     """Determine if visualization is needed based on question and context"""
+    #     try:
+    #         # Keywords that suggest visualization would be helpful
+    #         visualization_keywords = [
+    #             'show me how', 'visualize', 'demonstrate', 'draw',
+    #             'sketch', 'diagram', 'plot', 'graph', 'visual'
+    #         ]
             
-            # Mathematical concepts that should be visualized
-            visual_concepts = [
-                'theorem', 'geometry', 'trigonometry', 'calculus',
-                'vector', 'matrix', 'function', 'graph'
-            ]
+    #         # Mathematical concepts that should be visualized
+    #         visual_concepts = [
+    #             'theorem', 'geometry', 'trigonometry', 'calculus',
+    #             'vector', 'matrix', 'function', 'graph'
+    #         ]
             
-            question_lower = question.lower()
+    #         question_lower = question.lower()
             
-            # Check for direct visualization requests
-            if any(keyword in question_lower for keyword in visualization_keywords):
-                return True
+    #         # Check for direct visualization requests
+    #         if any(keyword in question_lower for keyword in visualization_keywords):
+    #             return True
             
-            # Check for mathematical concepts that benefit from visualization
-            if any(concept in question_lower for concept in visual_concepts):
-                return True
+    #         # Check for mathematical concepts that benefit from visualization
+    #         if any(concept in question_lower for concept in visual_concepts):
+    #             return True
             
-            return False
+    #         return False
             
-        except Exception as e:
-            logger.error(f"Error in _needs_visualization: {str(e)}")
-            return False
-    async def _generate_visualization(self, concept: str, details: Dict[str, Any]) -> Optional[Dict[str, str]]:
-        """Generate visualization for mathematical concepts"""
-        try:
-            # Generate animation script
-            script_path = await self.visualization_agent.generate_script(concept, details)
-            if not script_path:
-                logger.warning(f"Failed to generate visualization script for {concept}")
-                return None
+    #     except Exception as e:
+    #         logger.error(f"Error in _needs_visualization: {str(e)}")
+    #         return False
+    # async def _generate_visualization(self, concept: str, details: Dict[str, Any]) -> Optional[Dict[str, str]]:
+    #     """Generate visualization for mathematical concepts"""
+    #     try:
+    #         # Generate animation script
+    #         script_path = await self.visualization_agent.generate_script(concept, details)
+    #         if not script_path:
+    #             logger.warning(f"Failed to generate visualization script for {concept}")
+    #             return None
 
-            # Render animation
-            visualization = await self.renderer.render_animation(script_path)
-            if not visualization:
-                logger.warning(f"Failed to render visualization for {concept}")
-                return None
+    #         # Render animation
+    #         visualization = await self.renderer.render_animation(script_path)
+    #         if not visualization:
+    #             logger.warning(f"Failed to render visualization for {concept}")
+    #             return None
 
-            return {
-                'script_path': script_path,
-                'video_path': visualization.get('local_path'),
-                'video_url': visualization.get('public_url')
-            }
+    #         return {
+    #             'script_path': script_path,
+    #             'video_path': visualization.get('local_path'),
+    #             'video_url': visualization.get('public_url')
+    #         }
 
-        except Exception as e:
-            logger.error(f"Error generating visualization: {str(e)}")
-            return None
+    #     except Exception as e:
+    #         logger.error(f"Error generating visualization: {str(e)}")
+    #         return None
