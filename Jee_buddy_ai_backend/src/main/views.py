@@ -150,19 +150,28 @@ async def process_math_problem(request_data):
         # Create and use the MathAgent instance (assumes an async create() method)
         agent = await MathAgent.create()
         raw_solution = await agent.solve(question, context)
+
+        if isinstance(raw_solution, tuple):
+            logger.warning("Tuple response detected in AWS environment")
+            solution = {"solution": raw_solution[0]} if len(raw_solution) > 0 else {"solution": ""}
+        else:
+            solution = raw_solution
         logger.debug("raw_solution (before unpacking): %s", raw_solution)
         
+        # Add fallback for string responses
+        if isinstance(solution, str):
+            logger.info("Converting string solution to dict")
+            solution = {"solution": solution}
         # Recursively unpack any nested tuples to get the solution dictionary.
         solution = recursively_unpack(raw_solution)
         logger.debug("final solution: %s", solution)
 
-
+        
         if not isinstance(solution, dict):
             logger.error(f"Unexpected solution type: {type(solution)} | Value: {solution}")
             solution = {"solution": str(solution)}  # Fallback to string conversion
 
         logger.debug("final solution: %s", solution)
-        
         if not solution or not isinstance(solution, dict) or not solution.get("solution"):
             return {
                 "error": "No solution generated",
