@@ -115,20 +115,14 @@ def save_chat_interaction(user_id, session_id, question, response, context_data)
         logger.error(f"Error in save_chat_interaction: {str(e)}")
         return None
 
-def unpack_solution(sol):
+def recursively_unpack(obj):
     """
-    Recursively unpack nested tuples until a non-tuple value is reached.
-    This helps in cases where the agent.solve method returns nested tuples.
+    Recursively unpack nested tuples until a non-tuple object is reached.
     """
-    count = 0  # safety counter to avoid infinite loops
-    while isinstance(sol, tuple):
-        logger.debug("Unpacking solution (level %d): %s", count, sol)
-        sol = sol[0]
-        count += 1
-        if count > 10:  # safety exit after several iterations
-            logger.error("Exceeded tuple unpacking iterations.")
-            break
-    return sol
+    if isinstance(obj, tuple):
+        logger.debug("Unpacking tuple: %s", obj)
+        return recursively_unpack(obj[0])
+    return obj
 
 async def process_math_problem(request_data):
     try:
@@ -140,7 +134,7 @@ async def process_math_problem(request_data):
                 "details": "Question field is required"
             }, 400
 
-        # Prepare context dictionary for the math agent (excluding interaction_type)
+        # Prepare context dictionary (excluding unwanted fields)
         context = {
             "user_id": request_data.get("user_id"),
             "session_id": request_data.get("session_id"),
@@ -156,11 +150,11 @@ async def process_math_problem(request_data):
         # Create and use the MathAgent instance (assumes an async create() method)
         agent = await MathAgent.create()
         raw_solution = await agent.solve(question, context)
-        logger.debug("raw_solution type: %s | raw_solution: %s", type(raw_solution), raw_solution)
+        logger.debug("raw_solution (before unpacking): %s", raw_solution)
         
-        # Unpack nested tuples until we have a dictionary.
-        solution = unpack_solution(raw_solution)
-        logger.debug("final solution type: %s | solution: %s", type(solution), solution)
+        # Recursively unpack any nested tuples to get the solution dictionary.
+        solution = recursively_unpack(raw_solution)
+        logger.debug("final solution: %s", solution)
         
         if not solution or not isinstance(solution, dict) or not solution.get("solution"):
             return {
@@ -191,8 +185,6 @@ async def process_math_problem(request_data):
 def solve_math_problem(request):
     try:
         token_agent = MathTokenLimitAgent()
-
-        # Process the token limit check using top-level fields
         user_id = request.data.get('user_id')
         prompt = request.data.get('question')
         token_response = token_agent.process_query(user_id, prompt)
@@ -203,7 +195,6 @@ def solve_math_problem(request):
         if token_response.get('message'):
             return JsonResponse(token_response, status=403)
         
-        # Handle form data
         if request.content_type.startswith('multipart/form-data'):
             data = request.data.copy()
             if 'image' in request.FILES:
@@ -220,7 +211,7 @@ def solve_math_problem(request):
                 'details': 'Only multipart/form-data and application/json are supported'
             }, status=400)
         
-        # Flatten nested "context" keys (if present) into top-level keys
+        # Flatten nested "context" keys (if present) into top-level keys.
         if not data.get('user_id') and 'context' in data and isinstance(data['context'], dict):
             context_data = data.pop('context')
             for key in ['user_id', 'session_id', 'subject', 'topic', 'pinnedText', 'selectedText', 'image']:
