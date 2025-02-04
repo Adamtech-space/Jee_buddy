@@ -224,14 +224,6 @@ def solve_math_problem(request):
         if token_response.get('message'):
             return JsonResponse(token_response, status=403)
         
-        # if response.status_code != 200:
-        #     return JsonResponse(
-        #         {"error": f"External API returned status {response.status_code}"},
-        #         status=400
-        #     )
-        # logger.info(f"Request: {request.user}") 
-        # logger.info(f"Request Content-Type: {request.content_type}")
-        
         # Handle form data
         if request.content_type.startswith('multipart/form-data'):
             data = request.data.copy()  # Get mutable copy of request data
@@ -262,9 +254,22 @@ def solve_math_problem(request):
                 'details': 'Question field is required'
             }, status=400)
 
-        # Process the request
-        response_data, status_code = async_to_sync(process_math_problem)(data)
-        return JsonResponse(response_data, status=status_code)
+        try:
+            # Process the request and properly unpack the tuple
+            response_data, status_code = async_to_sync(process_math_problem)(data)
+            
+            # Check if response_data is a tuple (for backward compatibility)
+            if isinstance(response_data, tuple):
+                response_data, status_code = response_data
+                
+            return JsonResponse(response_data, status=status_code)
+            
+        except Exception as e:
+            logger.error(f"Error processing math problem: {str(e)}", exc_info=True)
+            return JsonResponse({
+                'error': str(e),
+                'details': 'An error occurred while processing the math problem'
+            }, status=500)
             
     except Exception as e:
         logger.error(f"Error in solve_math_problem: {str(e)}", exc_info=True)
