@@ -224,17 +224,9 @@ def solve_math_problem(request):
         if token_response.get('message'):
             return JsonResponse(token_response, status=403)
         
-        # if response.status_code != 200:
-        #     return JsonResponse(
-        #         {"error": f"External API returned status {response.status_code}"},
-        #         status=400
-        #     )
-        # logger.info(f"Request: {request.user}") 
-        # logger.info(f"Request Content-Type: {request.content_type}")
-        
         # Handle form data
         if request.content_type.startswith('multipart/form-data'):
-            data = request.data.copy()  # Get mutable copy of request data
+            data = dict(request.data.copy())  # Convert QueryDict to regular dict
             
             # Handle image if present
             if 'image' in request.FILES:
@@ -245,7 +237,12 @@ def solve_math_problem(request):
             
             # Convert boolean fields
             if 'Deep_think' in data:
-                data['Deep_think'] = data['Deep_think'].lower() == 'true'
+                data['Deep_think'] = str(data['Deep_think']).lower() == 'true'
+                
+            # Convert list values to single values if they exist
+            for key in data:
+                if isinstance(data[key], list) and len(data[key]) == 1:
+                    data[key] = data[key][0]
                 
         elif request.content_type == 'application/json':
             data = json.loads(request.body.decode('utf-8'))
