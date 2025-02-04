@@ -10,6 +10,7 @@ import {
   FolderPlusIcon,
   ChevronRightIcon,
   HomeIcon,
+  CreditCardIcon,
 } from '@heroicons/react/24/outline';
 import {
   createFolder,
@@ -18,6 +19,10 @@ import {
   deleteStudyMaterial,
   renameStudyMaterial,
   getFileDownloadUrl,
+  checkUserAccess,
+  updateProfileCache,
+  getCurrentPlanName,
+  getRemainingTokens,
 } from '../interceptors/services';
 import { useSelection } from '../hooks/useSelection';
 import SelectionPopup from './SelectionPopup';
@@ -42,6 +47,10 @@ const StudyMaterials = () => {
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef(null);
   const [isNavigating, setIsNavigating] = useState(false);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [remainingTokens, setRemainingTokens] = useState(1000);
+  const [currentPlan, setCurrentPlan] = useState('Free');
+  const [hasAccess, setHasAccess] = useState(true);
 
   // Define fetchItems with useCallback before using it in useEffect
   const fetchItems = useCallback(async () => {
@@ -118,8 +127,160 @@ const StudyMaterials = () => {
     }
   };
 
-  // Create new folder
+  // Add useEffect to check access and update token info
+  useEffect(() => {
+    const checkAccess = async () => {
+      try {
+        await updateProfileCache();
+        const access = checkUserAccess();
+        const tokens = getRemainingTokens();
+        const plan = getCurrentPlanName();
+
+        setHasAccess(access);
+        setRemainingTokens(tokens);
+        setCurrentPlan(plan);
+      } catch (error) {
+        console.error('Error checking access:', error);
+      }
+    };
+
+    checkAccess();
+  }, []);
+
+  // Add UpgradeModal component
+  const UpgradeModal = () => {
+    if (!showUpgradeModal) return null;
+
+    const plans = [
+      {
+        name: 'Basic',
+        color: 'from-blue-500 to-blue-600',
+        icon: '⚡',
+        features: [
+          'Essential AI features',
+          'Basic question solving',
+          'Standard response time',
+        ],
+        gradient: 'from-blue-500/10 to-blue-600/10',
+        border: 'border-blue-500/20',
+        planId: 'plan_PhmnKiiVXD3B1M',
+      },
+      {
+        name: 'Pro',
+        color: 'from-purple-500 to-purple-600',
+        icon: '🚀',
+        features: [
+          'Advanced AI capabilities',
+          'Complex problem solving',
+          'Faster response time',
+        ],
+        gradient: 'from-purple-500/10 to-purple-600/10',
+        border: 'border-purple-500/20',
+        planId: 'plan_PhmnlqjWH24hwy',
+      },
+      {
+        name: 'Premium',
+        color: 'from-amber-500 to-amber-600',
+        icon: '👑',
+        features: [
+          'Full AI capabilities',
+          'Priority support',
+          'Instant responses',
+        ],
+        gradient: 'from-amber-500/10 to-amber-600/10',
+        border: 'border-amber-500/20',
+        planId: 'plan_Phmo9yOZAKb0P8',
+      },
+    ];
+
+    return (
+      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
+        <div className="bg-gray-900 rounded-xl p-6 max-w-xl w-full mx-4 shadow-2xl border border-gray-800">
+          <div className="text-center mb-6">
+            <div className="w-16 h-16 bg-blue-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
+              <CreditCardIcon className="w-8 h-8 text-blue-500" />
+            </div>
+            <h3 className="text-xl font-bold text-white mb-2">
+              {remainingTokens === 0
+                ? 'Free Trial Limit Reached'
+                : 'Upgrade Your Plan'}
+            </h3>
+            <p className="text-gray-400 text-sm">
+              {remainingTokens === 0
+                ? "You've used all your free tokens. Upgrade to continue using Study Materials."
+                : `You have ${remainingTokens} tokens remaining. Upgrade now for unlimited access!`}
+            </p>
+          </div>
+
+          <div className="space-y-4 mb-6">
+            {plans.map((plan) => (
+              <div
+                key={plan.name}
+                className={`bg-gradient-to-r ${plan.gradient} border ${plan.border} p-4 rounded-lg transition-transform hover:scale-[1.02] cursor-pointer`}
+                onClick={() =>
+                  (window.location.href = `/settings?plan=${plan.planId}`)
+                }
+              >
+                <div className="flex items-start justify-between mb-2">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xl">{plan.icon}</span>
+                      <h4
+                        className={`font-medium bg-gradient-to-r ${plan.color} bg-clip-text text-transparent`}
+                      >
+                        {plan.name} Plan
+                      </h4>
+                    </div>
+                  </div>
+                  {currentPlan === plan.name && (
+                    <span className="text-xs bg-green-500/20 text-green-400 px-2 py-1 rounded-full">
+                      Current Plan
+                    </span>
+                  )}
+                </div>
+                <ul className="space-y-1">
+                  {plan.features.map((feature, index) => (
+                    <li
+                      key={index}
+                      className="flex items-center gap-2 text-sm text-gray-300"
+                    >
+                      <span
+                        className={`w-1 h-1 rounded-full bg-gradient-to-r ${plan.color}`}
+                      ></span>
+                      {feature}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex gap-3">
+            <button
+              onClick={() => (window.location.href = '/settings')}
+              className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg py-2 px-4 text-sm font-medium transition-all duration-200"
+            >
+              View Plans & Upgrade
+            </button>
+            <button
+              onClick={() => setShowUpgradeModal(false)}
+              className="flex-1 bg-gray-800 hover:bg-gray-700 text-white rounded-lg py-2 px-4 text-sm font-medium transition-colors"
+            >
+              Maybe Later
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Modify handleCreateFolder to check access
   const handleCreateFolder = async () => {
+    if (!hasAccess) {
+      setShowUpgradeModal(true);
+      return;
+    }
+
     if (!newFolderName.trim()) return;
 
     try {
@@ -133,13 +294,29 @@ const StudyMaterials = () => {
       await fetchItems();
       setNewFolderName('');
       setIsCreatingFolder(false);
+
+      // Update token count after action
+      await updateProfileCache();
+      const tokens = getRemainingTokens();
+      setRemainingTokens(tokens);
+
+      // Check if tokens are exhausted
+      if (tokens === 0 && currentPlan === 'Free') {
+        setHasAccess(false);
+        setShowUpgradeModal(true);
+      }
     } catch (error) {
       message.error(error.message || 'Failed to create folder');
     }
   };
 
-  // Handle file upload
+  // Modify handleFileUpload to check access
   const handleFileUpload = async (event) => {
+    if (!hasAccess) {
+      setShowUpgradeModal(true);
+      return;
+    }
+
     const files = Array.from(event.target.files);
     if (!files.length) return;
 
@@ -214,6 +391,17 @@ const StudyMaterials = () => {
       await finalizeProgress();
       message.success('File uploaded successfully');
       await fetchItems();
+
+      // Update token count after successful upload
+      await updateProfileCache();
+      const tokens = getRemainingTokens();
+      setRemainingTokens(tokens);
+
+      // Check if tokens are exhausted
+      if (tokens === 0 && currentPlan === 'Free') {
+        setHasAccess(false);
+        setShowUpgradeModal(true);
+      }
     } catch (error) {
       message.error(error.message || 'Failed to upload file');
       clearInterval(progressInterval);
@@ -636,26 +824,63 @@ const StudyMaterials = () => {
       >
         <div className="p-4 border-b border-gray-800">
           <div className="flex justify-between items-center mb-4 flex-col sm:flex-row gap-4 sm:gap-0">
-            <h2 className="text-xl font-bold text-white capitalize">
-              My {subject} Study Materials
-            </h2>
+            <div className="flex flex-col">
+              <h2 className="text-xl font-bold text-white capitalize">
+                My {subject} Study Materials
+              </h2>
+              {currentPlan === 'Free' && (
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="text-xs text-gray-400">
+                    <span className="text-blue-400">{remainingTokens}</span>{' '}
+                    tokens remaining
+                  </span>
+                  <button
+                    onClick={() => setShowUpgradeModal(true)}
+                    className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
+                  >
+                    Upgrade
+                  </button>
+                </div>
+              )}
+            </div>
+
             {getCurrentFolderItems().length > 0 && (
               <div className="flex items-center gap-3 w-full sm:w-auto justify-center sm:justify-end">
                 <button
-                  onClick={() => setIsCreatingFolder(true)}
-                  className="flex items-center gap-2 px-3 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg transition-all duration-200 text-gray-300 hover:text-white border border-gray-700 hover:border-gray-600 hover:shadow-lg group flex-1 sm:flex-initial justify-center"
-                  title="Create Folder"
+                  onClick={() =>
+                    hasAccess
+                      ? setIsCreatingFolder(true)
+                      : setShowUpgradeModal(true)
+                  }
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200 border text-sm font-medium justify-center flex-1 sm:flex-initial
+                    ${
+                      hasAccess
+                        ? 'bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white border-gray-700 hover:border-gray-600 hover:shadow-lg'
+                        : 'bg-gray-800/50 text-gray-500 border-gray-800 cursor-not-allowed'
+                    }`}
+                  title={
+                    hasAccess ? 'Create Folder' : 'Upgrade to create folders'
+                  }
                 >
-                  <FolderPlusIcon className="w-5 h-5 transition-transform group-hover:scale-110" />
-                  <span className="text-sm font-medium">New Folder</span>
+                  <FolderPlusIcon className="w-5 h-5" />
+                  <span>New Folder</span>
                 </button>
                 <button
-                  onClick={() => fileInputRef.current?.click()}
-                  className="flex items-center gap-2 px-3 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg transition-all duration-200 text-white border border-blue-500 hover:border-blue-400 hover:shadow-lg group flex-1 sm:flex-initial justify-center"
-                  title="Upload Files"
+                  onClick={() =>
+                    hasAccess
+                      ? fileInputRef.current?.click()
+                      : setShowUpgradeModal(true)
+                  }
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200 border text-sm font-medium justify-center flex-1 sm:flex-initial
+                    ${
+                      hasAccess
+                        ? 'bg-blue-600 hover:bg-blue-500 text-white border-blue-500 hover:border-blue-400 hover:shadow-lg'
+                        : 'bg-blue-900/20 text-blue-300/50 border-blue-900/50 cursor-not-allowed'
+                    }`}
+                  title={hasAccess ? 'Upload Files' : 'Upgrade to upload files'}
                 >
-                  <CloudArrowUpIcon className="w-5 h-5 transition-transform group-hover:scale-110" />
-                  <span className="text-sm font-medium">Upload</span>
+                  <CloudArrowUpIcon className="w-5 h-5" />
+                  <span>Upload</span>
                 </button>
               </div>
             )}
@@ -751,6 +976,7 @@ const StudyMaterials = () => {
         multiple
         accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png"
       />
+      <UpgradeModal />
     </>
   );
 };
