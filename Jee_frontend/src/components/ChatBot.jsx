@@ -14,13 +14,12 @@ import {
   PencilIcon,
   CheckIcon,
   CreditCardIcon,
-  UserCircleIcon,
 } from '@heroicons/react/24/outline';
 import PropTypes from 'prop-types';
 import { aiService } from '../interceptors/ai.service';
 import { useSelection } from '../hooks/useSelection';
 import { MathJax } from 'better-react-mathjax';
-import { getDecryptedItem, setEncryptedItem } from '../utils/encryption';
+import { getDecryptedItem } from '../utils/encryption';
 import {
   checkUserAccess,
   updateProfileCache,
@@ -1401,7 +1400,7 @@ const ChatBot = ({
 
           <div className="flex gap-3">
             <button
-              onClick={() => (window.location.href = '/profile/settings')}
+              onClick={() => (window.location.href = '/settings')}
               className="flex-1 bg-blue-500 hover:bg-blue-600 text-white rounded-lg py-2 px-4 text-sm font-medium transition-colors"
             >
               View Plans & Upgrade
