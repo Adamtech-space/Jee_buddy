@@ -224,14 +224,6 @@ def solve_math_problem(request):
         if token_response.get('message'):
             return JsonResponse(token_response, status=403)
         
-        # if response.status_code != 200:
-        #     return JsonResponse(
-        #         {"error": f"External API returned status {response.status_code}"},
-        #         status=400
-        #     )
-        # logger.info(f"Request: {request.user}") 
-        # logger.info(f"Request Content-Type: {request.content_type}")
-        
         # Handle form data
         if request.content_type.startswith('multipart/form-data'):
             data = request.data.copy()  # Get mutable copy of request data
@@ -263,7 +255,15 @@ def solve_math_problem(request):
             }, status=400)
 
         # Process the request
-        response_data, status_code = async_to_sync(process_math_problem)(data)
+        result = async_to_sync(process_math_problem)(data)
+        
+        # Handle tuple response
+        if isinstance(result, tuple) and len(result) == 2:
+            response_data, status_code = result
+        else:
+            response_data = result
+            status_code = 200
+            
         return JsonResponse(response_data, status=status_code)
             
     except Exception as e:
