@@ -34,12 +34,15 @@ SECRET_KEY = 'django-insecure-dd16kn&trh7p3@j5r8917v9ac4z4!2&49f-544+4d6f1#d)4uv
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 
 
-DEBUG = False
+DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
 ALLOWED_HOSTS = [
+    'localhost',
+    '127.0.0.1',
+    '[::1]',
+    '.amazonaws.com',
     'python.jeebuddy.in',
-    'python-backend-env-1.eba-5hzqwm2u.ap-south-1.elasticbeanstalk.com',  # or your EC2 domain/IP
-    # Add additional domains as needed.
+    'python-backend-env-1.eba-5hzqwm2u.ap-south-1.elasticbeanstalk.com',  # No trailing slash
 ]
 
 
@@ -87,8 +90,7 @@ CORS_ALLOW_ALL_ORIGINS = False  # Ensure that only specific origins are allowed
 CORS_ALLOWED_ORIGINS = [
     "https://python.jeebuddy.in",  # Your production backend domain
     "https://www.jeebuddy.in",      # Your website's domain that is sending the requests
-    "http://localhost:5173",  
-                # Include your local frontend if needed
+    "http://localhost:5173",        # Include your local frontend if needed
 ]
 CORS_ALLOW_CREDENTIALS = True  # Enable credentials if required (e.g., when sending cookies/authorization headers)
 
@@ -192,7 +194,7 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
 
 STATIC_URL = '/static/'
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Default primary key field type
@@ -200,11 +202,25 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# Security settings
-SECURE_SSL_REDIRECT = True
-SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-SESSION_COOKIE_SECURE = True
-CSRF_COOKIE_SECURE = True
+# AWS Lambda Settings
+if 'LAMBDA_TASK_ROOT' in os.environ:
+    ALLOWED_HOSTS = [
+        'python.jeebuddy.in',
+        'python-backend-env-1.eba-5hzqwm2u.ap-south-1.elasticbeanstalk.com',
+        
+        # Add additional domains as needed.
+    ]
+    DEBUG = False
+
+    # Static files
+    STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+    STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
+    # Security settings
+    SECURE_SSL_REDIRECT = True
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
 
 
 
