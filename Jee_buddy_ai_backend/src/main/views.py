@@ -226,7 +226,7 @@ def solve_math_problem(request):
         
         # Handle form data
         if request.content_type.startswith('multipart/form-data'):
-            data = request.data.copy()  # Get mutable copy of request data
+            data = dict(request.data.copy())  # Convert QueryDict to regular dict
             
             # Handle image if present
             if 'image' in request.FILES:
@@ -237,7 +237,12 @@ def solve_math_problem(request):
             
             # Convert boolean fields
             if 'Deep_think' in data:
-                data['Deep_think'] = data['Deep_think'].lower() == 'true'
+                data['Deep_think'] = str(data['Deep_think']).lower() == 'true'
+                
+            # Convert list values to single values if they exist
+            for key in data:
+                if isinstance(data[key], list) and len(data[key]) == 1:
+                    data[key] = data[key][0]
                 
         elif request.content_type == 'application/json':
             data = json.loads(request.body.decode('utf-8'))
@@ -254,28 +259,15 @@ def solve_math_problem(request):
                 'details': 'Question field is required'
             }, status=400)
 
-        try:
-            # Process the request and properly unpack the tuple
-            response_data, status_code = async_to_sync(process_math_problem)(data)
-            
-            # Check if response_data is a tuple (for backward compatibility)
-            if isinstance(response_data, tuple):
-                response_data, status_code = response_data
-                
-            return JsonResponse(response_data, status=status_code)
-            
-        except Exception as e:
-            logger.error(f"Error processing math problem: {str(e)}", exc_info=True)
-            return JsonResponse({
-                'error': str(e),
-                'details': 'An error occurred while processing the math problem'
-            }, status=500)
+        # Process the request
+        response_data, status_code = async_to_sync(process_math_problem)(data)
+        return JsonResponse(response_data, status=status_code)
             
     except Exception as e:
         logger.error(f"Error in solve_math_problem: {str(e)}", exc_info=True)
         return JsonResponse({
             'error': str(e),
-            'details': 'An unexpected error occurred while processing your request in productiom ena da epadi panringaa.'
+            'details': 'An unexpected error occurred while processing your request.'
         }, status=500)
 
 @api_view(['GET'])
