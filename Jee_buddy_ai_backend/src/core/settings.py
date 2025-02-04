@@ -86,9 +86,12 @@ REST_FRAMEWORK = {
 }
 
 # CORS settings
-CORS_ALLOW_ALL_ORIGINS = False  # Change this to False
+CORS_ALLOW_ALL_ORIGINS = False  # Use a specific list of allowed origins
+CORS_ALLOWED_ORIGINS = [
+    "https://python.jeebuddy.in",  # Add your frontend domain here
+    "http://localhost:5173",      # Add additional domains for development if needed
+]
 CORS_ALLOW_CREDENTIALS = False
-
 
 
 CORS_ALLOW_METHODS = [
