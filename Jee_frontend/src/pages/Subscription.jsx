@@ -8,7 +8,6 @@ import { getDecryptedItem, setEncryptedItem } from '../utils/encryption';
 const PLANS = {
   BASIC: import.meta.env.VITE_BASIC_PLAN_ID,
   PRO: import.meta.env.VITE_PRO_PLAN_ID,
-  PREMIUM: import.meta.env.VITE_PREMIUM_PLAN_ID,
 };
 
 const SubscriptionCard = ({
@@ -140,7 +139,6 @@ const Subscription = () => {
   const [loadingStates, setLoadingStates] = useState({
     BASIC: false,
     PRO: false,
-    PREMIUM: false,
   });
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [currentPlan, setCurrentPlan] = useState(null);
@@ -171,9 +169,19 @@ const Subscription = () => {
   };
 
   useEffect(() => {
+    const initializeRazorpay = async () => {
+      const isScriptLoaded = await loadScript('https://checkout.razorpay.com/v1/checkout.js');
+      if (!isScriptLoaded) {
+        console.error('Failed to load Razorpay script');
+        alert('Failed to load payment gateway. Please try again.');
+      }
+    };
+    initializeRazorpay();
+  }, []);
+
+  useEffect(() => {
     const initializeSubscription = async () => {
       try {
-        await loadScript('https://checkout.razorpay.com/v1/checkout.js');
         const userId = getUserId();
 
         if (!userId) {
@@ -190,10 +198,6 @@ const Subscription = () => {
           // Compare plan IDs directly with environment variables
           let planType = 'BASIC';
           if (
-            userData.current_plan_id === import.meta.env.VITE_PREMIUM_PLAN_ID
-          ) {
-            planType = 'PREMIUM';
-          } else if (
             userData.current_plan_id === import.meta.env.VITE_PRO_PLAN_ID
           ) {
             planType = 'PRO';
@@ -204,7 +208,7 @@ const Subscription = () => {
             type: planType,
             name: `${planType.charAt(0) + planType.slice(1).toLowerCase()} Plan`,
             price:
-              planType === 'BASIC' ? 499 : planType === 'PRO' ? 1499 : 4999,
+              planType === 'BASIC' ? 999 : 4999,
           });
         } else {
           setIsSubscribed(false);
@@ -282,7 +286,7 @@ const Subscription = () => {
         subscription_id: data.order.id,
         name: 'JEE Buddy',
         description: `${product_name} Subscription`,
-        image: 'https://your-logo-url.png',
+        image: 'https://your-actual-logo-url.png',
         currency: 'INR',
         prefill: {
           email: userData.email || '',
@@ -309,6 +313,9 @@ const Subscription = () => {
         },
         theme: {
           color: '#000000',
+        },
+        method: {
+          upi: true,
         },
       };
 
@@ -377,7 +384,7 @@ const Subscription = () => {
         setCurrentPlan({
           type: planType,
           name: `${planType.charAt(0) + planType.slice(1).toLowerCase()} Plan`,
-          price: planType === 'BASIC' ? 499 : planType === 'PRO' ? 1499 : 4999,
+          price: planType === 'BASIC' ? 999 : 4999,
         });
 
         // Show success message
@@ -407,19 +414,14 @@ const Subscription = () => {
         ];
       case 'PRO':
         return [
-          'Extra AI Usage',
-          'Advanced Materials',
-          'Question Bank',
-          'Priority Support',
-          'Strength and Weakness Analysis',
-        ];
-      case 'PREMIUM':
-        return [
           'Unlimited AI Usage',
           'AI Generated Question Bank',
           'Performance Analytics',
           'Priority Support',
           'Advanced Analytics',
+          'Complete Study Materials',
+          'Download Access',
+          'Visualization Tools',
         ];
       default:
         return [];
@@ -457,7 +459,7 @@ const Subscription = () => {
                 Your JEE Buddy Subscription
               </h1>
               <p className="text-gray-400 text-lg">
-                {currentPlan.type === 'PREMIUM'
+                {currentPlan.type === 'PRO'
                   ? 'You are enjoying our highest tier plan with all premium features!'
                   : 'Upgrade your plan anytime to unlock more features and benefits'}
               </p>
@@ -524,7 +526,7 @@ const Subscription = () => {
             </div>
 
             {/* Show upgrade option only if not on Premium plan */}
-            {currentPlan.type !== 'PREMIUM' && (
+            {currentPlan.type !== 'PRO' && (
               <div>
                 <h2 className="text-2xl text-white font-semibold mb-6">
                   Available Upgrades
@@ -533,7 +535,7 @@ const Subscription = () => {
                   <div className="flex flex-col md:flex-row items-center justify-between gap-8">
                     <div>
                       <h3 className="text-2xl font-bold text-white mb-2">
-                        Premium Plan
+                        Pro Plan
                       </h3>
                       <p className="text-gray-400 mb-4">
                         Unlock unlimited AI usage and advanced features
@@ -600,18 +602,18 @@ const Subscription = () => {
                       <button
                         onClick={() =>
                           handleGetStarted({
-                            type: 'PREMIUM',
+                            type: 'PRO',
                             price: 4999,
-                            name: 'Premium Plan',
-                            id: PLANS['PREMIUM'],
+                            name: 'Pro Plan',
+                            id: PLANS['PRO'],
                           })
                         }
-                        disabled={loadingStates.PREMIUM}
+                        disabled={loadingStates.PRO}
                         className="px-8 py-3 rounded-lg bg-[#8075FF] text-white font-semibold hover:bg-[#6a5ff0] transition-colors"
                       >
-                        {loadingStates.PREMIUM
+                        {loadingStates.PRO
                           ? 'Processing...'
-                          : 'Upgrade to Premium'}
+                          : 'Upgrade to Pro'}
                       </button>
                       <p className="text-gray-500 text-sm mt-2">
                         Cancel or change plans anytime
@@ -630,7 +632,7 @@ const Subscription = () => {
             </h1>
 
             {/* Existing plans grid */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto">
               {/* Basic Plan */}
               <div className="rounded-3xl bg-[#1a1625] p-8 flex flex-col">
                 <div className="mb-6">
@@ -638,7 +640,7 @@ const Subscription = () => {
                   <div className="flex items-baseline">
                     <span className="text-2xl text-[#8075FF]">₹</span>
                     <span className="text-4xl font-bold text-[#8075FF]">
-                      499
+                      999
                     </span>
                     <span className="text-gray-400 ml-2">/month</span>
                   </div>
@@ -714,7 +716,7 @@ const Subscription = () => {
                     onClick={() =>
                       handleGetStarted({
                         type: 'BASIC',
-                        price: 499,
+                        price: 999,
                         name: 'Basic Plan',
                         id: PLANS['BASIC'],
                       })
@@ -728,7 +730,7 @@ const Subscription = () => {
               </div>
 
               {/* Pro Plan */}
-              <div className="rounded-3xl bg-gradient-to-b from-[#2c2439] to-[#1a1625] p-8 flex flex-col relative mt-8 md:mt-0">
+              <div className="rounded-3xl bg-gradient-to-b from-[#2c2439] to-[#1a1625] p-8 flex flex-col relative">
                 <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 whitespace-nowrap">
                   <span className="bg-[#8075FF] text-white px-4 py-1 rounded-full text-sm font-medium inline-block">
                     Most Popular
@@ -738,100 +740,36 @@ const Subscription = () => {
                   <h2 className="text-2xl font-bold text-white mb-4">Pro</h2>
                   <div className="flex items-baseline">
                     <span className="text-2xl text-[#8075FF]">₹</span>
-                    <span className="text-4xl font-bold text-[#8075FF]">
-                      1,499
-                    </span>
+                    <span className="text-4xl font-bold text-[#8075FF]">4,999</span>
                     <span className="text-gray-400 ml-2">/month</span>
                   </div>
                 </div>
                 <ul className="space-y-4 mb-8 flex-grow">
-                  <li className="flex items-center text-white">
-                    <svg
-                      className="w-5 h-5 mr-3 text-[#8075FF]"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M5 13l4 4L19 7"
-                      />
-                    </svg>
-                    Everything in Basic
-                  </li>
-                  <li className="flex items-center text-white">
-                    <svg
-                      className="w-5 h-5 mr-3 text-[#8075FF]"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M5 13l4 4L19 7"
-                      />
-                    </svg>
-                    Extra AI Usage
-                  </li>
-                  <li className="flex items-center text-white">
-                    <svg
-                      className="w-5 h-5 mr-3 text-[#8075FF]"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M5 13l4 4L19 7"
-                      />
-                    </svg>
-                    Advanced Study Materials
-                  </li>
-                  <li className="flex items-center text-white">
-                    <svg
-                      className="w-5 h-5 mr-3 text-[#8075FF]"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M5 13l4 4L19 7"
-                      />
-                    </svg>
-                    Question Bank
-                  </li>
-                  <li className="flex items-center text-white">
-                    <svg
-                      className="w-5 h-5 mr-3 text-[#8075FF]"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M5 13l4 4L19 7"
-                      />
-                    </svg>
-                    Strength and Weakness Analysis
-                  </li>
+                  {getPlanFeatures('PRO').map((feature, index) => (
+                    <li key={index} className="flex items-center text-white">
+                      <svg
+                        className="w-5 h-5 mr-3 text-[#8075FF]"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M5 13l4 4L19 7"
+                        />
+                      </svg>
+                      {feature}
+                    </li>
+                  ))}
                 </ul>
                 {!isSubscribed && (
                   <button
                     onClick={() =>
                       handleGetStarted({
                         type: 'PRO',
-                        price: 1499,
+                        price: 4999,
                         name: 'Pro Plan',
                         id: PLANS['PRO'],
                       })
@@ -840,120 +778,6 @@ const Subscription = () => {
                     className="w-full py-3 rounded-lg bg-[#8075FF] text-white font-semibold hover:bg-[#6a5ff0] transition-colors"
                   >
                     {loadingStates.PRO ? 'Processing...' : 'Get Started'}
-                  </button>
-                )}
-              </div>
-
-              {/* Premium Plan */}
-              <div className="rounded-3xl bg-[#1a1625] p-8 flex flex-col">
-                <div className="mb-6">
-                  <h2 className="text-2xl font-bold text-white mb-4">
-                    Premium
-                  </h2>
-                  <div className="flex items-baseline">
-                    <span className="text-2xl text-[#8075FF]">₹</span>
-                    <span className="text-4xl font-bold text-[#8075FF]">
-                      4,999
-                    </span>
-                    <span className="text-gray-400 ml-2">/month</span>
-                  </div>
-                </div>
-                <ul className="space-y-4 mb-8 flex-grow">
-                  <li className="flex items-center text-white">
-                    <svg
-                      className="w-5 h-5 mr-3 text-[#8075FF]"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M5 13l4 4L19 7"
-                      />
-                    </svg>
-                    Everything in Pro
-                  </li>
-                  <li className="flex items-center text-white">
-                    <svg
-                      className="w-5 h-5 mr-3 text-[#8075FF]"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M5 13l4 4L19 7"
-                      />
-                    </svg>
-                    Unlimited AI Usage
-                  </li>
-                  <li className="flex items-center text-white">
-                    <svg
-                      className="w-5 h-5 mr-3 text-[#8075FF]"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M5 13l4 4L19 7"
-                      />
-                    </svg>
-                    AI Generated Question Bank
-                  </li>
-                  <li className="flex items-center text-white">
-                    <svg
-                      className="w-5 h-5 mr-3 text-[#8075FF]"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M5 13l4 4L19 7"
-                      />
-                    </svg>
-                    Performance Analytics
-                  </li>
-                  <li className="flex items-center text-white">
-                    <svg
-                      className="w-5 h-5 mr-3 text-[#8075FF]"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M5 13l4 4L19 7"
-                      />
-                    </svg>
-                    Priority Support
-                  </li>
-                </ul>
-                {!isSubscribed && (
-                  <button
-                    onClick={() =>
-                      handleGetStarted({
-                        type: 'PREMIUM',
-                        price: 4999,
-                        name: 'Premium Plan',
-                        id: PLANS['PREMIUM'],
-                      })
-                    }
-                    disabled={loadingStates.PREMIUM}
-                    className="w-full py-3 rounded-lg bg-[#1e1b29] text-white font-semibold hover:bg-[#2a2635] transition-colors"
-                  >
-                    {loadingStates.PREMIUM ? 'Processing...' : 'Get Started'}
                   </button>
                 )}
               </div>

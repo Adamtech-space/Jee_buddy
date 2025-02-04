@@ -27,9 +27,8 @@ if not RAZORPAY_KEY_ID or not RAZORPAY_KEY_SECRET:
 razorpay_client = razorpay.Client(auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET))
 
 PLANS = {
-    'BASIC': 'plan_PhmnKiiVXD3B1M',
-    'PREMIUM': 'plan_Phmo9yOZAKb0P8',
-    'PRO': 'plan_PhmnlqjWH24hwy'
+    'BASIC': 'plan_Prb0eFdLDbmvN2',
+    'PRO': 'plan_PraNiv0WBkABY9',  # Using the previous PREMIUM plan ID for PRO
 }
 
 def calculate_days_remaining(valid_till):
@@ -250,7 +249,7 @@ def get_plans(request):
             'BASIC': {
                 'id': PLANS['BASIC'],
                 'name': 'Basic Plan',
-                'price': 499,
+                'price': 999,
                 'features': [
                     'Basic AI assistance',
                     'Study materials access',
@@ -260,18 +259,6 @@ def get_plans(request):
             'PRO': {
                 'id': PLANS['PRO'],
                 'name': 'Pro Plan',
-                'price': 1499,
-                'features': [
-                    'Extended AI assistance',
-                    'Full study materials',
-                    'Question bank access',
-                    'Performance analytics',
-                    'Priority support'
-                ]
-            },
-            'PREMIUM': {
-                'id': PLANS['PREMIUM'],
-                'name': 'Premium Plan',
                 'price': 4999,
                 'features': [
                     'Unlimited AI assistance',
@@ -280,7 +267,8 @@ def get_plans(request):
                     'Advanced analytics',
                     'Priority support',
                     'AI content generation',
-                    'Download access'
+                    'Download access',
+                    'Visualization tools',
                 ]
             }
         }
