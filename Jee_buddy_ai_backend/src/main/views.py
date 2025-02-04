@@ -155,6 +155,13 @@ async def process_math_problem(request_data):
         # Recursively unpack any nested tuples to get the solution dictionary.
         solution = recursively_unpack(raw_solution)
         logger.debug("final solution: %s", solution)
+
+
+        if not isinstance(solution, dict):
+            logger.error(f"Unexpected solution type: {type(solution)} | Value: {solution}")
+            solution = {"solution": str(solution)}  # Fallback to string conversion
+
+        logger.debug("final solution: %s", solution)
         
         if not solution or not isinstance(solution, dict) or not solution.get("solution"):
             return {
@@ -176,7 +183,7 @@ async def process_math_problem(request_data):
         logger.error(f"Error in process_math_problem: {str(e)}", exc_info=True)
         return {
             "error": str(e),
-            "details": "An unexpected error occurred while processing your request in process_math_problem."
+            "details": "An unexpected error occurred while processing your request in process_math_problem. deiiiiii"
         }, 500
 
 @csrf_exempt

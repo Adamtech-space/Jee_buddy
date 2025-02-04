@@ -294,7 +294,7 @@ class MathAgent:
             print("context", context)
             # Make API call
             solution = await self._make_api_call(messages, model_config, context)
-            print("solution", solution)
+            solution = {"solution": str(solution)} if not isinstance(solution, dict) else solution
 
             
             # Prepare response
