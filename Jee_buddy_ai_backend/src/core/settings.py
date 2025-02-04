@@ -86,33 +86,32 @@ REST_FRAMEWORK = {
 }
 
 # CORS settings
-CORS_ALLOW_ALL_ORIGINS = False  # Use a specific list of allowed origins
+CORS_ALLOW_ALL_ORIGINS = False  # For tighter security; temporarily set to True for testing if needed.
 CORS_ALLOWED_ORIGINS = [
-    "https://python.jeebuddy.in",  # Add your frontend domain here
-    "http://localhost:5173",      # Add additional domains for development if needed
+    "http://localhost:5173",  # Local frontend
+    "https://python.jeebuddy.in",  # Production frontend (if applicable)
 ]
-CORS_ALLOW_CREDENTIALS = False
-
+CORS_ALLOW_CREDENTIALS = True  # Enable this if your requests include authentication cookies or similar
 
 CORS_ALLOW_METHODS = [
-    'DELETE',
-    'GET',
-    'OPTIONS',
-    'PATCH',
-    'POST',
-    'PUT',
+    "DELETE",
+    "GET",
+    "OPTIONS",
+    "PATCH",
+    "POST",
+    "PUT",
 ]
 
 CORS_ALLOW_HEADERS = [
-    'accept',
-    'accept-encoding',
-    'authorization',
-    'content-type',
-    'dnt',
-    'origin',
-    'user-agent',
-    'x-csrftoken',
-    'x-requested-with',
+    "accept",
+    "accept-encoding",
+    "authorization",
+    "content-type",
+    "dnt",
+    "origin",
+    "user-agent",
+    "x-csrftoken",
+    "x-requested-with",
 ]
 
 # Remove any duplicate INSTALLED_APPS
