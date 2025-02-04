@@ -131,7 +131,6 @@ async def process_math_problem(request_data):
             'session_id': request_data.get('session_id'),
             'subject': request_data.get('subject', ''),
             'topic': request_data.get('topic', ''),
-            'interaction_type': request_data.get('type', ''),
             'pinnedText': request_data.get('pinnedText', ''),
             'selectedText': request_data.get('selectedText', ''),
             'Deep_think': request_data.get('Deep_think', False),
@@ -174,7 +173,7 @@ async def process_math_problem(request_data):
                 context_data={
                     'subject': context['subject'],
                     'topic': context['topic'],
-                    'interaction_type': context['interaction_type'],
+                    # 'interaction_type': context['interaction_type'],
                     'pinned_text': context['pinnedText'],
                 }
             )
@@ -215,7 +214,7 @@ def solve_math_problem(request):
     try:
         token_agent = MathTokenLimitAgent()
 
-        # Process the token limit check
+        # Process the token limit check using top-level fields
         user_id = request.data.get('user_id')
         prompt = request.data.get('question')
         token_response = token_agent.process_query(user_id, prompt)
@@ -229,29 +228,18 @@ def solve_math_problem(request):
         if token_response.get('message'):
             return JsonResponse(token_response, status=403)
         
-        # if response.status_code != 200:
-        #     return JsonResponse(
-        #         {"error": f"External API returned status {response.status_code}"},
-        #         status=400
-        #     )
-        # logger.info(f"Request: {request.user}") 
-        # logger.info(f"Request Content-Type: {request.content_type}")
-        
         # Handle form data
         if request.content_type.startswith('multipart/form-data'):
             data = request.data.copy()  # Get mutable copy of request data
-            
+
             # Handle image if present
             if 'image' in request.FILES:
                 image_file = request.FILES['image']
-                # Convert image to base64
                 image_data = base64.b64encode(image_file.read()).decode('utf-8')
                 data['image'] = image_data
-            
-            # Convert boolean fields
+
             if 'Deep_think' in data:
                 data['Deep_think'] = data['Deep_think'].lower() == 'true'
-                
         elif request.content_type == 'application/json':
             data = json.loads(request.body.decode('utf-8'))
         else:
@@ -259,6 +247,13 @@ def solve_math_problem(request):
                 'error': 'Unsupported content type',
                 'details': 'Only multipart/form-data and application/json are supported'
             }, status=400)
+
+        # Check if required fields are nested in "context" and merge them to the top level
+        if not data.get('user_id') and 'context' in data and isinstance(data['context'], dict):
+            context_data = data.pop('context')
+            for key in ['user_id', 'session_id', 'subject', 'topic', 'pinnedText', 'selectedText', 'image']:
+                if key in context_data:
+                    data[key] = context_data[key]
 
         # Validate required fields
         if not data.get('question'):
@@ -270,7 +265,7 @@ def solve_math_problem(request):
         # Process the request
         response_data, status_code = async_to_sync(process_math_problem)(data)
         return JsonResponse(response_data, status=status_code)
-            
+
     except Exception as e:
         logger.error(f"Error in solve_math_problem: {str(e)}", exc_info=True)
         return JsonResponse({

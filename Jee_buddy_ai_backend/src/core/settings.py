@@ -87,7 +87,8 @@ CORS_ALLOW_ALL_ORIGINS = False  # Ensure that only specific origins are allowed
 CORS_ALLOWED_ORIGINS = [
     "https://python.jeebuddy.in",  # Your production backend domain
     "https://www.jeebuddy.in",      # Your website's domain that is sending the requests
-    "http://localhost:5173",        # Include your local frontend if needed
+    "http://localhost:5173",  
+                # Include your local frontend if needed
 ]
 CORS_ALLOW_CREDENTIALS = True  # Enable credentials if required (e.g., when sending cookies/authorization headers)
 
