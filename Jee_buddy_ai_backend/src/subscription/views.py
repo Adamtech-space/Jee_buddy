@@ -52,9 +52,12 @@ def get_subscription_status(request):
                 'message': 'User ID is required'
             }, status=400)
 
+        # Cast user_id to string explicitly
+        user_id_str = str(user_id)
+
         # Check if user has an active subscription
         subscription = Subscription.objects.filter(
-            user_id=user_id,
+            user_id=user_id_str,  # Use the string-casted user_id
             status='active'
         ).order_by('-created_at').first()
 
