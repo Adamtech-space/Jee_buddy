@@ -24,7 +24,7 @@ from django.http import JsonResponse
 from functools import wraps
 from django.utils import timezone
 from .agents.math_token_set_limit_agent import MathTokenLimitAgent
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(_name_)
 
 def async_view(view_func):
     """Decorator to handle async views properly"""
@@ -118,6 +118,7 @@ def save_chat_interaction(user_id, session_id, question, response, context_data)
 async def process_math_problem(request_data):
     try:
         print("request_data", request_data)
+        print("*request_data*", request_data)
         # Extract data from request
         question = request_data.get('question', '')
         if not question:
@@ -152,14 +153,8 @@ async def process_math_problem(request_data):
         # Initialize math agent and get solution
         agent = await MathAgent.create()
         solution = await agent.solve(question, context)
-        logger.info(f"Received solution: {solution}")
-
-        # If solution is a tuple (e.g., due to a fallback or different implementation), extract the first element
-        if isinstance(solution, tuple):
-            solution = solution[0]
-
+        
         if not solution or not solution.get('solution'):
-            logger.error("No solution generated")
             return {
                 'error': 'No solution generated',
                 'details': 'The AI agent failed to generate a response.'
@@ -221,13 +216,20 @@ def solve_math_problem(request):
         prompt = request.data.get('question')
         token_response = token_agent.process_query(user_id, prompt)
         print("token_response", token_response)
+        print("*token_response*", token_response)
 
         # If there's an error in token processing, return it
-        if token_response.get('error'):
+        if isinstance(token_response, tuple) and len(token_response) == 2:
+            token_response, _ = token_response
+        if isinstance(token_response, dict) and token_response.get('error'):
             return JsonResponse(token_response, status=400)
+        # if token_response.get('error'):
+        #     return JsonResponse(token_response, status=400)
 
         # If the user has exceeded the token limit, return the message
-        if token_response.get('message'):
+        # if token_response.get('message'):
+        #     return JsonResponse(token_response, status=403)
+        if isinstance(token_response, dict) and token_response.get('message'):
             return JsonResponse(token_response, status=403)
         
         # Handle form data
@@ -414,4 +416,4 @@ def handler(event, context):
     from src.core.wsgi import application
     import awsgi
     
-    return awsgi.response(application, event, context)
+    return awsgi.response(application, event, context)
