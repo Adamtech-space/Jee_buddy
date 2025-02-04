@@ -143,8 +143,8 @@ class MathAgent:
         self.api_key = api_key
         self.templates = ResponseTemplates()
         self._setup_agent()
-        self.visualization_agent = ManimScriptGenerator()
-        self.renderer = ManimRenderer()
+        # self.visualization_agent = ManimScriptGenerator()
+        # self.renderer = ManimRenderer()
         self.image_solver = MathSolver(api_key)  # Initialize MathSolver
 
     @classmethod
@@ -308,10 +308,10 @@ class MathAgent:
             }
             
             # Add visualization data if available
-            if visualization_data:
-                response["visualization"] = visualization_data
+            # if visualization_data:
+            #     response["visualization"] = visualization_data
             
-            return response
+            # return response
 
         except Exception as e:
             logger.error(f"Error in solve method: {str(e)}", exc_info=True)
