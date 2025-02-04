@@ -118,6 +118,7 @@ def save_chat_interaction(user_id, session_id, question, response, context_data)
 async def process_math_problem(request_data):
     try:
         print("request_data", request_data)
+        print("******************request_data********************", request_data)
         # Extract data from request
         question = request_data.get('question', '')
         if not question:
@@ -200,7 +201,7 @@ async def process_math_problem(request_data):
         logger.error(f"Error in process_math_problem: {str(e)}", exc_info=True)
         return {
             'error': str(e),
-            'details': 'An unexpected error occurred while processing your request.'
+            'details': 'An unexpected error occurred while processing your request.process_math_problem'
         }, 500
 
 @csrf_exempt
@@ -215,22 +216,21 @@ def solve_math_problem(request):
         prompt = request.data.get('question')
         token_response = token_agent.process_query(user_id, prompt)
         print("token_response", token_response)
+        print("******************token_response********************", token_response)
 
         # If there's an error in token processing, return it
-        if token_response.get('error'):
+        if isinstance(token_response, tuple) and len(token_response) == 2:
+            token_response, _ = token_response
+        if isinstance(token_response, dict) and token_response.get('error'):
             return JsonResponse(token_response, status=400)
+        # if token_response.get('error'):
+        #     return JsonResponse(token_response, status=400)
 
         # If the user has exceeded the token limit, return the message
-        if token_response.get('message'):
+        # if token_response.get('message'):
+        #     return JsonResponse(token_response, status=403)
+        if isinstance(token_response, dict) and token_response.get('message'):
             return JsonResponse(token_response, status=403)
-        
-        # if response.status_code != 200:
-        #     return JsonResponse(
-        #         {"error": f"External API returned status {response.status_code}"},
-        #         status=400
-        #     )
-        # logger.info(f"Request: {request.user}") 
-        # logger.info(f"Request Content-Type: {request.content_type}")
         
         # Handle form data
         if request.content_type.startswith('multipart/form-data'):
@@ -263,14 +263,22 @@ def solve_math_problem(request):
             }, status=400)
 
         # Process the request
-        response_data, status_code = async_to_sync(process_math_problem)(data)
+        result = async_to_sync(process_math_problem)(data)
+        
+        # Handle tuple response
+        if isinstance(result, tuple) and len(result) == 2:
+            response_data, status_code = result
+        else:
+            response_data = result
+            status_code = 200
+            
         return JsonResponse(response_data, status=status_code)
             
     except Exception as e:
         logger.error(f"Error in solve_math_problem: {str(e)}", exc_info=True)
         return JsonResponse({
             'error': str(e),
-            'details': 'An unexpected error occurred while processing your request.'
+            'details': 'An unexpected error occurred while processing your request. solve_math_problem.'
         }, status=500)
 
 @api_view(['GET'])

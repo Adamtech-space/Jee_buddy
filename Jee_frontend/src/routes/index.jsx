@@ -1,11 +1,16 @@
 import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { useLoading } from '../context/LoadingContext';
 import { Analytics } from '@vercel/analytics/react';
+import { useEffect, useState } from 'react';
+import {
+  getCurrentPlanName,
+  updateProfileCache,
+} from '../interceptors/services';
 
 // Layout
 import DefaultLayout from '../components/layouts/DefaultLayout';
-// Ram landing page
-// import Jeebuddy from '../landingPage/JeeBuddy'
+// Uncomment and import landing page
+import Jeebuddy from '../landingPage/JeeBuddy';
 
 // Auth Pages
 import Login from '../pages/Login';
@@ -31,12 +36,29 @@ import PdfViewer from '../components/PdfViewer';
 // import Demo from '../components/Demo';
 // import StudyResources from '../components/StudyResources';
 
-// Protected Route Component
+// Protected Route Component with subscription check
 const ProtectedRoute = () => {
   const { isAuthenticated, isLoading } = useLoading();
+  const [checkingPlan, setCheckingPlan] = useState(true);
 
-  // Don't render anything while checking auth
-  if (isLoading) {
+  useEffect(() => {
+    const checkSubscription = async () => {
+      try {
+        await updateProfileCache();
+        await getCurrentPlanName();
+      } catch (error) {
+        console.error('Error checking subscription:', error);
+      } finally {
+        setCheckingPlan(false);
+      }
+    };
+
+    if (isAuthenticated) {
+      checkSubscription();
+    }
+  }, [isAuthenticated]);
+
+  if (isLoading || checkingPlan) {
     return null;
   }
 
@@ -47,35 +69,104 @@ const ProtectedRoute = () => {
   return <Outlet />;
 };
 
+// Subscription Protected Route Component
+const SubscriptionProtectedRoute = () => {
+  const { isAuthenticated, isLoading } = useLoading();
+  const [hasPlan, setHasPlan] = useState(false);
+  const [checkingPlan, setCheckingPlan] = useState(true);
+
+  useEffect(() => {
+    const checkSubscription = async () => {
+      try {
+        await updateProfileCache(); // Update profile data
+        const planName = getCurrentPlanName();
+        setHasPlan(planName !== 'Free');
+      } catch (error) {
+        console.error('Error checking subscription:', error);
+        setHasPlan(false);
+      } finally {
+        setCheckingPlan(false);
+      }
+    };
+
+    if (isAuthenticated) {
+      checkSubscription();
+    }
+  }, [isAuthenticated]);
+
+  // Don't render anything while checking auth or plan
+  if (isLoading || checkingPlan) {
+    return null;
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (!hasPlan) {
+    return <Navigate to="/settings" replace />;
+  }
+
+  return <Outlet />;
+};
+
 const AppRoutes = () => {
   const { isAuthenticated, isLoading } = useLoading();
+  const [hasPlan, setHasPlan] = useState(false);
+  const [checkingPlan, setCheckingPlan] = useState(true);
 
-  // Don't render anything while checking auth
-  if (isLoading) {
+  useEffect(() => {
+    const checkSubscription = async () => {
+      try {
+        if (isAuthenticated) {
+          await updateProfileCache();
+          const planName = getCurrentPlanName();
+          setHasPlan(planName !== 'Free');
+        }
+      } catch (error) {
+        console.error('Error checking subscription:', error);
+        setHasPlan(false);
+      } finally {
+        setCheckingPlan(false);
+      }
+    };
+
+    checkSubscription();
+  }, [isAuthenticated]);
+
+  if (isLoading || checkingPlan) {
     return null;
   }
 
   return (
     <>
       <Routes>
-        {/* Public Routes - Only accessible when not logged in */}
+        {/* Landing page as root route */}
         <Route
           path="/"
           element={
             isAuthenticated ? (
-              <Navigate to="/subject-selection" replace />
+              hasPlan ? (
+                <Navigate to="/subject-selection" replace />
+              ) : (
+                <Navigate to="/settings" replace />
+              )
             ) : (
-              <Navigate to="/register" replace />
+              <Jeebuddy />
             )
           }
         />
 
-        {/* Auth Routes - Only accessible when not logged in */}
+        {/* Auth Routes */}
         <Route
           path="/login"
           element={
             isAuthenticated ? (
-              <Navigate to="/subject-selection" replace />
+              hasPlan ? (
+                <Navigate to="/subject-selection" replace />
+              ) : (
+                <Navigate to="/settings" replace />
+              )
             ) : (
               <Login />
             )
@@ -85,7 +176,11 @@ const AppRoutes = () => {
           path="/register"
           element={
             isAuthenticated ? (
-              <Navigate to="/subject-selection" replace />
+              hasPlan ? (
+                <Navigate to="/subject-selection" replace />
+              ) : (
+                <Navigate to="/settings" replace />
+              )
             ) : (
               <Register />
             )
@@ -95,7 +190,11 @@ const AppRoutes = () => {
           path="/forgot-password"
           element={
             isAuthenticated ? (
-              <Navigate to="/subject-selection" replace />
+              hasPlan ? (
+                <Navigate to="/subject-selection" replace />
+              ) : (
+                <Navigate to="/settings" replace />
+              )
             ) : (
               <ForgotPassword />
             )
@@ -105,14 +204,7 @@ const AppRoutes = () => {
 
         {/* Protected Routes - Only accessible when logged in */}
         <Route element={<ProtectedRoute />}>
-          <Route
-            path="/subject-selection"
-            element={
-              <DefaultLayout>
-                <SubjectSelection />
-              </DefaultLayout>
-            }
-          />
+          {/* Settings is accessible to all logged in users */}
           <Route
             path="/settings"
             element={
@@ -122,30 +214,48 @@ const AppRoutes = () => {
             }
           />
 
-          <Route
-            path="/dashboard/:subject"
-            element={
-              <DefaultLayout>
-                <Outlet />
-              </DefaultLayout>
-            }
-          >
-            <Route index element={<BooksList />} />
-            <Route path="books" element={<BooksList />} />
-            <Route path="books/:topicId" element={<TopicContent />} />
-            <Route path="flashcards" element={<FlashCards />} />
-            <Route path="materials" element={<StudyMaterials />} />
-            <Route path="question-bank" element={<QuestionBank />} />
-            <Route path="pdf/:pdfUrl" element={<PdfViewer />} />
-            <Route path="topic/:topicId" element={<TopicContent />} />
-            <Route path="settings" element={<Settings />} />
+          {/* All other routes require a subscription */}
+          <Route element={<SubscriptionProtectedRoute />}>
+            <Route
+              path="/subject-selection"
+              element={
+                <DefaultLayout>
+                  <SubjectSelection />
+                </DefaultLayout>
+              }
+            />
+
+            <Route
+              path="/dashboard/:subject"
+              element={
+                <DefaultLayout>
+                  <Outlet />
+                </DefaultLayout>
+              }
+            >
+              <Route index element={<BooksList />} />
+              <Route path="books" element={<BooksList />} />
+              <Route path="books/:topicId" element={<TopicContent />} />
+              <Route path="flashcards" element={<FlashCards />} />
+              <Route path="materials" element={<StudyMaterials />} />
+              <Route path="question-bank" element={<QuestionBank />} />
+              <Route path="pdf/:pdfUrl" element={<PdfViewer />} />
+              <Route path="topic/:topicId" element={<TopicContent />} />
+              <Route path="settings" element={<Settings />} />
+            </Route>
           </Route>
         </Route>
 
         {/* Redirects */}
         <Route
           path="/dashboard"
-          element={<Navigate to="/subject-selection" replace />}
+          element={
+            hasPlan ? (
+              <Navigate to="/subject-selection" replace />
+            ) : (
+              <Navigate to="/settings" replace />
+            )
+          }
         />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

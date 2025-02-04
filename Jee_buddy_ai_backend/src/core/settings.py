@@ -38,10 +38,11 @@ DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
 ALLOWED_HOSTS = [
     'localhost',
-    'http://python-backend-env-1.eba-5hzqwm2u.ap-south-1.elasticbeanstalk.com/',  # Replace with your actual EB domain
     '127.0.0.1',
-    '[::1]',  # IPv6 localhost
-    '.amazonaws.com'
+    '[::1]',
+    '.amazonaws.com',
+    'python.jeebuddy.in',
+    'python-backend-env-1.eba-5hzqwm2u.ap-south-1.elasticbeanstalk.com',  # No trailing slash
 ]
 
 
@@ -85,30 +86,33 @@ REST_FRAMEWORK = {
 }
 
 # CORS settings
-CORS_ALLOW_ALL_ORIGINS = True  # Change this to False
-CORS_ALLOW_CREDENTIALS = True
-
-
+CORS_ALLOW_ALL_ORIGINS = True  # Ensure that only specific origins are allowed
+CORS_ALLOWED_ORIGINS = [
+    "https://python.jeebuddy.in",  # Your production backend domain
+    "https://www.jeebuddy.in",      # Your website's domain that is sending the requests
+    "http://localhost:5173",        # Include your local frontend if needed
+]
+CORS_ALLOW_CREDENTIALS = True  # Enable credentials if required (e.g., when sending cookies/authorization headers)
 
 CORS_ALLOW_METHODS = [
-    'DELETE',
-    'GET',
-    'OPTIONS',
-    'PATCH',
-    'POST',
-    'PUT',
+    "DELETE",
+    "GET",
+    "OPTIONS",
+    "PATCH",
+    "POST",
+    "PUT",
 ]
 
 CORS_ALLOW_HEADERS = [
-    'accept',
-    'accept-encoding',
-    'authorization',
-    'content-type',
-    'dnt',
-    'origin',
-    'user-agent',
-    'x-csrftoken',
-    'x-requested-with',
+    "accept",
+    "accept-encoding",
+    "authorization",
+    "content-type",
+    "dnt",
+    "origin",
+    "user-agent",
+    "x-csrftoken",
+    "x-requested-with",
 ]
 
 # Remove any duplicate INSTALLED_APPS
@@ -139,17 +143,32 @@ WSGI_APPLICATION = 'core.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
+
+
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.postgresql',
+#         'NAME': os.getenv('SUPABASE_DB_NAME', 'postgres'),
+#         'USER': os.getenv('SUPABASE_DB_USER', 'postgres'),
+#         'PASSWORD': os.getenv('SUPABASE_DB_PASSWORD'),
+#         'HOST': os.getenv('SUPABASE_DB_HOST'),
+#         'PORT': os.getenv('SUPABASE_DB_PORT', '5432'),
+#         'OPTIONS': {
+#             'sslmode': 'require' if os.getenv('DATABASE_SSL_REQUIRE', 'true').lower() == 'true' else 'disable',
+#         }
+#     }
+# }
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.getenv('SUPABASE_DB_NAME', 'postgres'),
-        'USER': os.getenv('SUPABASE_DB_USER', 'postgres'),
+        'NAME': os.getenv('SUPABASE_DB_NAME'),
+        'USER': os.getenv('SUPABASE_DB_USER'),
         'PASSWORD': os.getenv('SUPABASE_DB_PASSWORD'),
         'HOST': os.getenv('SUPABASE_DB_HOST'),
         'PORT': os.getenv('SUPABASE_DB_PORT'),
         'OPTIONS': {
-            'sslmode': 'require' if os.getenv('DATABASE_SSL_REQUIRE', 'true').lower() == 'true' else 'disable',
-        }
+            'sslmode': 'require',  # Ensure SSL mode is enabled
+        },
     }
 }
 # DATABASES = {
@@ -182,7 +201,7 @@ AUTH_PASSWORD_VALIDATORS = [
     {
         'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
     },
-]
+]               
 
 
 # Internationalization
@@ -211,58 +230,20 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # AWS Lambda Settings
 if 'LAMBDA_TASK_ROOT' in os.environ:
-    ALLOWED_HOSTS = ['*']
+    ALLOWED_HOSTS = [
+        'python.jeebuddy.in',
+        'python-backend-env-1.eba-5hzqwm2u.ap-south-1.elasticbeanstalk.com',
+        
+        # Add additional domains as needed.
+    ]
     DEBUG = False
-    
+
     # Static files
     STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
     STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
-    
+
     # Security settings
     SECURE_SSL_REDIRECT = True
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

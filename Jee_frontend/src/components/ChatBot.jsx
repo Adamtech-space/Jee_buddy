@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback, memo } from 'react';
-import { 
-  XMarkIcon, 
-  ArrowsPointingOutIcon, 
+import {
+  XMarkIcon,
+  ArrowsPointingOutIcon,
   ArrowsPointingInIcon,
   PaperClipIcon,
   PaperAirplaneIcon,
@@ -12,13 +12,20 @@ import {
   ChatBubbleLeftRightIcon,
   PlusIcon,
   PencilIcon,
-  CheckIcon
+  CheckIcon,
+  CreditCardIcon,
 } from '@heroicons/react/24/outline';
 import PropTypes from 'prop-types';
 import { aiService } from '../interceptors/ai.service';
 import { useSelection } from '../hooks/useSelection';
 import { MathJax } from 'better-react-mathjax';
 import { getDecryptedItem } from '../utils/encryption';
+import {
+  checkUserAccess,
+  updateProfileCache,
+  getCurrentPlanName,
+  getRemainingTokens,
+} from '../interceptors/services';
 
 const KeyboardShortcut = ({ shortcut }) => (
   <span className="inline-flex items-center text-[9px] text-gray-500 mt-0.5">
@@ -301,6 +308,10 @@ const ChatBot = ({
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [showNotification, setShowNotification] = useState(null);
   const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [remainingTokens, setRemainingTokens] = useState(1000);
+  const [currentPlan, setCurrentPlan] = useState('Free');
+  const [hasAccess, setHasAccess] = useState(true);
 
   // Add focus management effect
   useEffect(() => {
@@ -483,10 +494,40 @@ const ChatBot = ({
     }
   }, [abortController, messages, displayedResponse]);
 
-  // Handle message submission with encryption
+  // Add useEffect to check access and update token info
+  useEffect(() => {
+    const checkAccess = async () => {
+      try {
+        await updateProfileCache(); // Update profile data
+        const access = checkUserAccess();
+        const tokens = getRemainingTokens();
+        const plan = getCurrentPlanName();
+
+        setHasAccess(access);
+        setRemainingTokens(tokens);
+        setCurrentPlan(plan);
+
+        // Show upgrade modal if tokens are exhausted and on free plan
+        if (!access && plan === 'Free') {
+          setShowUpgradeModal(true);
+        }
+      } catch (error) {
+        console.error('Error checking access:', error);
+      }
+    };
+
+    checkAccess();
+  }, [isOpen]);
+
+  // Modify handleSubmit to check access before sending message
   const handleSubmit = useCallback(
     async (e) => {
       e.preventDefault();
+
+      if (!hasAccess) {
+        setShowUpgradeModal(true);
+        return;
+      }
 
       if (!chatMessage.trim() && !pinnedImage && !selectedTextPreview) {
         return;
@@ -601,6 +642,21 @@ const ChatBot = ({
         setCurrentTypingIndex(0);
         setIsTyping(true);
         setIsDeepThinkEnabled(false);
+
+        // After successful AI response, update profile and token info
+        try {
+          await updateProfileCache();
+          const tokens = getRemainingTokens();
+          setRemainingTokens(tokens);
+
+          // Check if tokens are exhausted after this message
+          if (tokens === 0 && currentPlan === 'Free') {
+            setHasAccess(false);
+            setShowUpgradeModal(true);
+          }
+        } catch (error) {
+          console.error('Error updating profile:', error);
+        }
       } catch (error) {
         if (error.name === 'AbortError') {
           console.log('Request was cancelled');
@@ -643,6 +699,8 @@ const ChatBot = ({
       activeHelpType,
       isLoading,
       isTyping,
+      hasAccess,
+      currentPlan,
     ]
   );
 
@@ -1297,6 +1355,68 @@ const ChatBot = ({
     );
   };
 
+  // Add UpgradeModal component
+  const UpgradeModal = () => {
+    if (!showUpgradeModal) return null;
+
+    return (
+      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
+        <div className="bg-gray-900 rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl border border-gray-800">
+          <div className="text-center mb-6">
+            <div className="w-16 h-16 bg-blue-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
+              <CreditCardIcon className="w-8 h-8 text-blue-500" />
+            </div>
+            <h3 className="text-xl font-bold text-white mb-2">
+              {remainingTokens === 0
+                ? 'Free Trial Limit Reached'
+                : 'Upgrade Your Plan'}
+            </h3>
+            <p className="text-gray-400 text-sm">
+              {remainingTokens === 0
+                ? "You've used all your free tokens. Upgrade to continue using the AI Study Assistant."
+                : `You have ${remainingTokens} tokens remaining. Upgrade now for unlimited access!`}
+            </p>
+          </div>
+
+          <div className="space-y-4 mb-6">
+            <div className="bg-gray-800/50 p-4 rounded-lg">
+              <h4 className="font-medium text-white mb-2">Available Plans:</h4>
+              <ul className="space-y-2 text-sm text-gray-300">
+                <li className="flex items-center gap-2">
+                  <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+                  Basic Plan - Essential features
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="w-2 h-2 bg-purple-500 rounded-full"></span>
+                  Pro Plan - Advanced features
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="w-2 h-2 bg-yellow-500 rounded-full"></span>
+                  Premium Plan - All features + Priority support
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <div className="flex gap-3">
+            <button
+              onClick={() => (window.location.href = '/settings')}
+              className="flex-1 bg-blue-500 hover:bg-blue-600 text-white rounded-lg py-2 px-4 text-sm font-medium transition-colors"
+            >
+              View Plans & Upgrade
+            </button>
+            <button
+              onClick={() => setShowUpgradeModal(false)}
+              className="flex-1 bg-gray-800 hover:bg-gray-700 text-white rounded-lg py-2 px-4 text-sm font-medium transition-colors"
+            >
+              Maybe Later
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div
       ref={resizeRef}
@@ -1365,8 +1485,25 @@ const ChatBot = ({
             <h3 className="text-sm sm:text-lg md:text-xl font-bold text-white">
               AI Study Assistant
             </h3>
-            <div className="hidden sm:block">
-              <KeyboardShortcut shortcut="Ctrl+Shift+L" />
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-gray-400">
+                {currentPlan === 'Free' ? (
+                  <>
+                    <span className="text-blue-400">{remainingTokens}</span>{' '}
+                    tokens remaining
+                  </>
+                ) : (
+                  <span className="text-green-400">{currentPlan} Plan</span>
+                )}
+              </span>
+              {currentPlan === 'Free' && (
+                <button
+                  onClick={() => setShowUpgradeModal(true)}
+                  className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
+                >
+                  Upgrade
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -1591,6 +1728,9 @@ const ChatBot = ({
           id={showNotification.id}
         />
       )}
+
+      {/* Add UpgradeModal */}
+      <UpgradeModal />
     </div>
   );
 };

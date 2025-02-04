@@ -278,3 +278,93 @@ export const getQuestionBankList = async (subject) => {
   }
 };
 
+// Profile services
+export const getProfile = async () => {
+  try {
+    const response = await apiInstance.get('/profile');
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || { message: 'Failed to fetch profile' };
+  }
+};
+
+// Function to check if user has access based on tokens and plan
+export const checkUserAccess = () => {
+  try {
+    const profile = getDecryptedItem('profile');
+    if (!profile) return false;
+
+    // If user has any paid plan, they have access
+    if (profile.current_plan_id) {
+      const PLAN_IDS = {
+        BASIC: 'plan_PhmnKiiVXD3B1M',
+        PRO: 'plan_PhmnlqjWH24hwy',
+        PREMIUM: 'plan_Phmo9yOZAKb0P8'
+      };
+
+      // Check if user has an active paid plan
+      const hasPaidPlan = Object.values(PLAN_IDS).includes(profile.current_plan_id);
+      
+      // If user has paid plan and payment status is completed, grant access
+      if (hasPaidPlan && profile.payment_status === 'completed') {
+        return true;
+      }
+    }
+
+    // If no paid plan, check token limit
+    return profile.total_tokens < 1000;
+  } catch (error) {
+    console.error('Error checking user access:', error);
+    return false;
+  }
+};
+
+// Function to update profile in local storage
+export const updateProfileCache = async () => {
+  try {
+    const response = await getProfile();
+    if (response.status === 'success' && response.data) {
+      setEncryptedItem('profile', response.data);
+      return response.data;
+    }
+    throw new Error('Invalid profile data received');
+  } catch (error) {
+    console.error('Error updating profile cache:', error);
+    throw error;
+  }
+};
+
+// Function to get user's current plan name
+export const getCurrentPlanName = () => {
+  try {
+    const profile = getDecryptedItem('profile');
+    if (!profile?.current_plan_id) return 'Free';
+
+    switch (profile.current_plan_id) {
+      case 'plan_PhmnKiiVXD3B1M':
+        return 'Basic';
+      case 'plan_PhmnlqjWH24hwy':
+        return 'Pro';
+      case 'plan_Phmo9yOZAKb0P8':
+        return 'Premium';
+      default:
+        return 'Free';
+    }
+  } catch (error) {
+    console.error('Error getting plan name:', error);
+    return 'Free';
+  }
+};
+
+// Function to get remaining tokens
+export const getRemainingTokens = () => {
+  try {
+    const profile = getDecryptedItem('profile');
+    if (!profile) return 0;
+    return Math.max(1000 - profile.total_tokens, 0);
+  } catch (error) {
+    console.error('Error getting remaining tokens:', error);
+    return 0;
+  }
+};
+
