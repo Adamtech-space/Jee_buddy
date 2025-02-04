@@ -196,7 +196,7 @@ def solve_math_problem(request):
                 data['image'] = image_data
             if 'Deep_think' in data:
                 data['Deep_think'] = data['Deep_think'].lower() == 'true'
-        elif request.content_type == 'application/json':
+        elif 'application/json' in request.content_type:
             data = json.loads(request.body.decode('utf-8'))
         else:
             return JsonResponse({
