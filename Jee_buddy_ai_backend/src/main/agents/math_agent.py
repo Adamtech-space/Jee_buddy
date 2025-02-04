@@ -4,7 +4,7 @@ from asgiref.sync import sync_to_async
 from openai import AsyncOpenAI
 from contextlib import asynccontextmanager
 import os
-# from main.models import ChatHistory
+from main.models import ChatHistory
 # from .math_visualization_agent import ManimScriptGenerator
 # from .math_visualization_agent import ManimRenderer
 from pathlib import Path
@@ -249,37 +249,6 @@ class MathAgent:
             # Extract context first
             context_data = self._extract_context(context)
             
-            # Check if this is a visualization request
-            needs_visual = self._needs_visualization(question, context)
-            
-            # Handle visualization if needed
-            visualization_data = None
-            if needs_visual:
-                try:
-                    # Extract concept from question (e.g., "show me how pythagoras theorem works" -> "pythagoras theorem")
-                    concept = question.lower()
-                    concept = concept.replace('show me how', '').replace('visualize', '')
-                    concept = concept.replace('demonstrate', '').replace('works', '')
-                    concept = concept.strip(' ()?')
-                    
-                    # Generate visualization
-                    script_path = await self.visualization_agent.generate_script(
-                        concept=concept,
-                        details={
-                            'subject': context_data['subject'],
-                            'question': question,
-                            'deep_think': context_data['deep_think']
-                        }
-                    )
-                    
-                    if script_path:
-                        # Render the visualization
-                        visualization_data = await self.renderer.render_animation(script_path)
-                        logger.info(f"Generated visualization: {visualization_data}")
-                except Exception as e:
-                    logger.error(f"Error generating visualization: {str(e)}")
-                    # Continue with text response even if visualization fails
-            
             # Get system message
             system_message = self._get_system_message(context_data)
             
@@ -292,11 +261,11 @@ class MathAgent:
             print("messages", messages)
             print("model_config", model_config)
             print("context", context)
+            
             # Make API call
             solution = await self._make_api_call(messages, model_config, context)
             print("solution", solution)
 
-            
             # Prepare response
             response = {
                 "solution": solution,
@@ -307,11 +276,7 @@ class MathAgent:
                 }
             }
             
-            # Add visualization data if available
-            # if visualization_data:
-            #     response["visualization"] = visualization_data
-            
-            # return response
+            return response
 
         except Exception as e:
             logger.error(f"Error in solve method: {str(e)}", exc_info=True)
@@ -463,8 +428,8 @@ class MathAgent:
                 }
 
                 # Add visualization data to context if available
-                if context_data.get('visualization'):
-                    context_dict['visualization'] = context_data['visualization']
+                # if context_data.get('visualization'):
+                #     context_dict['visualization'] = context_data['visualization']
 
                 # Create chat history entry
                 chat = await sync_to_async(ChatHistory.objects.create)(
