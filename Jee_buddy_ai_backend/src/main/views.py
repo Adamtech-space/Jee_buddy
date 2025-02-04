@@ -151,9 +151,14 @@ async def process_math_problem(request_data):
         print("context", context)
         # Initialize math agent and get solution
         agent = await MathAgent.create()
-        solution = await agent.solve(question, context)
+        raw_solution = await agent.solve(question, context)
+        solution = raw_solution[0] if isinstance(raw_solution, tuple) else raw_solution
+
+
+        print("solution", type(solution))
         
         if not solution or not solution.get('solution'):
+
             return {
                 'error': 'No solution generated',
                 'details': 'The AI agent failed to generate a response.'
