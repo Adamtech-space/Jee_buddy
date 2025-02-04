@@ -202,47 +202,6 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# Logging Configuration
-LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'formatters': {
-        'verbose': {
-            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
-            'style': '{',
-        },
-        'simple': {
-            'format': '{levelname} {asctime} {message}',
-            'style': '{',
-        },
-    },
-    'handlers': {
-        'file': {
-            'level': 'DEBUG',
-            'class': 'logging.FileHandler',
-            'filename': '/home/ubuntu/jee_buddy_ai_backend/logs/app.log',
-            'formatter': 'verbose',
-        },
-        'console': {
-            'level': 'DEBUG',
-            'class': 'logging.StreamHandler',
-            'formatter': 'simple',
-        },
-    },
-    'loggers': {
-        'django': {
-            'handlers': ['file', 'console'],
-            'level': 'INFO',
-            'propagate': True,
-        },
-        'main': {  # Add logger for your main app
-            'handlers': ['file', 'console'],
-            'level': 'DEBUG',
-            'propagate': True,
-        },
-    },
-}
-
 # AWS Lambda Settings
 if 'LAMBDA_TASK_ROOT' in os.environ:
     ALLOWED_HOSTS = [
@@ -262,7 +221,6 @@ if 'LAMBDA_TASK_ROOT' in os.environ:
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
-
 
 
 
