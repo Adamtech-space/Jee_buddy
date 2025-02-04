@@ -24,7 +24,7 @@ from django.http import JsonResponse
 from functools import wraps
 from django.utils import timezone
 from .agents.math_token_set_limit_agent import MathTokenLimitAgent
-logger = logging.getLogger(_name_)
+logger = logging.getLogger(__name__)
 
 def async_view(view_func):
     """Decorator to handle async views properly"""
@@ -118,7 +118,7 @@ def save_chat_interaction(user_id, session_id, question, response, context_data)
 async def process_math_problem(request_data):
     try:
         print("request_data", request_data)
-        print("*request_data*", request_data)
+        print("******************request_data********************", request_data)
         # Extract data from request
         question = request_data.get('question', '')
         if not question:
@@ -216,7 +216,7 @@ def solve_math_problem(request):
         prompt = request.data.get('question')
         token_response = token_agent.process_query(user_id, prompt)
         print("token_response", token_response)
-        print("*token_response*", token_response)
+        print("******************token_response********************", token_response)
 
         # If there's an error in token processing, return it
         if isinstance(token_response, tuple) and len(token_response) == 2:
@@ -416,4 +416,4 @@ def handler(event, context):
     from src.core.wsgi import application
     import awsgi
     
-    return awsgi.response(application, event, context)
+    return awsgi.response(application, event, context)
