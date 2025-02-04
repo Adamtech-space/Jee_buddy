@@ -115,6 +115,21 @@ def save_chat_interaction(user_id, session_id, question, response, context_data)
         logger.error(f"Error in save_chat_interaction: {str(e)}")
         return None
 
+def unpack_solution(sol):
+    """
+    Recursively unpack nested tuples until a non-tuple value is reached.
+    This helps in cases where the agent.solve method returns nested tuples.
+    """
+    count = 0  # safety counter to avoid infinite loops
+    while isinstance(sol, tuple):
+        logger.debug("Unpacking solution (level %d): %s", count, sol)
+        sol = sol[0]
+        count += 1
+        if count > 10:  # safety exit after several iterations
+            logger.error("Exceeded tuple unpacking iterations.")
+            break
+    return sol
+
 async def process_math_problem(request_data):
     try:
         # Extract required fields
@@ -125,7 +140,7 @@ async def process_math_problem(request_data):
                 "details": "Question field is required"
             }, 400
 
-        # Prepare a context dictionary for the math agent, excluding interaction_type
+        # Prepare context dictionary for the math agent (excluding interaction_type)
         context = {
             "user_id": request_data.get("user_id"),
             "session_id": request_data.get("session_id"),
@@ -141,14 +156,13 @@ async def process_math_problem(request_data):
         # Create and use the MathAgent instance (assumes an async create() method)
         agent = await MathAgent.create()
         raw_solution = await agent.solve(question, context)
-        print("raw_solution", raw_solution)
+        logger.debug("raw_solution type: %s | raw_solution: %s", type(raw_solution), raw_solution)
         
-        # Unpack nested tuples until you get a dict.
-        solution = raw_solution
-        while isinstance(solution, tuple):
-            solution = solution[0]
+        # Unpack nested tuples until we have a dictionary.
+        solution = unpack_solution(raw_solution)
+        logger.debug("final solution type: %s | solution: %s", type(solution), solution)
         
-        if not solution or not solution.get("solution"):
+        if not solution or not isinstance(solution, dict) or not solution.get("solution"):
             return {
                 "error": "No solution generated",
                 "details": "The AI agent failed to generate a valid response."
@@ -182,7 +196,7 @@ def solve_math_problem(request):
         user_id = request.data.get('user_id')
         prompt = request.data.get('question')
         token_response = token_agent.process_query(user_id, prompt)
-        print("token_response", token_response)
+        logger.debug("token_response: %s", token_response)
 
         if token_response.get('error'):
             return JsonResponse(token_response, status=400)
@@ -220,6 +234,7 @@ def solve_math_problem(request):
             }, status=400)
         
         response_data, status_code = async_to_sync(process_math_problem)(data)
+        logger.debug("response_data type: %s", type(response_data))
         return JsonResponse(response_data, status=status_code)
     
     except Exception as e:
