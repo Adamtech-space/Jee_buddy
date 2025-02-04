@@ -142,6 +142,7 @@ const Subscription = () => {
   });
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [currentPlan, setCurrentPlan] = useState(null);
+  const [paymentMethod, setPaymentMethod] = useState('card'); // Default to card payment
 
   const loadScript = (src) => {
     return new Promise((resolve) => {
@@ -189,17 +190,13 @@ const Subscription = () => {
           return;
         }
 
-        // Fetch actual subscription status using decryption
         const userData = getDecryptedItem('user');
         if (
           userData?.payment_status === 'completed' &&
           userData?.current_plan_id
         ) {
-          // Compare plan IDs directly with environment variables
           let planType = 'BASIC';
-          if (
-            userData.current_plan_id === import.meta.env.VITE_PRO_PLAN_ID
-          ) {
+          if (userData.current_plan_id === import.meta.env.VITE_PRO_PLAN_ID) {
             planType = 'PRO';
           }
 
@@ -207,8 +204,7 @@ const Subscription = () => {
           setCurrentPlan({
             type: planType,
             name: `${planType.charAt(0) + planType.slice(1).toLowerCase()} Plan`,
-            price:
-              planType === 'BASIC' ? 999 : 4999,
+            price: planType === 'BASIC' ? 999 : 4999,
           });
         } else {
           setIsSubscribed(false);
@@ -269,12 +265,10 @@ const Subscription = () => {
         user_id: userData.id,
         email: userData.email || '',
         name: userData.name || '',
+        payment_method: paymentMethod, // Include payment method
       };
 
-      console.log('Sending subscription request with data:', requestData);
-
       const data = await aiService.createSubscription(requestData);
-      console.log('Received subscription response:', data);
 
       if (!data.razorpay_key || !data.order) {
         console.error('Invalid server response:', data);
@@ -315,26 +309,19 @@ const Subscription = () => {
           color: '#000000',
         },
         method: {
-          upi: true,
+          upi: paymentMethod === 'upi', // Enable UPI if selected
+          card: paymentMethod === 'card', // Enable card if selected
         },
       };
-
-      console.log('Initializing Razorpay with options:', options);
 
       if (!window.Razorpay) {
         throw new Error('Razorpay script not loaded');
       }
 
       const razorpay = new window.Razorpay(options);
-      console.log('Opening Razorpay modal...');
       razorpay.open();
     } catch (error) {
       console.error('Payment error:', error);
-      console.error('Error details:', {
-        message: error.message,
-        stack: error.stack,
-        response: error.response?.data,
-      });
       alert(`Failed to initiate payment: ${error.message}`);
     } finally {
       setLoadingStates((prev) => ({

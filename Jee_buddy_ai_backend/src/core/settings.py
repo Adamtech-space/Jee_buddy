@@ -146,12 +146,25 @@ DATABASES = {
         'USER': os.getenv('SUPABASE_DB_USER', 'postgres'),
         'PASSWORD': os.getenv('SUPABASE_DB_PASSWORD'),
         'HOST': os.getenv('SUPABASE_DB_HOST'),
-        'PORT': os.getenv('SUPABASE_DB_PORT', '5432'),
+        'PORT': os.getenv('SUPABASE_DB_PORT'),
         'OPTIONS': {
             'sslmode': 'require' if os.getenv('DATABASE_SSL_REQUIRE', 'true').lower() == 'true' else 'disable',
         }
     }
 }
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.postgresql',
+#         'NAME': os.getenv('SUPABASE_DB_NAME'),
+#         'USER': os.getenv('SUPABASE_DB_USER'),
+#         'PASSWORD': os.getenv('SUPABASE_DB_PASSWORD'),
+#         'HOST': os.getenv('SUPABASE_DB_HOST'),
+#         'PORT': os.getenv('SUPABASE_DB_PORT'),
+#         'OPTIONS': {
+#             'sslmode': 'require',  # Ensure SSL mode is enabled
+#         },
+#     }
+# }
 
 # Password validation
 # https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators
