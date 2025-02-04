@@ -117,94 +117,56 @@ def save_chat_interaction(user_id, session_id, question, response, context_data)
 
 async def process_math_problem(request_data):
     try:
-        print("request_data", request_data)
-        # Extract data from request
-        question = request_data.get('question', '')
+        # Extract required fields
+        question = request_data.get("question", "")
         if not question:
             return {
-                'error': 'Question is required'
+                "error": "Missing required field",
+                "details": "Question field is required"
             }, 400
 
-        # Create context dictionary from form data
+        # Prepare a context dictionary for the math agent, excluding interaction_type
         context = {
-            'user_id': request_data.get('user_id'),
-            'session_id': request_data.get('session_id'),
-            'subject': request_data.get('subject', ''),
-            'topic': request_data.get('topic', ''),
-            'pinnedText': request_data.get('pinnedText', ''),
-            'selectedText': request_data.get('selectedText', ''),
-            'Deep_think': request_data.get('Deep_think', False),
-            'image': request_data.get('image'),  # This will contain the base64 image
-            'source': request_data.get('source', 'Chat')
+            "user_id": request_data.get("user_id"),
+            "session_id": request_data.get("session_id"),
+            "subject": request_data.get("subject", ""),
+            "topic": request_data.get("topic", ""),
+            "pinnedText": request_data.get("pinnedText", ""),
+            "selectedText": request_data.get("selectedText", ""),
+            "Deep_think": request_data.get("Deep_think", False),
+            "image": request_data.get("image"),
+            "source": request_data.get("source", "Chat")
         }
         
-        # Get chat history
-        chat_history = []
-        if context['user_id'] and context['session_id']:
-            chat_history = await get_chat_history(
-                context['user_id'], 
-                context['session_id'], 
-                request_data.get('history_limit', 100)
-            )
-        context['chat_history'] = chat_history
-        print("context", context)
-        # Initialize math agent and get solution
+        # Create and use the MathAgent instance (assumes an async create() method)
         agent = await MathAgent.create()
-        raw_solution = await agent.solve(question, context)
-        solution = raw_solution[0] if isinstance(raw_solution, tuple) else raw_solution
-
-
-        print("solution", type(solution))
         
-        if not solution or not solution.get('solution'):
-
+        # Call the math agent's solve method and unpack if necessary.
+        raw_solution = await agent.solve(question, context)
+        print("raw_solution", raw_solution)
+        solution = raw_solution[0] if isinstance(raw_solution, tuple) else raw_solution
+        
+        if not solution or not solution.get("solution"):
             return {
-                'error': 'No solution generated',
-                'details': 'The AI agent failed to generate a response.'
+                "error": "No solution generated",
+                "details": "The AI agent failed to generate a valid response."
             }, 500
-
-        # Save interaction
-        if context['user_id'] and context['session_id']:
-            await save_chat_interaction(
-                user_id=context['user_id'],
-                session_id=context['session_id'],
-                question=question,
-                response=solution['solution'],
-                context_data={
-                    'subject': context['subject'],
-                    'topic': context['topic'],
-                    # 'interaction_type': context['interaction_type'],
-                    'pinned_text': context['pinnedText'],
-                }
-            )
-
-        # Get updated history
-        updated_chat_history = []
-        if context['user_id'] and context['session_id']:
-            updated_chat_history = await get_chat_history(
-                context['user_id'], 
-                context['session_id'], 
-                request_data.get('history_limit', 100)
-            )
-
-        return {
-            'solution': solution['solution'],
-            'context': {
-                'current_question': question,
-                'response': solution['solution'],
-                'user_id': context['user_id'],
-                'session_id': context['session_id'],
-                'subject': context['subject'],
-                'topic': context['topic'],
-                'chat_history': updated_chat_history
+        
+        response = {
+            "solution": solution.get("solution"),
+            "context": {
+                "current_question": question,
+                "response": solution.get("solution"),
+                **context
             }
-        }, 200
-            
+        }
+        return response, 200
+        
     except Exception as e:
         logger.error(f"Error in process_math_problem: {str(e)}", exc_info=True)
         return {
-            'error': str(e),
-            'details': 'An unexpected error occurred while processing your request in process_math_problem.'
+            "error": str(e),
+            "details": "An unexpected error occurred while processing your request in process_math_problem."
         }, 500
 
 @csrf_exempt
@@ -220,24 +182,18 @@ def solve_math_problem(request):
         token_response = token_agent.process_query(user_id, prompt)
         print("token_response", token_response)
 
-        # If there's an error in token processing, return it
         if token_response.get('error'):
             return JsonResponse(token_response, status=400)
-
-        # If the user has exceeded the token limit, return the message
         if token_response.get('message'):
             return JsonResponse(token_response, status=403)
         
         # Handle form data
         if request.content_type.startswith('multipart/form-data'):
-            data = request.data.copy()  # Get mutable copy of request data
-
-            # Handle image if present
+            data = request.data.copy()
             if 'image' in request.FILES:
                 image_file = request.FILES['image']
                 image_data = base64.b64encode(image_file.read()).decode('utf-8')
                 data['image'] = image_data
-
             if 'Deep_think' in data:
                 data['Deep_think'] = data['Deep_think'].lower() == 'true'
         elif request.content_type == 'application/json':
@@ -247,25 +203,23 @@ def solve_math_problem(request):
                 'error': 'Unsupported content type',
                 'details': 'Only multipart/form-data and application/json are supported'
             }, status=400)
-
-        # Check if required fields are nested in "context" and merge them to the top level
+        
+        # Flatten nested "context" keys (if present) into top-level keys
         if not data.get('user_id') and 'context' in data and isinstance(data['context'], dict):
             context_data = data.pop('context')
             for key in ['user_id', 'session_id', 'subject', 'topic', 'pinnedText', 'selectedText', 'image']:
                 if key in context_data:
                     data[key] = context_data[key]
-
-        # Validate required fields
+        
         if not data.get('question'):
             return JsonResponse({
                 'error': 'Missing required field',
                 'details': 'Question field is required'
             }, status=400)
-
-        # Process the request
+        
         response_data, status_code = async_to_sync(process_math_problem)(data)
         return JsonResponse(response_data, status=status_code)
-
+    
     except Exception as e:
         logger.error(f"Error in solve_math_problem: {str(e)}", exc_info=True)
         return JsonResponse({
