@@ -200,7 +200,7 @@ async def process_math_problem(request_data):
         logger.error(f"Error in process_math_problem: {str(e)}", exc_info=True)
         return {
             'error': str(e),
-            'details': 'An unexpected error occurred while processing your request.'
+            'details': 'An unexpected error occurred while processing your request process_math_problem.'
         }, 500
 
 @csrf_exempt
@@ -208,56 +208,82 @@ async def process_math_problem(request_data):
 @parser_classes([MultiPartParser, FormParser, JSONParser])
 def solve_math_problem(request):
     try:
-        token_agent = MathTokenLimitAgent()
+        logger.info(f"Request content type: {request.content_type}")
+        logger.info(f"Request data type: {type(request.data)}")
+        logger.info(f"Request data: {request.data}")
 
-        # Process the token limit check
-        user_id = request.data.get('user_id')
-        prompt = request.data.get('question')
-        token_response = token_agent.process_query(user_id, prompt)
-        print("token_response", token_response)
-
-        # If there's an error in token processing, return it
-        if token_response.get('error'):
-            return JsonResponse(token_response, status=400)
-
-        # If the user has exceeded the token limit, return the message
-        if token_response.get('message'):
-            return JsonResponse(token_response, status=403)
+        # Initialize data dictionary
+        data = {}
         
-        # Handle form data
+        # Handle different data types
+        if isinstance(request.data, tuple):
+            raw_data = request.data[0]
+            logger.info(f"Tuple data detected, first element type: {type(raw_data)}")
+        else:
+            raw_data = request.data
+            logger.info(f"Non-tuple data detected, type: {type(raw_data)}")
+
+        # Convert to dictionary based on content type
         if request.content_type.startswith('multipart/form-data'):
-            data = dict(request.data.copy())  # Convert QueryDict to regular dict
+            if hasattr(raw_data, 'dict'):
+                # If it's a QueryDict
+                data = raw_data.dict()
+            elif isinstance(raw_data, dict):
+                data = raw_data.copy()
+            else:
+                data = dict(raw_data)
+                
+            logger.info(f"Processed form data: {data}")
             
             # Handle image if present
             if 'image' in request.FILES:
                 image_file = request.FILES['image']
-                # Convert image to base64
-                image_data = base64.b64encode(image_file.read()).decode('utf-8')
-                data['image'] = image_data
+                data['image'] = base64.b64encode(image_file.read()).decode('utf-8')
             
             # Convert boolean fields
             if 'Deep_think' in data:
-                data['Deep_think'] = str(data['Deep_think']).lower() == 'true'
-                
-            # Convert list values to single values if they exist
-            for key in data:
+                data['Deep_think'] = str(data.get('Deep_think', '')).lower() == 'true'
+            
+            # Convert list values to single values
+            for key in list(data.keys()):
                 if isinstance(data[key], list) and len(data[key]) == 1:
                     data[key] = data[key][0]
-                
+                    
         elif request.content_type == 'application/json':
-            data = json.loads(request.body.decode('utf-8'))
+            try:
+                data = json.loads(request.body.decode('utf-8'))
+            except json.JSONDecodeError:
+                if isinstance(raw_data, dict):
+                    data = raw_data.copy()
+                else:
+                    data = dict(raw_data)
         else:
             return JsonResponse({
                 'error': 'Unsupported content type',
                 'details': 'Only multipart/form-data and application/json are supported'
             }, status=400)
 
-        # Validate required fields
-        if not data.get('question'):
+        logger.info(f"Final processed data: {data}")
+
+        # Process token check
+        token_agent = MathTokenLimitAgent()
+        user_id = data.get('user_id')
+        prompt = data.get('question')
+        
+        if not user_id or not prompt:
             return JsonResponse({
-                'error': 'Missing required field',
-                'details': 'Question field is required'
+                'error': 'Missing required fields',
+                'details': 'Both user_id and question are required'
             }, status=400)
+
+        token_response = token_agent.process_query(user_id, prompt)
+        logger.info(f"Token response: {token_response}")
+
+        if token_response.get('error'):
+            return JsonResponse(token_response, status=400)
+
+        if token_response.get('message'):
+            return JsonResponse(token_response, status=403)
 
         # Process the request
         response_data, status_code = async_to_sync(process_math_problem)(data)
@@ -267,7 +293,7 @@ def solve_math_problem(request):
         logger.error(f"Error in solve_math_problem: {str(e)}", exc_info=True)
         return JsonResponse({
             'error': str(e),
-            'details': 'An unexpected error occurred while processing your request.'
+            'details': 'An unexpected error occurred while processing your request Error in solve_math_problem.'
         }, status=500)
 
 @api_view(['GET'])
