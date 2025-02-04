@@ -155,10 +155,10 @@ async def process_math_problem(request_data):
             }, 500
         
         response = {
-            "solution": solution.get("solution"),
+            "solution": solution["solution"],
             "context": {
                 "current_question": question,
-                "response": solution.get("solution"),
+                "response": solution["solution"],
                 **context
             }
         }
