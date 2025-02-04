@@ -140,11 +140,13 @@ async def process_math_problem(request_data):
         
         # Create and use the MathAgent instance (assumes an async create() method)
         agent = await MathAgent.create()
-        
-        # Call the math agent's solve method and unpack if necessary.
         raw_solution = await agent.solve(question, context)
         print("raw_solution", raw_solution)
-        solution = raw_solution[0] if isinstance(raw_solution, tuple) else raw_solution
+        
+        # Unpack nested tuples until you get a dict.
+        solution = raw_solution
+        while isinstance(solution, tuple):
+            solution = solution[0]
         
         if not solution or not solution.get("solution"):
             return {
