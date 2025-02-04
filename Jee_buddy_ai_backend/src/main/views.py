@@ -115,81 +115,92 @@ def save_chat_interaction(user_id, session_id, question, response, context_data)
         logger.error(f"Error in save_chat_interaction: {str(e)}")
         return None
 
-def recursively_unpack(obj):
-    """
-    Recursively unpack nested tuples until a non-tuple object is reached.
-    """
-    if isinstance(obj, tuple):
-        logger.debug("Unpacking tuple: %s", obj)
-        return recursively_unpack(obj[0])
-    return obj
-
 async def process_math_problem(request_data):
     try:
-        # Extract required fields
-        question = request_data.get("question", "")
+        print("request_data", request_data)
+        # Extract data from request
+        question = request_data.get('question', '')
         if not question:
             return {
-                "error": "Missing required field",
-                "details": "Question field is required"
+                'error': 'Question is required'
             }, 400
 
-        # Prepare context dictionary (excluding unwanted fields)
+        # Create context dictionary from form data
         context = {
-            "user_id": request_data.get("user_id"),
-            "session_id": request_data.get("session_id"),
-            "subject": request_data.get("subject", ""),
-            "topic": request_data.get("topic", ""),
-            "pinnedText": request_data.get("pinnedText", ""),
-            "selectedText": request_data.get("selectedText", ""),
-            "Deep_think": request_data.get("Deep_think", False),
-            "image": request_data.get("image"),
-            "source": request_data.get("source", "Chat")
+            'user_id': request_data.get('user_id'),
+            'session_id': request_data.get('session_id'),
+            'subject': request_data.get('subject', ''),
+            'topic': request_data.get('topic', ''),
+            'interaction_type': request_data.get('type', ''),
+            'pinnedText': request_data.get('pinnedText', ''),
+            'selectedText': request_data.get('selectedText', ''),
+            'Deep_think': request_data.get('Deep_think', False),
+            'image': request_data.get('image'),  # This will contain the base64 image
+            'source': request_data.get('source', 'Chat')
         }
         
-        # Create and use the MathAgent instance (assumes an async create() method)
+        # Get chat history
+        chat_history = []
+        if context['user_id'] and context['session_id']:
+            chat_history = await get_chat_history(
+                context['user_id'], 
+                context['session_id'], 
+                request_data.get('history_limit', 100)
+            )
+        context['chat_history'] = chat_historyz
+        print("context", context)
+        # Initialize math agent and get solution
         agent = await MathAgent.create()
-        raw_solution = await agent.solve(question, context)
-
-        # If the solution is returned as a tuple, convert it properly
-        if isinstance(raw_solution, tuple):
-            logger.warning("Tuple response detected in AWS environment")
-            solution = {"solution": raw_solution[0]} if len(raw_solution) > 0 else {"solution": ""}
-        else:
-            solution = raw_solution
-
-        logger.debug("raw_solution (before unpacking): %s", raw_solution)
+        solution = await agent.solve(question, context)
         
-        # If we received a string, convert it to a dictionary
-        if isinstance(solution, str):
-            logger.info("Converting string solution to dict")
-            solution = {"solution": solution}
-        
-        # Recursively unpack the already processed solution
-        solution = recursively_unpack(solution)
-        logger.debug("final solution: %s", solution)
-        
-        if not solution or not isinstance(solution, dict) or not solution.get("solution"):
+        if not solution or not solution.get('solution'):
             return {
-                "error": "No solution generated",
-                "details": "The AI agent failed to generate a valid response."
+                'error': 'No solution generated',
+                'details': 'The AI agent failed to generate a response.'
             }, 500
-        
-        response = {
-            "solution": solution["solution"],
-            "context": {
-                "current_question": question,
-                "response": solution["solution"],
-                **context
+
+        # Save interaction
+        if context['user_id'] and context['session_id']:
+            await save_chat_interaction(
+                user_id=context['user_id'],
+                session_id=context['session_id'],
+                question=question,
+                response=solution['solution'],
+                context_data={
+                    'subject': context['subject'],
+                    'topic': context['topic'],
+                    'interaction_type': context['interaction_type'],
+                    'pinned_text': context['pinnedText'],
+                }
+            )
+
+        # Get updated history
+        updated_chat_history = []
+        if context['user_id'] and context['session_id']:
+            updated_chat_history = await get_chat_history(
+                context['user_id'], 
+                context['session_id'], 
+                request_data.get('history_limit', 100)
+            )
+
+        return {
+            'solution': solution['solution'],
+            'context': {
+                'current_question': question,
+                'response': solution['solution'],
+                'user_id': context['user_id'],
+                'session_id': context['session_id'],
+                'subject': context['subject'],
+                'topic': context['topic'],
+                'chat_history': updated_chat_history
             }
-        }
-        return response, 200
-        
+        }, 200
+            
     except Exception as e:
         logger.error(f"Error in process_math_problem: {str(e)}", exc_info=True)
         return {
-            "error": str(e),
-            "details": "An unexpected error occurred while processing your request in process_math_problem. deiiiiii"
+            'error': str(e),
+            'details': 'An unexpected error occurred while processing your request.'
         }, 500
 
 @csrf_exempt
@@ -198,54 +209,68 @@ async def process_math_problem(request_data):
 def solve_math_problem(request):
     try:
         token_agent = MathTokenLimitAgent()
+
+        # Process the token limit check
         user_id = request.data.get('user_id')
         prompt = request.data.get('question')
         token_response = token_agent.process_query(user_id, prompt)
-        logger.debug("token_response: %s", token_response)
+        print("token_response", token_response)
 
+        # If there's an error in token processing, return it
         if token_response.get('error'):
             return JsonResponse(token_response, status=400)
+
+        # If the user has exceeded the token limit, return the message
         if token_response.get('message'):
             return JsonResponse(token_response, status=403)
         
+        # if response.status_code != 200:
+        #     return JsonResponse(
+        #         {"error": f"External API returned status {response.status_code}"},
+        #         status=400
+        #     )
+        # logger.info(f"Request: {request.user}") 
+        # logger.info(f"Request Content-Type: {request.content_type}")
+        
+        # Handle form data
         if request.content_type.startswith('multipart/form-data'):
-            data = request.data.copy()
+            data = request.data.copy()  # Get mutable copy of request data
+            
+            # Handle image if present
             if 'image' in request.FILES:
                 image_file = request.FILES['image']
+                # Convert image to base64
                 image_data = base64.b64encode(image_file.read()).decode('utf-8')
                 data['image'] = image_data
+            
+            # Convert boolean fields
             if 'Deep_think' in data:
                 data['Deep_think'] = data['Deep_think'].lower() == 'true'
-        elif 'application/json' in request.content_type:
+                
+        elif request.content_type == 'application/json':
             data = json.loads(request.body.decode('utf-8'))
         else:
             return JsonResponse({
                 'error': 'Unsupported content type',
                 'details': 'Only multipart/form-data and application/json are supported'
             }, status=400)
-        
-        # Flatten nested "context" keys (if present) into top-level keys.
-        if not data.get('user_id') and 'context' in data and isinstance(data['context'], dict):
-            context_data = data.pop('context')
-            for key in ['user_id', 'session_id', 'subject', 'topic', 'pinnedText', 'selectedText', 'image']:
-                if key in context_data:
-                    data[key] = context_data[key]
-        
+
+        # Validate required fields
         if not data.get('question'):
             return JsonResponse({
                 'error': 'Missing required field',
                 'details': 'Question field is required'
             }, status=400)
-        
+
+        # Process the request
         response_data, status_code = async_to_sync(process_math_problem)(data)
-        logger.debug("response_data type: %s", type(response_data))
         return JsonResponse(response_data, status=status_code)
-    
+            
     except Exception as e:
         logger.error(f"Error in solve_math_problem: {str(e)}", exc_info=True)
         return JsonResponse({
             'error': str(e),
-            'details': 'An unexpected error occurred while processing your request in solve_math_problem.'
+            'details': 'An unexpected error occurred while processing your request.'
         }, status=500)
 
 @api_view(['GET'])
