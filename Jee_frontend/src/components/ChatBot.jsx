@@ -906,17 +906,18 @@ const ChatBot = ({
 
     // Helper function to format headings and subheadings
     const formatContent = (text) => {
-      // First handle headings with bold
+      // Convert ### lines to bullet points with bold text
       let formattedText = text.replace(
-        /(#{1,6})\s+\*\*([^*]+)\*\*/g,
-        (match, hashes, content) => {
-          const level = hashes.length;
-          const className = `text-${level === 1 ? 'xl' : level === 2 ? 'lg' : 'base'} font-bold my-2`;
-          return `<h${level} class="${className}">${content}</h${level}>`;
-        }
+        /###\s+(.+)/g,
+        '<li class="list-disc ml-5 my-1"><span class="font-bold text-white">$1</span></li>'
       );
+      
+      // Wrap bullet points in unordered list
+      if (formattedText.includes('<li')) {
+        formattedText = `<ul class="space-y-2 mt-2">${formattedText}</ul>`;
+      }
 
-      // Then handle remaining bold text
+      // Handle remaining bold text
       formattedText = formattedText.replace(
         /\*\*([^*]+)\*\*/g,
         '<span class="font-bold text-white">$1</span>'

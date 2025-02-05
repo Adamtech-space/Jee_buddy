@@ -117,8 +117,7 @@ def save_chat_interaction(user_id, session_id, question, response, context_data)
 
 async def process_math_problem(request_data):
     try:
-        print("request_data", request_data)
-        print("******************request_data********************", request_data)
+        
         # Extract data from request
         question = request_data.get('question', '')
         if not question:
@@ -149,7 +148,6 @@ async def process_math_problem(request_data):
                 request_data.get('history_limit', 100)
             )
         context['chat_history'] = chat_history
-        print("context", context)
         # Initialize math agent and get solution
         agent = await MathAgent.create()
         solution = await agent.solve(question, context)
@@ -216,7 +214,6 @@ def solve_math_problem(request):
         prompt = request.data.get('question')
         token_response = token_agent.process_query(user_id, prompt)
         print("token_response", token_response)
-        # print("******************token_response********************", token_response)
 
         # If there's an error in token processing, return it
         if isinstance(token_response, tuple) and len(token_response) == 2:
