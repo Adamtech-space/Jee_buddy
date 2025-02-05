@@ -13,8 +13,9 @@ from django.core.wsgi import get_wsgi_application
 
 # Add project directory to Python path
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.append(BASE_DIR)
+sys.path.append(os.path.join(BASE_DIR, 'src'))  # This line ensures 'src' is included
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'src.core.settings')
+
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'core.settings')
 
 application = get_wsgi_application()
