@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom';
+import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { useLoading } from '../context/LoadingContext';
 import { Analytics } from '@vercel/analytics/react';
 import { useEffect, useState } from 'react';
@@ -39,27 +39,23 @@ import PdfViewer from '../components/PdfViewer';
 // Protected Route Component with subscription check
 const ProtectedRoute = () => {
   const { isAuthenticated, isLoading } = useLoading();
-  const [hasPlan, setHasPlan] = useState(false);
   const [checkingPlan, setCheckingPlan] = useState(true);
-  const location = useLocation();
 
   useEffect(() => {
     const checkSubscription = async () => {
       try {
-        if (isAuthenticated) {
-          await updateProfileCache();
-          const planName = getCurrentPlanName();
-          setHasPlan(planName !== 'Free');
-        }
+        await updateProfileCache();
+        await getCurrentPlanName();
       } catch (error) {
         console.error('Error checking subscription:', error);
-        setHasPlan(false);
       } finally {
         setCheckingPlan(false);
       }
     };
 
-    checkSubscription();
+    if (isAuthenticated) {
+      checkSubscription();
+    }
   }, [isAuthenticated]);
 
   if (isLoading || checkingPlan) {
@@ -70,17 +66,45 @@ const ProtectedRoute = () => {
     return <Navigate to="/login" replace />;
   }
 
-  // Only redirect to settings if no plan and not already on settings page
-  if (!hasPlan && window.location.pathname !== '/settings') {
-    return <Navigate to="/settings" replace />;
+  return <Outlet />;
+};
+
+// Subscription Protected Route Component
+const SubscriptionProtectedRoute = () => {
+  const { isAuthenticated, isLoading } = useLoading();
+  const [hasPlan, setHasPlan] = useState(false);
+  const [checkingPlan, setCheckingPlan] = useState(true);
+
+  useEffect(() => {
+    const checkSubscription = async () => {
+      try {
+        await updateProfileCache(); // Update profile data
+        const planName = getCurrentPlanName();
+        setHasPlan(planName !== 'Free');
+      } catch (error) {
+        console.error('Error checking subscription:', error);
+        setHasPlan(false);
+      } finally {
+        setCheckingPlan(false);
+      }
+    };
+
+    if (isAuthenticated) {
+      checkSubscription();
+    }
+  }, [isAuthenticated]);
+
+  // Don't render anything while checking auth or plan
+  if (isLoading || checkingPlan) {
+    return null;
   }
 
-  // Allow access to settings if coming from navbar
-  const isFromNavbar = location.state?.fromNavbar;
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
 
-  // If has plan and trying to access settings directly (not from navbar), redirect to subject-selection
-  if (hasPlan && window.location.pathname === '/settings' && !isFromNavbar) {
-    return <Navigate to="/subject-selection" replace />;
+  if (!hasPlan) {
+    return <Navigate to="/settings" replace />;
   }
 
   return <Outlet />;
@@ -180,7 +204,7 @@ const AppRoutes = () => {
 
         {/* Protected Routes - Only accessible when logged in */}
         <Route element={<ProtectedRoute />}>
-          {/* Settings is always accessible */}
+          {/* Settings is accessible to all logged in users */}
           <Route
             path="/settings"
             element={
@@ -190,32 +214,35 @@ const AppRoutes = () => {
             }
           />
 
-          {/* All other routes */}
-          <Route
-            path="/subject-selection"
-            element={
-              <DefaultLayout>
-                <SubjectSelection />
-              </DefaultLayout>
-            }
-          />
+          {/* All other routes require a subscription */}
+          <Route element={<SubscriptionProtectedRoute />}>
+            <Route
+              path="/subject-selection"
+              element={
+                <DefaultLayout>
+                  <SubjectSelection />
+                </DefaultLayout>
+              }
+            />
 
-          <Route
-            path="/dashboard/:subject"
-            element={
-              <DefaultLayout>
-                <Outlet />
-              </DefaultLayout>
-            }
-          >
-            <Route index element={<BooksList />} />
-            <Route path="books" element={<BooksList />} />
-            <Route path="books/:topicId" element={<TopicContent />} />
-            <Route path="flashcards" element={<FlashCards />} />
-            <Route path="materials" element={<StudyMaterials />} />
-            <Route path="question-bank" element={<QuestionBank />} />
-            <Route path="pdf/:pdfUrl" element={<PdfViewer />} />
-            <Route path="topic/:topicId" element={<TopicContent />} />
+            <Route
+              path="/dashboard/:subject"
+              element={
+                <DefaultLayout>
+                  <Outlet />
+                </DefaultLayout>
+              }
+            >
+              <Route index element={<BooksList />} />
+              <Route path="books" element={<BooksList />} />
+              <Route path="books/:topicId" element={<TopicContent />} />
+              <Route path="flashcards" element={<FlashCards />} />
+              <Route path="materials" element={<StudyMaterials />} />
+              <Route path="question-bank" element={<QuestionBank />} />
+              <Route path="pdf/:pdfUrl" element={<PdfViewer />} />
+              <Route path="topic/:topicId" element={<TopicContent />} />
+              <Route path="settings" element={<Settings />} />
+            </Route>
           </Route>
         </Route>
 
