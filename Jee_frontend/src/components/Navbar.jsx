@@ -153,16 +153,14 @@ const Navbar = ({ isMobileOpen, setIsMobileOpen }) => {
                 JEE Buddy
               </span>
             </Link>
-             {/* Subscription status badge */}
-          {user && !isLoading && (
-            <div className="mx-4 transition-all duration-300 hover:opacity-80">
-              {getSubscriptionBadge()}
-            </div>
-          )}
-
+            {/* Subscription status badge */}
+            {user && !isLoading && (
+              <div className="mx-4 transition-all duration-300 hover:opacity-80">
+                {getSubscriptionBadge()}
+              </div>
+            )}
           </div>
 
-         
           {/* Right side - Navigation links and profile */}
           <div className="flex items-center">
             {/* Desktop navigation links */}
@@ -237,6 +235,7 @@ const Navbar = ({ isMobileOpen, setIsMobileOpen }) => {
                     </div>
                     <Link
                       to="/settings"
+                      state={{ fromNavbar: true }}
                       className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-700"
                       onClick={() => setIsProfileOpen(false)}
                     >

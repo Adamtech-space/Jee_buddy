@@ -338,7 +338,8 @@ export const updateProfileCache = async () => {
 export const getCurrentPlanName = () => {
   try {
     const profile = getDecryptedItem('profile');
-    if (!profile?.current_plan_id) return 'Free';
+    if (!profile?.current_plan_id || profile?.payment_status !== 'completed')
+      return 'Free';
 
     switch (profile.current_plan_id) {
       case 'plan_PhmnKiiVXD3B1M':
