@@ -31,7 +31,7 @@ const NewSubscription = () => {
     <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 p-8">
       <div className="max-w-6xl mx-auto">
         <h6 className="text-4xl md:text-5xl font-bold text-center text-white mb-4">
-        Select the perfect plan
+          Select the perfect plan
         </h6>
         <div className="flex justify-center gap-8 flex-wrap">
           {/* Basic Plan Card */}
@@ -41,7 +41,13 @@ const NewSubscription = () => {
                 <h2 className="text-2xl font-bold text-white mb-2">
                   Basic Plan
                 </h2>
-                <p className="text-gray-400">Perfect for getting started</p>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-4xl font-bold text-white">₹999</span>
+                  <span className="text-gray-400">/month</span>
+                </div>
+                <p className="text-gray-400 mt-2">
+                  Perfect for getting started
+                </p>
               </div>
 
               <div className="space-y-4 flex-grow">
@@ -86,7 +92,11 @@ const NewSubscription = () => {
                     RECOMMENDED
                   </span>
                 </div>
-                <p className="text-gray-400">
+                <div className="flex items-baseline gap-2">
+                  <span className="text-4xl font-bold text-white">₹4,999</span>
+                  <span className="text-gray-400">/month</span>
+                </div>
+                <p className="text-gray-400 mt-2">
                   Advanced features for serious preparation
                 </p>
               </div>
