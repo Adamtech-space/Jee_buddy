@@ -17,16 +17,10 @@ const LoadingContext = createContext();
 // Improved auth validation
 const validateAuthTokens = async () => {
   try {
-    console.log('Validating auth tokens...');
     const tokens = getDecryptedItem('tokens');
     const user = getDecryptedItem('user');
 
-    console.log('Auth validation:', {
-      hasTokens: !!tokens,
-      hasUser: !!user,
-      tokenValid: !!tokens?.access?.token,
-      userValid: !!user?.id,
-    });
+   
 
     return !!(tokens?.access?.token && user); // Check both tokens and user exist
   } catch (error) {
@@ -47,14 +41,11 @@ export const LoadingProvider = ({ children }) => {
   useEffect(() => {
     const checkAuth = async () => {
       if (initialCheckDone.current) {
-        console.log('Initial auth check already done');
         return;
       }
 
-      console.log('Performing initial auth check...');
       try {
         const isValid = await validateAuthTokens();
-        console.log('Auth check result:', isValid);
         setIsAuthenticated(isValid);
       } catch (error) {
         console.error('Auth check failed:', error);
@@ -70,7 +61,6 @@ export const LoadingProvider = ({ children }) => {
     if (!location.state?.fromAuth) {
       checkAuth();
     } else {
-      console.log('Coming from auth flow, trusting auth state');
       setIsAuthenticated(true);
       setIsLoading(false);
     }
@@ -78,7 +68,6 @@ export const LoadingProvider = ({ children }) => {
 
   // Replace the debouncedSetLoading function with:
   const setLoadingDirect = useCallback((value) => {
-    console.log('Setting loading state:', value);
     // Clear any pending timeouts first
     if (loadingTimeoutRef.current) {
       clearTimeout(loadingTimeoutRef.current);
@@ -94,7 +83,6 @@ export const LoadingProvider = ({ children }) => {
     const handleRouteChange = () => {
       if (location.state?.fromAuth) return;
 
-      console.log('Route changed, updating loading state');
       setLoadingDirect(true);
       const timer = setTimeout(() => setLoadingDirect(false), 50);
       return () => clearTimeout(timer);
@@ -106,7 +94,6 @@ export const LoadingProvider = ({ children }) => {
   // Global loading control
   useEffect(() => {
     const handleGlobalLoading = (event) => {
-      console.log('Global loading event:', event.detail);
       setLoadingDirect(event.detail.loading);
     };
     window.addEventListener('setLoading', handleGlobalLoading);

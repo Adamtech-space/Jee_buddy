@@ -8,10 +8,8 @@ import {
 // User authentication services
 export const userLogin = async (data) => {
   try {
-    console.log('Attempting login with:', { email: data.email });
     
     const response = await apiInstance.post("/auth/login", data);
-    console.log('Login response:', response.data);
     
     if (response.data.tokens && response.data.user) {
       // Store tokens and user data with encryption
@@ -198,11 +196,7 @@ export const uploadFiles = async (files, parentId, subject) => {
     }
     formData.append('subject', subject);
 
-    console.log('Form data:', {
-      file: files[0].name,
-      parentId,
-      subject,
-    });
+   
 
     const response = await apiInstance.post(
       '/study-materials/files',
@@ -225,13 +219,12 @@ export const getStudyMaterials = async (parentId, subject) => {
     if (parentId) params.append('parentId', parentId);
     params.append('subject', subject); // Always include subject
 
-    console.log('Fetching study materials with params:', { parentId, subject });
     
     const response = await apiInstance.get(
       `/study-materials?${params.toString()}`
     );
     
-    console.log('Study materials response:', response.data);
+    
     
     return response.data;
   } catch (error) {

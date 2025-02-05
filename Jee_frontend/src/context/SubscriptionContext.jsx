@@ -40,7 +40,6 @@ export const SubscriptionProvider = ({ children }) => {
       }
 
       const response = await aiService.checkSubscriptionStatus(userId);
-      console.log('Subscription status:', response);
 
       if (response.status === 'success') {
         setIsSubscribed(response.is_subscribed);

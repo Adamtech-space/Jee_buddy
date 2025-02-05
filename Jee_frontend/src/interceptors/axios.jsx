@@ -34,20 +34,11 @@ apiInstance.interceptors.request.use(
 
     try {
       const tokens = getDecryptedItem('tokens');
-      console.log('Decrypted tokens:', {
-        exists: !!tokens,
-        hasAccessToken: !!tokens?.access?.token,
-        tokenPreview: tokens?.access?.token
-          ? `${tokens.access.token.substr(0, 10)}...`
-          : 'none',
-      });
+     
 
       if (tokens?.access?.token) {
         config.headers.Authorization = `Bearer ${tokens.access.token}`;
-        console.log(
-          'Added auth header:',
-          config.headers.Authorization.substr(0, 20) + '...'
-        );
+       
       } else {
         console.warn('No valid token found for request:', config.url);
       }
@@ -87,12 +78,10 @@ apiInstance.interceptors.response.use(
 
     // If error is 401 and we haven't tried to refresh the token yet
     if (error.response?.status === 401 && !originalRequest._retry) {
-      console.log('Attempting token refresh...');
       originalRequest._retry = true;
 
       try {
         const tokens = getDecryptedItem('tokens');
-        console.log('Refresh token exists:', !!tokens?.refresh?.token);
 
         if (tokens?.refresh?.token) {
           const response = await apiInstance.post('/auth/refresh-token', {
@@ -100,7 +89,6 @@ apiInstance.interceptors.response.use(
           });
 
           if (response.data.tokens) {
-            console.log('Token refresh successful');
             setEncryptedItem('tokens', response.data.tokens);
             apiInstance.defaults.headers.common['Authorization'] =
               `Bearer ${response.data.tokens.access.token}`;
