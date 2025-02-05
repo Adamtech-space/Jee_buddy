@@ -293,12 +293,10 @@ const Subscription = () => {
           plan_id: plan_id,
         },
         handler: function (response) {
-          console.log('Razorpay payment success:', response);
           verifyPayment(response);
         },
         modal: {
           ondismiss: function () {
-            console.log('Payment modal closed');
             setLoadingStates((prev) => ({
               ...prev,
               [Object.keys(prev).find((key) => prev[key] === true)]: false,

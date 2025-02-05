@@ -68,7 +68,6 @@ const App = () => {
     try {
       // Make setGlobalLoading available globally
       window.setGlobalLoading = (loading) => {
-        console.log('Setting global loading:', loading);
         const event = new CustomEvent('setLoading', { detail: loading });
         window.dispatchEvent(event);
       };

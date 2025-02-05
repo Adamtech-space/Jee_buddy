@@ -761,7 +761,6 @@ const StudyMaterials = () => {
 
   const handleSaveToFlashCard = (text) => {
     // Implement flash card saving logic
-    console.log('Save to flash card:', text);
   };
 
   const handleAskAI = (text) => {

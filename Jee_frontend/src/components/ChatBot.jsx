@@ -659,7 +659,6 @@ const ChatBot = ({
         }
       } catch (error) {
         if (error.name === 'AbortError') {
-          console.log('Request was cancelled');
           return;
         }
         console.error('ChatBot - Error processing message:', error);

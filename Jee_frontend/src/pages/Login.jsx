@@ -26,7 +26,6 @@ const Login = () => {
   const fetchAndStoreSubscriptionDetails = async (userId) => {
     try {
       const subscriptionData = await aiService.checkSubscriptionStatus(userId);
-      console.log('Received subscription data:', subscriptionData); // Debug log
 
       if (subscriptionData && subscriptionData.status === 'success') {
         const subscriptionDetails = {
@@ -40,12 +39,11 @@ const Login = () => {
           status: subscriptionData.status,
         };
 
-        console.log('Storing subscription details:', subscriptionDetails); // Debug log
         setEncryptedItem('subscription', subscriptionDetails);
 
         // Verify storage
         const storedData = getDecryptedItem('subscription');
-        console.log('Verified stored data:', storedData); // Debug log
+         // Debug log
       } else {
         console.warn('Invalid subscription data received:', subscriptionData);
       }
@@ -60,9 +58,7 @@ const Login = () => {
     setError('');
 
     try {
-      console.log('Submitting login form...');
       const response = await userLogin({ email, password });
-      console.log('Login successful:', response);
 
       if (response?.tokens?.access?.token && response?.user) {
         // Store tokens and user data first
@@ -78,7 +74,6 @@ const Login = () => {
           user: getDecryptedItem('user'),
           subscription: getDecryptedItem('subscription'),
         };
-        console.log('Verified stored data:', verifyData);
 
         // Force a small delay to ensure state updates are processed
         await new Promise((resolve) => setTimeout(resolve, 500));

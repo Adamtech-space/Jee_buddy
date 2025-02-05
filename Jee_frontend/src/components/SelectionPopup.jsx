@@ -79,7 +79,6 @@ const SelectionPopup = ({ onSaveToFlashCard, onAskAI }) => {
 
   const handleAction = (action) => {
     if (!selectedText) {
-      console.log('SelectionPopup - No text selected');
       return;
     }
 
