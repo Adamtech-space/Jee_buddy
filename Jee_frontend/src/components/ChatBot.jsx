@@ -659,6 +659,7 @@ const ChatBot = ({
         }
       } catch (error) {
         if (error.name === 'AbortError') {
+          console.log('Request was cancelled');
           return;
         }
         console.error('ChatBot - Error processing message:', error);
@@ -905,18 +906,17 @@ const ChatBot = ({
 
     // Helper function to format headings and subheadings
     const formatContent = (text) => {
-      // Convert ### lines to bullet points with bold text
+      // First handle headings with bold
       let formattedText = text.replace(
-        /###\s+(.+)/g,
-        '<li class="list-disc ml-5 my-1"><span class="font-bold text-white">$1</span></li>'
+        /(#{1,6})\s+\*\*([^*]+)\*\*/g,
+        (match, hashes, content) => {
+          const level = hashes.length;
+          const className = `text-${level === 1 ? 'xl' : level === 2 ? 'lg' : 'base'} font-bold my-2`;
+          return `<h${level} class="${className}">${content}</h${level}>`;
+        }
       );
-      
-      // Wrap bullet points in unordered list
-      if (formattedText.includes('<li')) {
-        formattedText = `<ul class="space-y-2 mt-2">${formattedText}</ul>`;
-      }
 
-      // Handle remaining bold text
+      // Then handle remaining bold text
       formattedText = formattedText.replace(
         /\*\*([^*]+)\*\*/g,
         '<span class="font-bold text-white">$1</span>'
