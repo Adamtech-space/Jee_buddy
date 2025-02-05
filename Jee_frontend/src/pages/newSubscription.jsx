@@ -66,8 +66,8 @@ const NewSubscription = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 p-8">
-      <div className="max-w-6xl mx-auto">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 p-4 md:p-8">
+      <div className="container mx-auto max-w-7xl">
         <h6 className="text-4xl md:text-5xl font-bold text-center text-white mb-4">
           Select the perfect plan
         </h6>
@@ -84,10 +84,10 @@ const NewSubscription = () => {
           </div>
         )}
 
-        <div className="flex flex-col items-center gap-8">
+        <div className="flex flex-col items-stretch gap-8">
           {/* Show active plan first */}
           {isPlanActive('BASIC') && (
-            <div className="w-full p-6 bg-gray-800 backdrop-blur-lg rounded-2xl border border-gray-700 transition-all duration-300 scale-105">
+            <div className="w-full max-w-none p-6 bg-gray-800 backdrop-blur-lg rounded-2xl border border-gray-700 transition-all duration-300 scale-105">
               <div className="flex flex-col">
                 <div className="mb-6">
                   <div className="flex items-center justify-between mb-2">
@@ -141,7 +141,7 @@ const NewSubscription = () => {
           )}
 
           {isPlanActive('PRO') && (
-            <div className="w-full p-6 bg-gradient-to-b from-blue-600/10 to-gray-800 backdrop-blur-lg rounded-2xl border border-blue-500/50 transition-all duration-300 scale-105">
+            <div className="w-full max-w-none p-6 bg-gradient-to-b from-blue-600/10 to-gray-800 backdrop-blur-lg rounded-2xl border border-blue-500/50 transition-all duration-300 scale-105">
               <div className="flex flex-col">
                 <div className="mb-6">
                   <div className="flex items-center justify-between mb-2">
@@ -194,115 +194,109 @@ const NewSubscription = () => {
             </div>
           )}
 
-          {/* Show inactive plans in a row */}
-          <div className="flex justify-center gap-8 flex-wrap">
-            {!isPlanActive('BASIC') && (
-              <div className="w-full md:w-[380px] p-6 bg-gray-800 backdrop-blur-lg rounded-2xl border border-gray-700 hover:border-blue-500 transition-all duration-300">
-                <div className="flex flex-col">
-                  <div className="mb-6">
-                    <h2 className="text-2xl font-bold text-white mb-2">
-                      Basic Plan
-                    </h2>
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-4xl font-bold text-white">
-                        ₹999
-                      </span>
-                      <span className="text-gray-400">/month</span>
-                    </div>
-                    <p className="text-gray-400 mt-2">
-                      Perfect for getting started
-                    </p>
+          {/* Show inactive plans */}
+          {!isPlanActive('BASIC') && (
+            <div className="w-full max-w-none p-6 bg-gray-800 backdrop-blur-lg rounded-2xl border border-gray-700 hover:border-blue-500 transition-all duration-300">
+              <div className="flex flex-col">
+                <div className="mb-6">
+                  <h2 className="text-2xl font-bold text-white mb-2">
+                    Basic Plan
+                  </h2>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-4xl font-bold text-white">₹999</span>
+                    <span className="text-gray-400">/month</span>
                   </div>
-
-                  <div className="space-y-3">
-                    {basicFeatures.map((feature, index) => (
-                      <div key={index} className="flex items-center gap-3">
-                        <div className="flex-shrink-0 w-5 h-5 rounded-full bg-blue-500/20 flex items-center justify-center">
-                          <svg
-                            className="w-3 h-3 text-blue-500"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth="2"
-                              d="M5 13l4 4L19 7"
-                            />
-                          </svg>
-                        </div>
-                        <span className="text-gray-300">{feature}</span>
-                      </div>
-                    ))}
-                  </div>
-
-                  <button
-                    onClick={handleBasicPlan}
-                    className="mt-6 w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white py-3 px-6 rounded-xl font-semibold hover:from-blue-600 hover:to-blue-700 transition-all duration-300 shadow-lg hover:shadow-blue-500/25"
-                  >
-                    Get Basic Plan
-                  </button>
+                  <p className="text-gray-400 mt-2">
+                    Perfect for getting started
+                  </p>
                 </div>
-              </div>
-            )}
 
-            {!isPlanActive('PRO') && (
-              <div className="w-full md:w-[380px] p-6 bg-gradient-to-b from-blue-600/10 to-gray-800 backdrop-blur-lg rounded-2xl border border-blue-500/50 hover:border-blue-400 transition-all duration-300">
-                <div className="flex flex-col">
-                  <div className="mb-6">
-                    <div className="flex items-center justify-between mb-2">
-                      <h2 className="text-2xl font-bold text-white">
-                        Pro Plan
-                      </h2>
-                      <span className="px-3 py-1 text-xs font-semibold text-blue-200 bg-blue-500/20 rounded-full">
-                        RECOMMENDED
-                      </span>
-                    </div>
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-4xl font-bold text-white">
-                        ₹4,999
-                      </span>
-                      <span className="text-gray-400">/month</span>
-                    </div>
-                    <p className="text-gray-400 mt-2">
-                      Advanced features for serious preparation
-                    </p>
-                  </div>
-
-                  <div className="space-y-3">
-                    {proFeatures.map((feature, index) => (
-                      <div key={index} className="flex items-center gap-3">
-                        <div className="flex-shrink-0 w-5 h-5 rounded-full bg-blue-500/20 flex items-center justify-center">
-                          <svg
-                            className="w-3 h-3 text-blue-400"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth="2"
-                              d="M5 13l4 4L19 7"
-                            />
-                          </svg>
-                        </div>
-                        <span className="text-gray-300">{feature}</span>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {basicFeatures.map((feature, index) => (
+                    <div key={index} className="flex items-center gap-3">
+                      <div className="flex-shrink-0 w-5 h-5 rounded-full bg-blue-500/20 flex items-center justify-center">
+                        <svg
+                          className="w-3 h-3 text-blue-500"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="2"
+                            d="M5 13l4 4L19 7"
+                          />
+                        </svg>
                       </div>
-                    ))}
-                  </div>
-
-                  <button
-                    onClick={handleProPlan}
-                    className="mt-6 w-full bg-gradient-to-r from-blue-400 to-blue-500 text-white py-3 px-6 rounded-xl font-semibold hover:from-blue-500 hover:to-blue-600 transition-all duration-300 shadow-lg hover:shadow-blue-500/25"
-                  >
-                    Get Pro Plan
-                  </button>
+                      <span className="text-gray-300">{feature}</span>
+                    </div>
+                  ))}
                 </div>
+
+                <button
+                  onClick={handleBasicPlan}
+                  className="mt-6 w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white py-3 px-6 rounded-xl font-semibold hover:from-blue-600 hover:to-blue-700 transition-all duration-300 shadow-lg hover:shadow-blue-500/25"
+                >
+                  Get Basic Plan
+                </button>
               </div>
-            )}
-          </div>
+            </div>
+          )}
+
+          {!isPlanActive('PRO') && (
+            <div className="w-full max-w-none p-6 bg-gradient-to-b from-blue-600/10 to-gray-800 backdrop-blur-lg rounded-2xl border border-blue-500/50 hover:border-blue-400 transition-all duration-300">
+              <div className="flex flex-col">
+                <div className="mb-6">
+                  <div className="flex items-center justify-between mb-2">
+                    <h2 className="text-2xl font-bold text-white">Pro Plan</h2>
+                    <span className="px-3 py-1 text-xs font-semibold text-blue-200 bg-blue-500/20 rounded-full">
+                      RECOMMENDED
+                    </span>
+                  </div>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-4xl font-bold text-white">
+                      ₹4,999
+                    </span>
+                    <span className="text-gray-400">/month</span>
+                  </div>
+                  <p className="text-gray-400 mt-2">
+                    Advanced features for serious preparation
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {proFeatures.map((feature, index) => (
+                    <div key={index} className="flex items-center gap-3">
+                      <div className="flex-shrink-0 w-5 h-5 rounded-full bg-blue-500/20 flex items-center justify-center">
+                        <svg
+                          className="w-3 h-3 text-blue-400"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="2"
+                            d="M5 13l4 4L19 7"
+                          />
+                        </svg>
+                      </div>
+                      <span className="text-gray-300">{feature}</span>
+                    </div>
+                  ))}
+                </div>
+
+                <button
+                  onClick={handleProPlan}
+                  className="mt-6 w-full bg-gradient-to-r from-blue-400 to-blue-500 text-white py-3 px-6 rounded-xl font-semibold hover:from-blue-500 hover:to-blue-600 transition-all duration-300 shadow-lg hover:shadow-blue-500/25"
+                >
+                  Get Pro Plan
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
