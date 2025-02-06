@@ -27,7 +27,7 @@ const RazorpayIntegration = () => {
     {
       id: 'plan_PhmnKiiVXD3B1M',
       name: 'Basic Plan',
-      price: '1',
+      price: '999',
       description: 'Perfect for getting started',
       features: [
         'Access to AI Learning Assistant',
@@ -39,7 +39,7 @@ const RazorpayIntegration = () => {
     {
       id: 'plan_PhmnlqjWH24hwy',
       name: 'Pro Plan',
-      price: '2',
+      price: '4999',
       description: 'Advanced features for serious preparation',
       features: [
         'Unlimited AI Usage',
