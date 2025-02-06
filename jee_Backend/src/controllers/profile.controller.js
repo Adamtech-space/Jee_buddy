@@ -21,12 +21,27 @@ const getProfileController = catchAsync(async (req, res) => {
 });
 
 const updateProfileController = catchAsync(async (req, res) => {
-  const profile = await updateProfile(req.user.id, req.body);
-  res.status(httpStatus.OK).json({
-    status: 'success',
-    message: 'Profile updated successfully',
-    data: profile
-  });
+  try {
+    const userId = req.user.id;
+    const updateData = req.body;
+
+    // Log the incoming data for debugging
+    console.log('Updating profile with data:', updateData);
+
+    const profile = await updateProfile(userId, updateData);
+
+    res.status(httpStatus.OK).json({
+      status: 'success',
+      message: 'Profile updated successfully',
+      data: profile,
+    });
+  } catch (error) {
+    console.error('Profile update controller error:', error);
+    res.status(httpStatus.BAD_REQUEST).json({
+      status: 'error',
+      message: error.message || 'Failed to update profile',
+    });
+  }
 });
 
 const deleteProfileController = catchAsync(async (req, res) => {

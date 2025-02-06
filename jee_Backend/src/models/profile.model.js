@@ -27,18 +27,28 @@ const getProfileById = async (profileId) => {
 };
 
 const updateProfile = async (profileId, updateData) => {
-  const { data: profile, error } = await supabase
-    .from('profiles')
-    .update({
-      ...updateData,
-      updated_at: new Date().toISOString()
-    })
-    .eq('id', profileId)
-    .select()
-    .single();
+  try {
+    const { data: profile, error } = await supabase
+      .from('profiles')
+      .update(updateData)
+      .eq('id', profileId)
+      .select()
+      .single();
 
-  if (error) throw error;
-  return profile;
+    if (error) {
+      console.error('Supabase update error:', error);
+      throw new Error(error.message);
+    }
+
+    if (!profile) {
+      throw new Error('Profile not found');
+    }
+
+    return profile;
+  } catch (error) {
+    console.error('Profile update model error:', error);
+    throw error;
+  }
 };
 
 const deleteProfile = async (profileId) => {

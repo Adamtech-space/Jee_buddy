@@ -27,7 +27,7 @@ import StudyMaterials from '../components/StudyMaterials';
 import QuestionBank from '../components/QuestionBank';
 
 // settings with subscription components
-import Settings from '../pages/newSubscription';
+import Settings from '../pages/razorintergrate';
 import PdfViewer from '../components/PdfViewer';
 
 // // Landing Page Components

@@ -23,13 +23,28 @@ const getProfileById = async (profileId) => {
 
 const updateProfile = async (profileId, updateData) => {
   try {
-    const profile = await profileModel.updateProfile(profileId, updateData);
-    if (!profile) {
+    // Remove undefined values
+    const cleanedData = Object.fromEntries(
+      Object.entries(updateData).filter(([_, v]) => v !== undefined)
+    );
+
+    // Update the profile
+    const updatedProfile = await profileModel.updateProfile(profileId, {
+      ...cleanedData,
+      updated_at: new Date().toISOString(),
+    });
+
+    if (!updatedProfile) {
       throw new ApiError(404, 'Profile not found');
     }
-    return profile;
+
+    return updatedProfile;
   } catch (error) {
-    throw new ApiError(400, 'Failed to update profile');
+    console.error('Profile update error:', error);
+    if (error instanceof ApiError) {
+      throw error;
+    }
+    throw new ApiError(400, 'Failed to update profile: ' + error.message);
   }
 };
 
