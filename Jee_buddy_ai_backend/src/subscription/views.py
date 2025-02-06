@@ -196,7 +196,10 @@ def create_subscription(request):
         plan_id = data.get('plan_id')
         email = data.get('email', '')
         name = data.get('name', '')
-
+        
+        # Log the plan_id for debugging
+        logger.info("Creating subscription for user %s with plan_id: %s", user_id, plan_id)
+        
         if not user_id or not plan_id:
             return JsonResponse({
                 'status': 'error',
