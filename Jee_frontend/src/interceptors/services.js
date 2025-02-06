@@ -97,7 +97,7 @@ export const logout = async () => {
     await apiInstance.post("/auth/logout");
     removeItem('tokens');
     window.location.href = "/login";
-  } catch (error) {
+  } catch {
     removeItem('tokens');
     window.location.href = "/login";
   }
@@ -106,7 +106,7 @@ export const logout = async () => {
 export const getCurrentUser = () => {
   try {
     return getDecryptedItem('user');
-  } catch (error) {
+  } catch {
     return null;
   }
 };
@@ -290,15 +290,15 @@ export const checkUserAccess = () => {
     // If user has any paid plan, they have access
     if (profile.current_plan_id) {
       const PLAN_IDS = {
-        BASIC: 'plan_PhmnKiiVXD3B1M',
-        PRO: 'plan_PhmnlqjWH24hwy',
-        PREMIUM: 'plan_Phmo9yOZAKb0P8'
+        BASIC: import.meta.env.VITE_BASIC_PLAN_ID,
+        PREMIUM: import.meta.env.VITE_PREMIUM_PLAN_ID
       };
 
       // Check if user has an active paid plan
       const hasPaidPlan = Object.values(PLAN_IDS).includes(profile.current_plan_id);
       
       // If user has paid plan and payment status is completed, grant access
+
       if (hasPaidPlan && profile.payment_status === 'completed') {
         return true;
       }
@@ -333,12 +333,15 @@ export const getCurrentPlanName = () => {
     const profile = getDecryptedItem('profile');
     if (!profile?.current_plan_id) return 'Free';
 
+    const PLAN_IDS = {
+      BASIC: import.meta.env.VITE_BASIC_PLAN_ID,
+      PREMIUM: import.meta.env.VITE_PREMIUM_PLAN_ID
+    };
+
     switch (profile.current_plan_id) {
-      case 'plan_PhmnKiiVXD3B1M':
+      case PLAN_IDS.BASIC:
         return 'Basic';
-      case 'plan_PhmnlqjWH24hwy':
-        return 'Pro';
-      case 'plan_Phmo9yOZAKb0P8':
+      case PLAN_IDS.PREMIUM:
         return 'Premium';
       default:
         return 'Free';

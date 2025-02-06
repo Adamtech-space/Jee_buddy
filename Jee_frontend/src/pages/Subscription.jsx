@@ -7,7 +7,8 @@ import { getProfile } from '../interceptors/services';
 
 // Define plan IDs
 const PLANS = {
-  'BASIC': import.meta.env.VITE_BASIC_PLAN_ID,
+  'BASIC': 'FREE',
+  'PRO': import.meta.env.VITE_PRO_PLAN_ID,
   'PREMIUM': import.meta.env.VITE_PREMIUM_PLAN_ID
 };
 
@@ -125,6 +126,7 @@ const Subscription = () => {
   const navigate = useNavigate();
   const [loadingStates, setLoadingStates] = useState({
     BASIC: false,
+    PRO: false,
     PREMIUM: false,
   });
   const [isSubscribed, setIsSubscribed] = useState(false);
@@ -280,10 +282,30 @@ const Subscription = () => {
               ...prev,
               [Object.keys(prev).find((key) => prev[key] === true)]: false,
             }));
-          }
+          },
+          animation: true,
+          backdropclose: true,
         },
         theme: {
           color: "#000000"
+        },
+        config: {
+          display: {
+            preferences: {
+              show_default_blocks: true,
+              show_ussd: true,
+              show_qr: true
+            },
+            method: {
+              netbanking: true,
+              card: true,
+              upi: true,
+              wallet: true
+            },
+            upi: {
+              flow: 'collect'
+            }
+          }
         }
       };
 
@@ -611,12 +633,42 @@ const Subscription = () => {
               Choose the plan that works best for you
             </h1>
 
-            {/* Updated plans grid with 2 columns */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-              {/* Basic Plan */}
+            {/* Updated plans grid with 3 columns */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+              {/* Free Basic Plan */}
               <div className="rounded-3xl bg-[#1a1625] p-8 flex flex-col">
                 <div className="mb-6">
                   <h2 className="text-2xl font-bold text-white mb-4">Basic</h2>
+                  <div className="flex items-baseline">
+                    <span className="text-4xl font-bold text-[#8075FF]">FREE</span>
+                  </div>
+                </div>
+                <ul className="space-y-4 mb-8 flex-grow">
+                  <li className="flex items-center text-white">
+                    <svg className="w-5 h-5 mr-3 text-[#8075FF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    Access to Basic AI Features
+                  </li>
+                  <li className="flex items-center text-white">
+                    <svg className="w-5 h-5 mr-3 text-[#8075FF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    Limited Queries 
+                  </li>
+                  <li className="flex items-center text-white">
+                    <svg className="w-5 h-5 mr-3 text-[#8075FF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    Email Support
+                  </li>
+                </ul>
+              </div>
+
+              {/* Pro Plan */}
+              <div className="rounded-3xl bg-[#1a1625] p-8 flex flex-col">
+                <div className="mb-6">
+                  <h2 className="text-2xl font-bold text-white mb-4">Pro</h2>
                   <div className="flex items-baseline">
                     <span className="text-2xl text-[#8075FF]">₹</span>
                     <span className="text-4xl font-bold text-[#8075FF]">499</span>
@@ -625,84 +677,36 @@ const Subscription = () => {
                 </div>
                 <ul className="space-y-4 mb-8 flex-grow">
                   <li className="flex items-center text-white">
-                    <svg
-                      className="w-5 h-5 mr-3 text-[#8075FF]"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M5 13l4 4L19 7"
-                      />
+                    <svg className="w-5 h-5 mr-3 text-[#8075FF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                     </svg>
-                    Access to AI Learning Assistant
+                    All Basic Features +
                   </li>
                   <li className="flex items-center text-white">
-                    <svg
-                      className="w-5 h-5 mr-3 text-[#8075FF]"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M5 13l4 4L19 7"
-                      />
+                    <svg className="w-5 h-5 mr-3 text-[#8075FF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                     </svg>
-                    Basic Study Materials
+                    Unlimited Queries
                   </li>
                   <li className="flex items-center text-white">
-                    <svg
-                      className="w-5 h-5 mr-3 text-[#8075FF]"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M5 13l4 4L19 7"
-                      />
+                    <svg className="w-5 h-5 mr-3 text-[#8075FF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                     </svg>
-                    Limited AI Usage (50 queries/day)
-                  </li>
-                  <li className="flex items-center text-white">
-                    <svg
-                      className="w-5 h-5 mr-3 text-[#8075FF]"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M5 13l4 4L19 7"
-                      />
-                    </svg>
-                    Email Support
+                    Priority Support
                   </li>
                 </ul>
                 {!isSubscribed && (
                   <button
-                    onClick={() =>
-                      handleGetStarted({
-                        type: 'BASIC',
-                        price: 499,
-                        name: 'Basic Plan',
-                        id: PLANS['BASIC'],
-                      })
-                    }
-                    disabled={loadingStates.BASIC}
+                    onClick={() => handleGetStarted({
+                      type: 'PRO',
+                      price: 499,
+                      name: 'Pro Plan',
+                      id: PLANS['PRO'],
+                    })}
+                    disabled={loadingStates.PRO}
                     className="w-full py-3 rounded-lg bg-[#1e1b29] text-white font-semibold hover:bg-[#2a2635] transition-colors"
                   >
-                    {loadingStates.BASIC ? 'Processing...' : 'Get Started'}
+                    {loadingStates.PRO ? 'Processing...' : 'Get Started'}
                   </button>
                 )}
               </div>
