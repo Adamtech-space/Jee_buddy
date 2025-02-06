@@ -27,7 +27,7 @@ import StudyMaterials from '../components/StudyMaterials';
 import QuestionBank from '../components/QuestionBank';
 
 // settings with subscription components
-import Settings from '../pages/subscription';
+import Settings from '../pages/Subscription';
 import PdfViewer from '../components/PdfViewer';
 
 

@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { aiService } from '../interceptors/ai.service';
 import PropTypes from 'prop-types';
-import { getDecryptedItem, setEncryptedItem } from '../utils/encryption';
+import { getDecryptedItem } from '../utils/encryption';
+import { getProfile } from '../interceptors/services';
 
 // Define plan IDs
 const PLANS = {
@@ -142,7 +143,9 @@ const Subscription = () => {
   });
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [currentPlan, setCurrentPlan] = useState(null);
-  const [paymentMethod, setPaymentMethod] = useState('card'); // Default to card payment
+  const [paymentMethod, setPaymentMethod] = useState('card');
+  const [profileData, setProfileData] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   const loadScript = (src) => {
     return new Promise((resolve) => {
@@ -171,7 +174,9 @@ const Subscription = () => {
 
   useEffect(() => {
     const initializeRazorpay = async () => {
-      const isScriptLoaded = await loadScript('https://checkout.razorpay.com/v1/checkout.js');
+      const isScriptLoaded = await loadScript(
+        'https://checkout.razorpay.com/v1/checkout.js'
+      );
       if (!isScriptLoaded) {
         console.error('Failed to load Razorpay script');
         alert('Failed to load payment gateway. Please try again.');
@@ -190,13 +195,17 @@ const Subscription = () => {
           return;
         }
 
-        const userData = getDecryptedItem('user');
+        setIsLoading(true);
+        const response = await getProfile();
+        const profile = response.data;
+        setProfileData(profile);
+
         if (
-          userData?.payment_status === 'completed' &&
-          userData?.current_plan_id
+          profile?.payment_status === 'completed' &&
+          profile?.current_plan_id
         ) {
           let planType = 'BASIC';
-          if (userData.current_plan_id === import.meta.env.VITE_PRO_PLAN_ID) {
+          if (profile.current_plan_id === PLANS.PRO) {
             planType = 'PRO';
           }
 
@@ -205,6 +214,17 @@ const Subscription = () => {
             type: planType,
             name: `${planType.charAt(0) + planType.slice(1).toLowerCase()} Plan`,
             price: planType === 'BASIC' ? 999 : 4999,
+            subscriptionDetails: {
+              plan_id: profile.current_plan_id,
+              days_remaining: profile.days_remaining,
+              days_used: 30 - profile.days_remaining, // Calculate days used
+              total_days: 30,
+              subscription_progress: `${profile.days_remaining} days remaining`,
+              start_date: new Date(profile.created_at).toISOString(),
+              end_date: new Date(profile.next_billing_date).toISOString(),
+              expiry_status: getExpiryStatus(profile.days_remaining),
+              reminder_message: getReminderMessage(profile.days_remaining),
+            },
           });
         } else {
           setIsSubscribed(false);
@@ -212,11 +232,28 @@ const Subscription = () => {
         }
       } catch (error) {
         console.error('Error initializing subscription:', error);
+      } finally {
+        setIsLoading(false);
       }
     };
 
     initializeSubscription();
   }, []);
+
+  // Add helper functions for subscription status
+  const getExpiryStatus = (daysRemaining) => {
+    if (daysRemaining <= 0) return 'expired';
+    if (daysRemaining <= 5) return 'expiring_soon';
+    return 'active';
+  };
+
+  const getReminderMessage = (daysRemaining) => {
+    if (daysRemaining <= 0)
+      return 'Your subscription has expired. Please renew to continue using premium features.';
+    if (daysRemaining <= 5)
+      return `Your subscription will expire in ${daysRemaining} days. Renew now to avoid interruption.`;
+    return null;
+  };
 
   const handleGetStarted = async (plan) => {
     try {
@@ -346,30 +383,33 @@ const Subscription = () => {
       const { data } = await aiService.verifySubscription(verificationData);
 
       if (data.status === 'success') {
-        // Update local storage with new plan data
-        const userData = getDecryptedItem('user');
-        if (userData) {
-          const updatedUserData = {
-            ...userData,
-            payment_status: 'completed',
-            current_plan_id: data.plan_id,
-            subscription_id: data.subscription_id,
-            days_remaining: 30, // Reset to full month
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          };
-          setEncryptedItem('user', updatedUserData);
-        }
+        // Fetch updated profile after successful payment
+        const updatedProfile = await getProfile();
+        const profile = updatedProfile.data;
 
+        setProfileData(profile);
         setIsSubscribed(true);
-        // Update current plan state
+
+        // Update current plan state with new profile data
         const planType =
-          Object.keys(PLANS).find((key) => PLANS[key] === data.plan_id) ||
-          'BASIC';
+          Object.keys(PLANS).find(
+            (key) => PLANS[key] === profile.current_plan_id
+          ) || 'BASIC';
         setCurrentPlan({
           type: planType,
           name: `${planType.charAt(0) + planType.slice(1).toLowerCase()} Plan`,
           price: planType === 'BASIC' ? 999 : 4999,
+          subscriptionDetails: {
+            plan_id: profile.current_plan_id,
+            days_remaining: profile.days_remaining,
+            days_used: 30 - profile.days_remaining,
+            total_days: 30,
+            subscription_progress: `${profile.days_remaining} days remaining`,
+            start_date: new Date(profile.created_at).toISOString(),
+            end_date: new Date(profile.next_billing_date).toISOString(),
+            expiry_status: getExpiryStatus(profile.days_remaining),
+            reminder_message: getReminderMessage(profile.days_remaining),
+          },
         });
 
         // Show success message
@@ -437,7 +477,11 @@ const Subscription = () => {
           Back to Dashboard
         </button>
 
-        {isSubscribed && currentPlan ? (
+        {isLoading ? (
+          <div className="flex items-center justify-center min-h-screen">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+          </div>
+        ) : isSubscribed && currentPlan ? (
           <div className="max-w-6xl mx-auto">
             <div className="text-center mb-12">
               <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent mb-4">
@@ -596,9 +640,7 @@ const Subscription = () => {
                         disabled={loadingStates.PRO}
                         className="px-8 py-3 rounded-lg bg-[#8075FF] text-white font-semibold hover:bg-[#6a5ff0] transition-colors"
                       >
-                        {loadingStates.PRO
-                          ? 'Processing...'
-                          : 'Upgrade to Pro'}
+                        {loadingStates.PRO ? 'Processing...' : 'Upgrade to Pro'}
                       </button>
                       <p className="text-gray-500 text-sm mt-2">
                         Cancel or change plans anytime
@@ -725,7 +767,9 @@ const Subscription = () => {
                   <h2 className="text-2xl font-bold text-white mb-4">Pro</h2>
                   <div className="flex items-baseline">
                     <span className="text-2xl text-[#8075FF]">₹</span>
-                    <span className="text-4xl font-bold text-[#8075FF]">4,999</span>
+                    <span className="text-4xl font-bold text-[#8075FF]">
+                      4,999
+                    </span>
                     <span className="text-gray-400 ml-2">/month</span>
                   </div>
                 </div>
