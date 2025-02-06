@@ -27,9 +27,11 @@ if not RAZORPAY_KEY_ID or not RAZORPAY_KEY_SECRET:
 razorpay_client = razorpay.Client(auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET))
 
 PLANS = {
-    'BASIC': 'plan_Prb0eFdLDbmvN2',
-    'PRO': 'plan_PraNiv0WBkABY9',  # Using the previous PREMIUM plan ID for PRO
+    'BASIC': os.getenv('BASIC_PLAN_ID'),
+    'PRO': os.getenv('PRO_PLAN_ID'),
 }
+
+
 
 def calculate_days_remaining(valid_till):
     if not valid_till:
@@ -136,9 +138,12 @@ def subscription_callback(request):
                 subscription.payment_id = payment_id
                 subscription.status = 'active'
                 subscription.payment_status = 'completed'
+                subscription.amount = payment.get('amount', 0) / 100
+                subscription.currency = payment.get('currency', 'INR')
                 subscription.updated_at = start_date
                 subscription.valid_till = valid_till
             except Subscription.DoesNotExist:
+
                 subscription = Subscription.objects.create(
                     user_id=user_id,
                     subscription_id=subscription_id,
