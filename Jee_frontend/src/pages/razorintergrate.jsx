@@ -1,35 +1,56 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import apiInstance from '../interceptors/axios';
-import { updateProfileCache } from '../interceptors/services';
+import { updateProfileCache, getProfile } from '../interceptors/services';
 
 const RazorpayIntegration = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [profileData, setProfileData] = useState(null);
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const response = await getProfile();
+        if (response.status === 'success') {
+          setProfileData(response.data);
+        }
+      } catch (error) {
+        console.error('Error fetching profile:', error);
+      }
+    };
+    fetchProfile();
+  }, []);
 
   const plans = [
     {
       id: 'plan_PhmnKiiVXD3B1M',
       name: 'Basic Plan',
-      price: 1,
+      price: '999',
+      description: 'Perfect for getting started',
       features: [
-        'Access to all study materials',
-        'Basic question bank',
-        'Limited practice tests',
-        'Email support',
+        'Access to AI Learning Assistant',
+        'Limited AI Usage',
+        'Basic Study Materials',
+        'Email Support',
       ],
     },
     {
       id: 'plan_PhmnlqjWH24hwy',
       name: 'Pro Plan',
-      price: 2,
+      price: '4,999',
+      description: 'Advanced features for serious preparation',
       features: [
-        'Everything in Basic Plan',
-        'Advanced question bank',
-        'Unlimited practice tests',
-        'Priority support',
-        'Performance analytics',
+        'Unlimited AI Usage',
+        'Performance Analytics',
+        'Advanced Analytics',
+        'Download Access',
+        'AI Generated Question Bank',
+        'Priority Support',
+        'Complete Study Materials',
+        'Visualization Tools',
       ],
+      recommended: true,
     },
   ];
 
@@ -44,6 +65,15 @@ const RazorpayIntegration = () => {
   };
 
   const handlePayment = async (planId, amount) => {
+    // Don't allow payment if this plan is already active
+    if (
+      profileData?.payment_status === 'completed' &&
+      profileData?.current_plan_id === planId
+    ) {
+      alert('This plan is already active!');
+      return;
+    }
+
     try {
       setLoading(true);
       const res = await initializeRazorpay();
@@ -62,61 +92,33 @@ const RazorpayIntegration = () => {
         description: `Subscription for ${planId === 'plan_PhmnKiiVXD3B1M' ? 'Basic' : 'Pro'} Plan`,
         handler: async (response) => {
           try {
-            // Get current profile to maintain total_tokens
-            const profileResponse = await apiInstance.get('/profile');
-            const currentProfile = profileResponse.data.data;
-
-            // Update profile with new plan details
-            const nextBillingDate = new Date();
-            nextBillingDate.setDate(nextBillingDate.getDate() + 30);
-
+            // Update profile with new plan details and payment details
             const updatePayload = {
-              // ...currentProfile, // Keep all existing profile data
               payment_status: 'completed',
               current_plan_id: planId,
-              // next_billing_date: nextBillingDate.toISOString(),
               days_remaining: 30,
-              // razorpay_payment_id: response.razorpay_payment_id,
-              // total_tokens: parseInt(currentProfile.total_tokens) || 0,
-              // updated_at: new Date().toISOString(),
+              razorpay_payment_id: response.razorpay_payment_id, // Use the response
             };
 
-            console.log('Update payload:', updatePayload);
-
             try {
-              const updateResponse = await apiInstance.put(
-                '/profile',
-                updatePayload
-              );
-              console.log('Update response:', updateResponse);
-
-              // Update profile cache after successful payment
+              await apiInstance.put('/profile', updatePayload);
               await updateProfileCache();
-
               alert('Payment successful! Your subscription is now active.');
               navigate('/dashboard');
             } catch (updateError) {
-              console.error('Profile update error:', {
-                message: updateError.message,
-                response: updateError.response?.data,
-                status: updateError.response?.status,
-              });
+              console.error('Profile update error:', updateError);
               alert(
                 `Payment verification failed. Error: ${updateError.response?.data?.message || updateError.message}`
               );
             }
           } catch (error) {
-            console.error('Payment error:', {
-              message: error.message,
-              response: error.response?.data,
-              status: error.response?.status,
-            });
+            console.error('Payment error:', error);
             alert('Payment verification failed. Please contact support.');
           }
         },
         prefill: {
-          name: 'User Name',
-          email: 'user@example.com',
+          name: profileData?.name || 'User Name',
+          email: profileData?.email || 'user@example.com',
         },
         theme: {
           color: '#3399cc',
@@ -133,61 +135,104 @@ const RazorpayIntegration = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-[#1a1f2e] text-white py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
         <div className="text-center">
-          <h2 className="text-3xl font-extrabold text-gray-900 sm:text-4xl">
-            Choose Your Plan
+          <h2 className="text-4xl font-bold text-white">
+            Select the perfect plan
           </h2>
-          <p className="mt-4 text-xl text-gray-600">
-            Select the plan that best fits your preparation needs
-          </p>
+          {profileData?.payment_status === 'completed' && (
+            <button
+              onClick={() => navigate('/subject-selection')}
+              className="mt-4 px-6 py-2 bg-[#22c55e] text-white rounded-md hover:bg-[#1ea952] transition-all"
+            >
+              Return to Dashboard
+            </button>
+          )}
         </div>
 
         <div className="mt-12 grid gap-8 lg:grid-cols-2">
-          {plans.map((plan) => (
-            <div
-              key={plan.id}
-              className="bg-white rounded-lg shadow-lg overflow-hidden"
-            >
-              <div className="px-6 py-8">
-                <h3 className="text-2xl font-bold text-gray-900">
-                  {plan.name}
-                </h3>
-                <p className="mt-4 text-4xl font-extrabold text-gray-900">
-                  ₹{plan.price}
-                </p>
-                <p className="mt-1 text-gray-500">One-time payment</p>
+          {plans.map((plan) => {
+            const isActivePlan =
+              profileData?.payment_status === 'completed' &&
+              profileData?.current_plan_id === plan.id;
 
-                <ul className="mt-6 space-y-4">
-                  {plan.features.map((feature, index) => (
-                    <li key={index} className="flex items-center">
-                      <svg
-                        className="flex-shrink-0 h-5 w-5 text-green-500"
-                        fill="currentColor"
-                        viewBox="0 0 20 20"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                      <span className="ml-3 text-gray-700">{feature}</span>
-                    </li>
-                  ))}
-                </ul>
+            return (
+              <div
+                key={plan.id}
+                className={`bg-[#1e2536] rounded-2xl overflow-hidden relative p-8 ${
+                  isActivePlan ? 'ring-2 ring-[#22c55e]' : ''
+                }`}
+              >
+                {isActivePlan && (
+                  <div className="absolute top-4 right-4">
+                    <span className="px-3 py-1 rounded-full text-sm font-medium bg-[#22c55e] bg-opacity-20 text-[#22c55e]">
+                      ACTIVE
+                    </span>
+                  </div>
+                )}
+                {plan.recommended && !isActivePlan && (
+                  <div className="absolute top-4 right-4">
+                    <span className="px-3 py-1 rounded-full text-sm font-medium bg-blue-600 bg-opacity-20 text-blue-400">
+                      RECOMMENDED
+                    </span>
+                  </div>
+                )}
+                <div>
+                  <h3 className="text-2xl font-bold text-white">{plan.name}</h3>
+                  <div className="mt-4 flex items-baseline">
+                    <span className="text-4xl font-bold text-white">
+                      ₹{plan.price}
+                    </span>
+                    <span className="ml-2 text-gray-400">/month</span>
+                  </div>
+                  <p className="mt-2 text-gray-400">{plan.description}</p>
 
-                <button
-                  onClick={() => handlePayment(plan.id, plan.price)}
-                  disabled={loading}
-                  className="mt-8 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-md transition duration-150 ease-in-out disabled:opacity-50"
-                >
-                  {loading ? 'Processing...' : `Get ${plan.name}`}
-                </button>
+                  <ul className="mt-8 space-y-4">
+                    {plan.features.map((feature, index) => (
+                      <li key={index} className="flex items-center">
+                        <svg
+                          className="flex-shrink-0 h-5 w-5 text-[#22c55e]"
+                          fill="currentColor"
+                          viewBox="0 0 20 20"
+                        >
+                          <path
+                            fillRule="evenodd"
+                            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                        <span className="ml-3 text-gray-300">{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
+
+                  <button
+                    onClick={() =>
+                      handlePayment(
+                        plan.id,
+                        parseInt(plan.price.replace(',', ''))
+                      )
+                    }
+                    disabled={loading || isActivePlan}
+                    className={`mt-8 w-full py-4 px-4 rounded-xl font-medium transition-all ${
+                      isActivePlan
+                        ? 'bg-gray-600 cursor-not-allowed'
+                        : 'bg-[#4c7bff] hover:bg-[#3d62cc] text-white'
+                    } disabled:opacity-50`}
+                  >
+                    {isActivePlan
+                      ? 'Current Plan'
+                      : loading
+                        ? 'Processing...'
+                        : plan.recommended
+                          ? 'Get Pro Plan'
+                          : `Get ${plan.name}`}
+                  </button>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>
