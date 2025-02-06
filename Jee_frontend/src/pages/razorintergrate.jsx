@@ -7,6 +7,7 @@ const RazorpayIntegration = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [profileData, setProfileData] = useState(null);
+  const [paymentSuccess, setPaymentSuccess] = useState(false);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -20,13 +21,13 @@ const RazorpayIntegration = () => {
       }
     };
     fetchProfile();
-  }, []);
+  }, [paymentSuccess]);
 
   const plans = [
     {
       id: 'plan_PhmnKiiVXD3B1M',
       name: 'Basic Plan',
-      price: '999',
+      price: '1',
       description: 'Perfect for getting started',
       features: [
         'Access to AI Learning Assistant',
@@ -38,7 +39,7 @@ const RazorpayIntegration = () => {
     {
       id: 'plan_PhmnlqjWH24hwy',
       name: 'Pro Plan',
-      price: '4,999',
+      price: '2',
       description: 'Advanced features for serious preparation',
       features: [
         'Unlimited AI Usage',
@@ -65,7 +66,6 @@ const RazorpayIntegration = () => {
   };
 
   const handlePayment = async (planId, amount) => {
-    // Don't allow payment if this plan is already active
     if (
       profileData?.payment_status === 'completed' &&
       profileData?.current_plan_id === planId
@@ -83,26 +83,25 @@ const RazorpayIntegration = () => {
         return;
       }
 
-      // Create Razorpay order
       const razorpay = new window.Razorpay({
         key: import.meta.env.VITE_RAZORPAY_KEY_ID,
-        amount: amount * 100, // Convert to paise
+        amount: amount * 100,
         currency: 'INR',
         name: 'JEE Buddy',
         description: `Subscription for ${planId === 'plan_PhmnKiiVXD3B1M' ? 'Basic' : 'Pro'} Plan`,
         handler: async (response) => {
           try {
-            // Update profile with new plan details and payment details
             const updatePayload = {
               payment_status: 'completed',
               current_plan_id: planId,
               days_remaining: 30,
-              razorpay_payment_id: response.razorpay_payment_id, // Use the response
+              // razorpay_payment_id: response.razorpay_payment_id, // Use the response
             };
 
             try {
               await apiInstance.put('/profile', updatePayload);
               await updateProfileCache();
+              setPaymentSuccess((prev) => !prev);
               alert('Payment successful! Your subscription is now active.');
               navigate('/dashboard');
             } catch (updateError) {
