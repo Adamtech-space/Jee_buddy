@@ -1,6 +1,6 @@
 const httpStatus = require('http-status');
 const catchAsync = require('../utils/catchAsync');
-const { createProfile, getProfileById, updateProfile, deleteProfile } = require('../services/profile.service');
+const { createProfile, getProfileById, updateProfile, deleteProfile, getAllProfiles } = require('../services/profile.service');
 
 const createProfileController = catchAsync(async (req, res) => {
   const profile = await createProfile(req.body);
@@ -49,9 +49,19 @@ const deleteProfileController = catchAsync(async (req, res) => {
   res.status(httpStatus.NO_CONTENT).send();
 });
 
+const getAllProfilesController = catchAsync(async (req, res) => {
+  const profiles = await getAllProfiles();
+  res.status(httpStatus.OK).json({
+    status: 'success',
+    message: 'Profiles retrieved successfully',
+    data: profiles
+  });
+});
+
 module.exports = {
   createProfileController,
   getProfileController,
   updateProfileController,
-  deleteProfileController
+  deleteProfileController,
+  getAllProfilesController
 }; 

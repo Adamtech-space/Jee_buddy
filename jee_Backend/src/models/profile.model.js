@@ -61,9 +61,19 @@ const deleteProfile = async (profileId) => {
   return true;
 };
 
+const getAllProfiles = async () => {
+  const { data: profiles, error } = await supabase
+    .from('profiles')
+    .select('*');
+
+  if (error) throw error;
+  return profiles;
+};
+
 module.exports = {
   createProfile,
   getProfileById,
   updateProfile,
-  deleteProfile
+  deleteProfile,
+  getAllProfiles
 }; 
