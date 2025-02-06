@@ -6,10 +6,13 @@ const {
   createProfileController,
   getProfileController,
   updateProfileController,
-  deleteProfileController
+  deleteProfileController,
+  getAllProfilesController
 } = require('../../controllers/profile.controller');
 
 const router = express.Router();
+
+router.get('/all', getAllProfilesController);
 
 router
   .route('/')
@@ -18,4 +21,4 @@ router
   .put(auth(), validate(profileValidation.updateProfile), updateProfileController)
   .delete(auth(), deleteProfileController);
 
-module.exports = router; 
+module.exports = router;

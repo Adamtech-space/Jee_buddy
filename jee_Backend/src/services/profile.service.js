@@ -60,9 +60,18 @@ const deleteProfile = async (profileId) => {
   }
 };
 
+const getAllProfiles = async () => {
+  try {
+    return await profileModel.getAllProfiles();
+  } catch (error) {
+    throw new ApiError(400, 'Failed to fetch profiles');
+  }
+};
+
 module.exports = {
   createProfile,
   getProfileById,
   updateProfile,
-  deleteProfile
+  deleteProfile,
+  getAllProfiles
 }; 
