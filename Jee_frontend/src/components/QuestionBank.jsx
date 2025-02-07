@@ -94,7 +94,7 @@ const QuestionBank = () => {
     <div className="p-4 md:p-6 lg:p-8">
       {/* Search Bar */}
       <div
-        className={`fixed z-40 transition-all duration-300 ease-in-out bg-black/95 backdrop-blur-sm 
+        className={`fixed z-40 bg-black/95 backdrop-blur-sm 
         ${scrollDirection === 'down' ? '-translate-y-full' : 'translate-y-0'} 
         left-0 right-0 top-16 w-full md:left-64`}
         style={{
