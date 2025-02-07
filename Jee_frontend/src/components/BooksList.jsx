@@ -108,13 +108,14 @@ const BooksList = () => {
                 onClick={(e) => handleBookClick(book, e)}
               >
                 <h3 className="text-2xl m-4 font-bold text-white">
-                  {book.displayName[0]}
+                  {book.topic}
                 </h3>
                 {book.displayName[1] && (
                   <p className="text-gray-400 m-4 text-sm">
                     Unit: {book.displayName[1]}
                   </p>
                 )}
+              
               </div>
 
               <motion.div
