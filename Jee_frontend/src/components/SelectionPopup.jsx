@@ -12,66 +12,47 @@ const SelectionPopup = ({ onSaveToFlashCard, onAskAI }) => {
     setShowPopup,
   } = useSelection();
   const popupRef = useRef(null);
-  const selectionTimeoutRef = useRef(null);
 
   useEffect(() => {
     const handleSelectionChange = () => {
-      if (selectionTimeoutRef.current) {
-        clearTimeout(selectionTimeoutRef.current);
-      }
-      setShowPopup(false);
-    };
-
-    const handleSelectionEnd = () => {
-      if (selectionTimeoutRef.current) {
-        clearTimeout(selectionTimeoutRef.current);
+      const selection = window.getSelection();
+      if (!selection || selection.rangeCount === 0) {
+        if (showPopup) setShowPopup(false);
+        return;
       }
 
-      selectionTimeoutRef.current = setTimeout(() => {
-        const selection = window.getSelection();
-        if (!selection || selection.rangeCount === 0) return;
+      const selectedText = selection.toString().trim();
+      if (!selectedText) {
+        if (showPopup) setShowPopup(false);
+        return;
+      }
 
-        const selectedText = selection.toString().trim();
-        if (!selectedText) {
-          setShowPopup(false);
-          return;
-        }
+      const range = selection.getRangeAt(0);
+      const rect = range.getBoundingClientRect();
 
-        const range = selection.getRangeAt(0);
-        const rect = range.getBoundingClientRect();
-
-        if (rect.width > 0 && rect.height > 0) {
-          setSelectionPosition({
-            x: rect.left + rect.width / 2,
-            y: rect.bottom + window.scrollY,
-          });
-          setShowPopup(true);
-        }
-      }, 100);
+      if (rect.width > 0 && rect.height > 0) {
+        setSelectionPosition({
+          x: rect.left + rect.width / 2,
+          y: rect.bottom + window.scrollY,
+        });
+        if (!showPopup) setShowPopup(true);
+      }
     };
 
     const handleClickOutside = (e) => {
       if (popupRef.current && !popupRef.current.contains(e.target)) {
-        setShowPopup(false);
-        clearSelection();
+        if (showPopup) setShowPopup(false);
       }
     };
 
     document.addEventListener('selectionchange', handleSelectionChange);
-    document.addEventListener('mouseup', handleSelectionEnd);
-    document.addEventListener('touchend', handleSelectionEnd);
     document.addEventListener('click', handleClickOutside);
 
     return () => {
       document.removeEventListener('selectionchange', handleSelectionChange);
-      document.removeEventListener('mouseup', handleSelectionEnd);
-      document.removeEventListener('touchend', handleSelectionEnd);
       document.removeEventListener('click', handleClickOutside);
-      if (selectionTimeoutRef.current) {
-        clearTimeout(selectionTimeoutRef.current);
-      }
     };
-  }, []);
+  }, [showPopup]);
 
   useEffect(() => {
     if (!popupRef.current || !selectionPosition) return;
@@ -79,23 +60,16 @@ const SelectionPopup = ({ onSaveToFlashCard, onAskAI }) => {
     const popup = popupRef.current;
     const viewportWidth = window.innerWidth;
 
-    // Mobile positioning (stacked vertically in bottom right)
     if (window.innerWidth <= 768) {
       popup.style.bottom = '100px';
       popup.style.right = '18px';
       popup.style.left = 'auto';
       popup.style.top = 'auto';
     } else {
-      // Desktop positioning - always show above selection
       const rect = popup.getBoundingClientRect();
-
-      // Position above selection with increased offset
       const top = selectionPosition.y - rect.height - 24;
-
-      // Center horizontally relative to selection
       let left = selectionPosition.x - rect.width / 2;
 
-      // Keep popup within viewport bounds
       if (left < 10) left = 10;
       if (left + rect.width > viewportWidth - 10) {
         left = viewportWidth - rect.width - 10;
@@ -113,7 +87,6 @@ const SelectionPopup = ({ onSaveToFlashCard, onAskAI }) => {
       return;
     }
 
-    // Get the source element's information
     const selection = window.getSelection();
     const sourceElement = selection?.focusNode?.parentElement;
     let source = 'Selected Text';
