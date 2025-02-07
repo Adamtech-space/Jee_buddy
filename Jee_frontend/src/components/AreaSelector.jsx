@@ -1,8 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, memo } from 'react';
 import PropTypes from 'prop-types';
 import debounce from 'lodash.debounce'; // Import debounce from lodash
 
-const AreaSelector = ({ onAreaSelected, onCancel, isMobile }) => {
+const AreaSelector = memo(({ onAreaSelected, onCancel, isMobile }) => {
   const [isSelecting, setIsSelecting] = useState(false);
   const [startPos, setStartPos] = useState({ x: 0, y: 0 });
   const [currentPos, setCurrentPos] = useState({ x: 0, y: 0 });
@@ -21,25 +21,32 @@ const AreaSelector = ({ onAreaSelected, onCancel, isMobile }) => {
     };
   }, []);
 
-  const handleStart = useCallback((e) => {
-    // Prevent default to stop scrolling on touch devices
-    e.preventDefault();
-    
-    // Only handle left mouse button for mouse events
-    if (e.type === 'mousedown' && e.button !== 0) return;
+  const handleStart = useCallback(
+    (e) => {
+      // Prevent default to stop scrolling on touch devices
+      e.preventDefault();
 
-    const coords = getEventCoordinates(e);
-    setStartPos(coords);
-    setCurrentPos(coords);
-    setIsSelecting(true);
-  }, [getEventCoordinates]);
+      // Only handle left mouse button for mouse events
+      if (e.type === 'mousedown' && e.button !== 0) return;
+
+      const coords = getEventCoordinates(e);
+      setStartPos(coords);
+      setCurrentPos(coords);
+      setIsSelecting(true);
+    },
+    [getEventCoordinates]
+  );
 
   const handleMove = useCallback(
     debounce((e) => {
       if (!isSelecting) return;
-      e.preventDefault(); // Prevent scrolling on touch devices
-      setCurrentPos(getEventCoordinates(e));
-    }, 50), // Debounce time in milliseconds
+      e.preventDefault();
+
+      // Use requestAnimationFrame for smoother updates
+      requestAnimationFrame(() => {
+        setCurrentPos(getEventCoordinates(e));
+      });
+    }, 16), // Optimize for 60fps (1000ms/60 ≈ 16ms)
     [isSelecting, getEventCoordinates]
   );
 
@@ -79,12 +86,12 @@ const AreaSelector = ({ onAreaSelected, onCancel, isMobile }) => {
     // Mouse events
     document.addEventListener('mousemove', handleMove);
     document.addEventListener('mouseup', handleEnd);
-    
+
     // Touch events
     document.addEventListener('touchmove', handleMove, { passive: false });
     document.addEventListener('touchend', handleEnd);
     document.addEventListener('touchcancel', handleEnd);
-    
+
     // Keyboard events
     document.addEventListener('keydown', handleKeyDown);
 
@@ -92,12 +99,12 @@ const AreaSelector = ({ onAreaSelected, onCancel, isMobile }) => {
       // Mouse events
       document.removeEventListener('mousemove', handleMove);
       document.removeEventListener('mouseup', handleEnd);
-      
+
       // Touch events
       document.removeEventListener('touchmove', handleMove);
       document.removeEventListener('touchend', handleEnd);
       document.removeEventListener('touchcancel', handleEnd);
-      
+
       // Keyboard events
       document.removeEventListener('keydown', handleKeyDown);
     };
@@ -108,6 +115,13 @@ const AreaSelector = ({ onAreaSelected, onCancel, isMobile }) => {
       setShowHint(false);
     }
   }, [isSelecting]);
+
+  // Cleanup debounce on unmount
+  useEffect(() => {
+    return () => {
+      handleMove.cancel();
+    };
+  }, [handleMove]);
 
   const selectionStyle = isSelecting
     ? {
@@ -135,7 +149,9 @@ const AreaSelector = ({ onAreaSelected, onCancel, isMobile }) => {
         <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 pointer-events-none">
           <div className="px-4 py-2 bg-green-500 rounded-lg shadow-lg">
             <p className="text-white text-xs sm:text-sm font-medium whitespace-nowrap">
-              {isMobile ? 'Touch and drag to select' : 'Click and drag to select'}
+              {isMobile
+                ? 'Touch and drag to select'
+                : 'Click and drag to select'}
             </p>
           </div>
         </div>
@@ -155,23 +171,32 @@ const AreaSelector = ({ onAreaSelected, onCancel, isMobile }) => {
           }}
         >
           {/* Selection handles - Bigger for mobile */}
-          <div className={`absolute -top-2 -left-2 ${isMobile ? 'w-5 h-5' : 'w-4 h-4'} bg-white border-2 border-green-500 rounded-full`} />
-          <div className={`absolute -top-2 -right-2 ${isMobile ? 'w-5 h-5' : 'w-4 h-4'} bg-white border-2 border-green-500 rounded-full`} />
-          <div className={`absolute -bottom-2 -left-2 ${isMobile ? 'w-5 h-5' : 'w-4 h-4'} bg-white border-2 border-green-500 rounded-full`} />
-          <div className={`absolute -bottom-2 -right-2 ${isMobile ? 'w-5 h-5' : 'w-4 h-4'} bg-white border-2 border-green-500 rounded-full`} />
+          <div
+            className={`absolute -top-2 -left-2 ${isMobile ? 'w-5 h-5' : 'w-4 h-4'} bg-white border-2 border-green-500 rounded-full`}
+          />
+          <div
+            className={`absolute -top-2 -right-2 ${isMobile ? 'w-5 h-5' : 'w-4 h-4'} bg-white border-2 border-green-500 rounded-full`}
+          />
+          <div
+            className={`absolute -bottom-2 -left-2 ${isMobile ? 'w-5 h-5' : 'w-4 h-4'} bg-white border-2 border-green-500 rounded-full`}
+          />
+          <div
+            className={`absolute -bottom-2 -right-2 ${isMobile ? 'w-5 h-5' : 'w-4 h-4'} bg-white border-2 border-green-500 rounded-full`}
+          />
 
           {/* Size indicator */}
           <div
             className="absolute -top-7 left-1/2 transform -translate-x-1/2 bg-green-500 text-white text-xs px-2 py-1 rounded shadow-lg"
             style={{ whiteSpace: 'nowrap' }}
           >
-            {Math.round(selectionStyle.width)} × {Math.round(selectionStyle.height)}
+            {Math.round(selectionStyle.width)} ×{' '}
+            {Math.round(selectionStyle.height)}
           </div>
         </div>
       )}
     </div>
   );
-};
+});
 
 AreaSelector.propTypes = {
   onAreaSelected: PropTypes.func.isRequired,
@@ -182,5 +207,7 @@ AreaSelector.propTypes = {
 AreaSelector.defaultProps = {
   isMobile: false,
 };
+
+AreaSelector.displayName = 'AreaSelector';
 
 export default AreaSelector;
