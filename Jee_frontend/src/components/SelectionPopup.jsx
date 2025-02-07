@@ -12,33 +12,73 @@ const SelectionPopup = ({ onSaveToFlashCard, onAskAI }) => {
     setShowPopup,
   } = useSelection();
   const popupRef = useRef(null);
+  const selectionTimeoutRef = useRef(null);
 
   useEffect(() => {
-    const handleSelection = () => {
-      const selection = window.getSelection();
-      if (selection && selection.toString().trim().length > 0) {
-        const range = selection.getRangeAt(0);
-        const rect = range.getBoundingClientRect();
-        // Immediately update position and show popup
-        setSelectionPosition({
-          x: rect.left + rect.width / 2,
-          y: rect.bottom + window.scrollY,
-        });
-        setShowPopup(true);
-      } else {
+    const handleSelectionChange = () => {
+      // Clear any existing timeout
+      if (selectionTimeoutRef.current) {
+        clearTimeout(selectionTimeoutRef.current);
+      }
+      // Hide popup while selection is in progress
+      setShowPopup(false);
+    };
+
+    const handleSelectionEnd = (e) => {
+      // Prevent handling if the event target is a button or input
+      if (e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT') {
+        return;
+      }
+
+      // Clear any existing timeout
+      if (selectionTimeoutRef.current) {
+        clearTimeout(selectionTimeoutRef.current);
+      }
+
+      // Set a small timeout to ensure selection has fully completed
+      selectionTimeoutRef.current = setTimeout(() => {
+        const selection = window.getSelection();
+        const selectedText = selection?.toString().trim();
+
+        if (selectedText && selectedText.length > 0) {
+          const range = selection.getRangeAt(0);
+          const rect = range.getBoundingClientRect();
+
+          setSelectionPosition({
+            x: rect.left + rect.width / 2,
+            y: rect.bottom + window.scrollY,
+          });
+          setShowPopup(true);
+        } else {
+          setShowPopup(false);
+        }
+      }, 150); // Small delay to ensure selection is complete
+    };
+
+    // Handle click outside selection
+    const handleClickOutside = (e) => {
+      if (popupRef.current && !popupRef.current.contains(e.target)) {
         setShowPopup(false);
+        clearSelection();
       }
     };
 
-    // Listen for all possible selection events
-    document.addEventListener('selectionchange', handleSelection);
-    document.addEventListener('touchend', handleSelection);
-    document.addEventListener('mouseup', handleSelection);
+    // Listen for selection changes
+    document.addEventListener('selectionchange', handleSelectionChange);
+
+    // Listen for selection end events
+    document.addEventListener('mouseup', handleSelectionEnd);
+    document.addEventListener('touchend', handleSelectionEnd);
+    document.addEventListener('click', handleClickOutside);
 
     return () => {
-      document.removeEventListener('selectionchange', handleSelection);
-      document.removeEventListener('touchend', handleSelection);
-      document.removeEventListener('mouseup', handleSelection);
+      document.removeEventListener('selectionchange', handleSelectionChange);
+      document.removeEventListener('mouseup', handleSelectionEnd);
+      document.removeEventListener('touchend', handleSelectionEnd);
+      document.removeEventListener('click', handleClickOutside);
+      if (selectionTimeoutRef.current) {
+        clearTimeout(selectionTimeoutRef.current);
+      }
     };
   }, []);
 
