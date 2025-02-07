@@ -11,10 +11,6 @@ import uuid
 import base64
 from io import BytesIO
 from .math_image_agent import MathSolver
-from sentence_transformers import SentenceTransformer
-from sklearn.metrics.pairwise import cosine_similarity
-import numpy as np
-
 logger = logging.getLogger(__name__)
 
 class ResponseTemplates:
@@ -78,7 +74,9 @@ class ResponseTemplates:
 ## Selected Text Context
 {{selected_text}}
 
+
 IMPORTANT: Provide the most concise response possible while maintaining accuracy and completeness. Use minimal tokens and avoid unnecessary explanations.
+ 
 
 {interaction_prompt}
 
@@ -113,7 +111,9 @@ Interaction Type: {interaction_type}"""
 
 {interaction_prompt}
 
-IMPORTANT: Be as concise as possible. Use the minimum number of tokens required to convey the information accurately. Avoid unnecessary explanations and focus on key points.
+
+IMPORTANT: Be as concise as possible. Use the minimum number of tokens required to convey the information accurately. Avoid unnecessary explanations and focus on key points
+ 
 
 ## Teaching Context
 • Subject: {subject.capitalize()}
@@ -150,20 +150,15 @@ class MathAgent:
         self.templates = ResponseTemplates()
         self._setup_agent()
         self.image_solver = MathSolver(api_key)
-        
-        # Initialize semantic cache
-        self.semantic_cache = {}
-        self.similarity_threshold = 0.9  # Adjust based on your needs
-        self.embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
 
     @classmethod
     async def create(cls):
         """Factory method to create a MathAgent instance"""
         try:
             # Get API key from environment
-            api_key = os.getenv('DEEPSEEK_REASONER_API_KEY')
+            api_key = os.getenv('DEEPSEEK_CHAT_API_KEY')
             if not api_key:
-                raise ValueError("DEEPSEEK_REASONER_API_KEY environment variable is not set")
+                raise ValueError("DEEPSEEK_CHAT_API_KEY environment variable is not set")
             
             # Create instance
             return cls(api_key=api_key)
@@ -177,35 +172,6 @@ class MathAgent:
             raise ValueError("DEEPSEEK_CHAT_API_KEY is not set")
         self.chat_history = []
         self.max_history = 100
-
-    def _get_cached_response(self, question: str) -> Optional[str]:
-        """Get semantically similar cached response"""
-        if not question:
-            return None
-            
-        # Generate embedding for the new question
-        new_embedding = self.embedding_model.encode([question])
-        
-        # Compare with cached questions
-        for cached_question, (cached_embedding, response) in self.semantic_cache.items():
-            similarity = cosine_similarity(new_embedding, cached_embedding.reshape(1, -1))[0][0]
-            if similarity >= self.similarity_threshold:
-                return response
-        return None
-
-    def _cache_response(self, question: str, response: str):
-        """Cache the response with its semantic embedding"""
-        if not question or not response:
-            return
-            
-        # Generate embedding for the question
-        embedding = self.embedding_model.encode([question])[0]
-        
-        # Add to cache (with a size limit)
-        if len(self.semantic_cache) >= 1000:  # Adjust cache size as needed
-            self.semantic_cache.pop(next(iter(self.semantic_cache)))
-            
-        self.semantic_cache[question] = (embedding, response)
 
     @asynccontextmanager
     async def _get_client(self):
@@ -239,7 +205,7 @@ class MathAgent:
     def _get_model_config(self, deep_think: bool) -> Dict[str, Any]:
         """Get model configuration based on mode"""
         try:
-        # Try to use DeepSeek models first
+            # Try to use DeepSeek models first
             return {
                 "model": "deepseek-reasoner" if deep_think else "deepseek-chat",
                 "temperature": 0.9 if deep_think else 0.7,
@@ -287,13 +253,6 @@ class MathAgent:
             # Extract context first
             context_data = self._extract_context(context)
             
-            # Check cache for non-image requests
-            if not context or not context.get('image'):
-                cached_response = self._get_cached_response(question)
-                if cached_response:
-                    logger.info("Returning cached response")
-                    return self._prepare_response(question, cached_response, context_data)
-            
             # Get system message
             system_message = self._get_system_message(context_data)
             
@@ -310,9 +269,6 @@ class MathAgent:
             solution = await self._make_api_call(messages, model_config, context)
             print("solution", solution)
 
-            # Cache the response for non-image requests
-            if not context or not context.get('image'):
-                self._cache_response(question, solution)
             
             # Prepare response
             response = {
@@ -401,7 +357,9 @@ class MathAgent:
                 logger.error(f"Error processing image request: {str(e)}")
                 raise ValueError("Failed to process image request.")
     
-        # For non-image requests, proceed with the API call
+    # For non-image requests, proceed with the API call
+    
+        # Try DeepSeek first for non-image requests
         if not is_image_request:
             try:
                 async with self._get_client() as client:
@@ -472,6 +430,7 @@ class MathAgent:
                     'selected_text': context_data['selected_text'],
                     'Deep_think': context_data['deep_think']
                 }
+
                 # Create chat history entry
                 chat = await sync_to_async(ChatHistory.objects.create)(
                     user_id=context_data['user_id'],
@@ -484,8 +443,6 @@ class MathAgent:
         except Exception as e:
             logger.error(f"Error saving chat history: {str(e)}")
 
-
-        
     def _prepare_response(self, question: str, solution: str, context_data: Dict[Any, Any]) -> dict:
         """Prepare final response"""
         return {
