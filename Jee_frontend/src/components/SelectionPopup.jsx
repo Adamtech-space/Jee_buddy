@@ -13,18 +13,8 @@ const SelectionPopup = ({ onSaveToFlashCard, onAskAI }) => {
   } = useSelection();
   const popupRef = useRef(null);
   const selectionTimeoutRef = useRef(null);
-  const selectionStartRef = useRef(null);
 
   useEffect(() => {
-    const handleSelectionStart = (e) => {
-      // Store the initial selection point
-      selectionStartRef.current = {
-        x: e.clientX,
-        y: e.clientY,
-        target: e.target,
-      };
-    };
-
     const handleSelectionChange = () => {
       if (selectionTimeoutRef.current) {
         clearTimeout(selectionTimeoutRef.current);
@@ -32,97 +22,34 @@ const SelectionPopup = ({ onSaveToFlashCard, onAskAI }) => {
       setShowPopup(false);
     };
 
-    const handleSelectionEnd = (e) => {
-      // Prevent handling if the event target is a button or input
-      if (e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT') {
-        return;
-      }
-
+    const handleSelectionEnd = () => {
       if (selectionTimeoutRef.current) {
         clearTimeout(selectionTimeoutRef.current);
       }
 
       selectionTimeoutRef.current = setTimeout(() => {
         const selection = window.getSelection();
-        const selectedText = selection?.toString().trim();
+        if (!selection || selection.rangeCount === 0) return;
 
-        if (selectedText && selectedText.length > 0) {
-          // Get the selection range and its bounding client rect
-          const range = selection.getRangeAt(0);
-          const rect = range.getBoundingClientRect();
-
-          // Check if the selection is within reasonable bounds
-          const endPoint = {
-            x: e.clientX,
-            y: e.clientY,
-          };
-
-          const startPoint = selectionStartRef.current;
-
-          // If we have both start and end points, validate the selection
-          if (startPoint) {
-            // Calculate the direct distance of selection
-            const distance = Math.sqrt(
-              Math.pow(endPoint.x - startPoint.x, 2) +
-                Math.pow(endPoint.y - startPoint.y, 2)
-            );
-
-            // Calculate the text length per pixel ratio
-            const textLengthPerPixel = selectedText.length / distance;
-
-            // If the ratio is too high, it means too much text was selected for the distance moved
-            // Adjust these values based on your needs
-            const MAX_TEXT_LENGTH_PER_PIXEL = 2;
-
-            if (textLengthPerPixel > MAX_TEXT_LENGTH_PER_PIXEL) {
-              // Try to adjust the selection to be more reasonable
-              try {
-                const newRange = document.createRange();
-                const startNode =
-                  startPoint.target.firstChild || startPoint.target;
-                const endNode = e.target.firstChild || e.target;
-
-                newRange.setStart(startNode, 0);
-                newRange.setEnd(endNode, endNode.length || 0);
-
-                selection.removeAllRanges();
-                selection.addRange(newRange);
-
-                // Update rect with new selection
-                const newRect = newRange.getBoundingClientRect();
-                setSelectionPosition({
-                  x: newRect.left + newRect.width / 2,
-                  y: newRect.bottom + window.scrollY,
-                });
-              } catch (err) {
-                // If adjustment fails, just use original selection
-                setSelectionPosition({
-                  x: rect.left + rect.width / 2,
-                  y: rect.bottom + window.scrollY,
-                });
-              }
-            } else {
-              // Selection seems reasonable, use it as is
-              setSelectionPosition({
-                x: rect.left + rect.width / 2,
-                y: rect.bottom + window.scrollY,
-              });
-            }
-          } else {
-            // No start point recorded, use selection as is
-            setSelectionPosition({
-              x: rect.left + rect.width / 2,
-              y: rect.bottom + window.scrollY,
-            });
-          }
-          setShowPopup(true);
-        } else {
+        const selectedText = selection.toString().trim();
+        if (!selectedText) {
           setShowPopup(false);
+          return;
         }
-      }, 150);
+
+        const range = selection.getRangeAt(0);
+        const rect = range.getBoundingClientRect();
+
+        if (rect.width > 0 && rect.height > 0) {
+          setSelectionPosition({
+            x: rect.left + rect.width / 2,
+            y: rect.bottom + window.scrollY,
+          });
+          setShowPopup(true);
+        }
+      }, 100);
     };
 
-    // Handle click outside selection
     const handleClickOutside = (e) => {
       if (popupRef.current && !popupRef.current.contains(e.target)) {
         setShowPopup(false);
@@ -130,19 +57,14 @@ const SelectionPopup = ({ onSaveToFlashCard, onAskAI }) => {
       }
     };
 
-    // Listen for selection events
-    document.addEventListener('mousedown', handleSelectionStart);
     document.addEventListener('selectionchange', handleSelectionChange);
     document.addEventListener('mouseup', handleSelectionEnd);
-    document.addEventListener('touchstart', handleSelectionStart);
     document.addEventListener('touchend', handleSelectionEnd);
     document.addEventListener('click', handleClickOutside);
 
     return () => {
-      document.removeEventListener('mousedown', handleSelectionStart);
       document.removeEventListener('selectionchange', handleSelectionChange);
       document.removeEventListener('mouseup', handleSelectionEnd);
-      document.removeEventListener('touchstart', handleSelectionStart);
       document.removeEventListener('touchend', handleSelectionEnd);
       document.removeEventListener('click', handleClickOutside);
       if (selectionTimeoutRef.current) {
