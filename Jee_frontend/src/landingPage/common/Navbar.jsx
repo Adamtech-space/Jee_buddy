@@ -76,7 +76,7 @@ const Navbar = () => {
                 className={`border-gray-700 hover:border-blue-500 text-gray-300 
                   hover:text-blue-400 transition-all duration-300
                   ${isScrolled ? 'bg-black/50' : 'bg-black/30'}`}
-                onClick={() => navigate('/login')}
+                onClick={() => navigate('/register')}
               >
                 Login
               </Button>

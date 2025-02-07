@@ -334,14 +334,16 @@ const DefaultLayout = ({ children }) => {
             )}
             <div className="max-w-full">
               {location.pathname.includes('/dashboard') ? (
-                <Outlet
-                  context={{
-                    setSelectedText,
-                    setIsChatOpen,
-                    isChatOpen,
-                    filteredBooks,
-                  }}
-                />
+                <div className="relative">
+                  <Outlet
+                    context={{
+                      setSelectedText,
+                      setIsChatOpen,
+                      isChatOpen,
+                      filteredBooks,
+                    }}
+                  />
+                </div>
               ) : (
                 children
               )}

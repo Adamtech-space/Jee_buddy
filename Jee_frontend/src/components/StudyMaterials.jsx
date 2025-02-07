@@ -435,11 +435,20 @@ const StudyMaterials = () => {
 
   // Rename item
   const handleRename = async (itemId, newName) => {
-    if (!newName.trim()) return;
+    const originalItem = items.find(item => item.id === itemId);
+    let finalName = newName;
+
+    // Preserve extension for files
+    if (originalItem.type === 'file') {
+      const originalExtension = originalItem.name.split('.').pop();
+      finalName = `${newName.split('.')[0]}.${originalExtension}`;
+    }
+
+    if (!finalName.trim()) return;
 
     try {
       setLoadingItems((prev) => new Set(prev).add(itemId));
-      await renameStudyMaterial(itemId, newName);
+      await renameStudyMaterial(itemId, finalName);
       message.success('Item renamed successfully');
       await fetchItems();
       setEditingItem(null);
@@ -654,10 +663,16 @@ const StudyMaterials = () => {
                 {editingItem?.id === item.id ? (
                   <input
                     type="text"
-                    value={editingItem.name}
-                    onChange={(e) =>
-                      setEditingItem({ ...editingItem, name: e.target.value })
-                    }
+                    value={item.type === 'file' 
+                      ? editingItem.name.split('.').slice(0, -1).join('.')
+                      : editingItem.name}
+                    onChange={(e) => {
+                      const newName = item.type === 'file'
+                        ? `${e.target.value}.${item.name.split('.').pop()}` 
+                        : e.target.value;
+                      
+                      setEditingItem({ ...editingItem, name: newName });
+                    }}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') {
                         handleRename(item.id, editingItem.name);

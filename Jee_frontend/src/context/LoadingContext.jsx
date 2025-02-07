@@ -14,13 +14,24 @@ import { getDecryptedItem } from '../utils/encryption';
 
 const LoadingContext = createContext();
 
+// Routes that should skip the loading animation
+const SKIP_LOADER_ROUTES = [
+  '/dashboard/physics/books',
+  '/dashboard/physics/flashcards',
+  '/dashboard/physics/materials',
+  '/dashboard/physics/question-bank',
+];
+
+// Function to check if current path should skip loader
+const shouldSkipLoader = (pathname) => {
+  return SKIP_LOADER_ROUTES.some(route => pathname.includes(route));
+};
+
 // Improved auth validation
 const validateAuthTokens = async () => {
   try {
     const tokens = getDecryptedItem('tokens');
     const user = getDecryptedItem('user');
-
-   
 
     return !!(tokens?.access?.token && user); // Check both tokens and user exist
   } catch (error) {
@@ -57,7 +68,6 @@ export const LoadingProvider = ({ children }) => {
       }
     };
 
-    // Only check auth if not coming from auth flow
     if (!location.state?.fromAuth) {
       checkAuth();
     } else {
@@ -66,9 +76,7 @@ export const LoadingProvider = ({ children }) => {
     }
   }, [location.state]);
 
-  // Replace the debouncedSetLoading function with:
   const setLoadingDirect = useCallback((value) => {
-    // Clear any pending timeouts first
     if (loadingTimeoutRef.current) {
       clearTimeout(loadingTimeoutRef.current);
       loadingTimeoutRef.current = null;
@@ -76,16 +84,19 @@ export const LoadingProvider = ({ children }) => {
     setIsLoading(value);
   }, []);
 
-  // Route change handler
+  // Route change handler with smoother transitions
   useEffect(() => {
     if (!isAuthenticated) return;
 
     const handleRouteChange = () => {
       if (location.state?.fromAuth) return;
+      if (shouldSkipLoader(location.pathname)) {
+        setLoadingDirect(false);
+        return;
+      }
 
       setLoadingDirect(true);
-      const timer = setTimeout(() => setLoadingDirect(false), 50);
-      return () => clearTimeout(timer);
+      loadingTimeoutRef.current = setTimeout(() => setLoadingDirect(false), 50);
     };
 
     handleRouteChange();
@@ -153,7 +164,13 @@ export const LoadingProvider = ({ children }) => {
   return (
     <LoadingContext.Provider value={contextValue}>
       {children}
-      {isLoading && <AuthLoader />}
+      {isLoading && !shouldSkipLoader(location.pathname) && (
+        <div className="fixed inset-0 bg-black/50 z-50 pointer-events-none">
+          <div className="absolute inset-0 flex items-center justify-center">
+            <AuthLoader />
+          </div>
+        </div>
+      )}
     </LoadingContext.Provider>
   );
 };
