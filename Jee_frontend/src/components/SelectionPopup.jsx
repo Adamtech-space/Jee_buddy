@@ -12,33 +12,64 @@ const SelectionPopup = ({ onSaveToFlashCard, onAskAI }) => {
     setShowPopup,
   } = useSelection();
   const popupRef = useRef(null);
+  const selectionTimeoutRef = useRef(null);
 
   useEffect(() => {
-    const handleSelection = () => {
-      const selection = window.getSelection();
-      if (selection && selection.toString().trim().length > 0) {
+    const handleSelectionChange = () => {
+      if (selectionTimeoutRef.current) {
+        clearTimeout(selectionTimeoutRef.current);
+      }
+      setShowPopup(false);
+    };
+
+    const handleSelectionEnd = () => {
+      if (selectionTimeoutRef.current) {
+        clearTimeout(selectionTimeoutRef.current);
+      }
+
+      selectionTimeoutRef.current = setTimeout(() => {
+        const selection = window.getSelection();
+        if (!selection || selection.rangeCount === 0) return;
+
+        const selectedText = selection.toString().trim();
+        if (!selectedText) {
+          setShowPopup(false);
+          return;
+        }
+
         const range = selection.getRangeAt(0);
         const rect = range.getBoundingClientRect();
-        // Immediately update position and show popup
-        setSelectionPosition({
-          x: rect.left + rect.width / 2,
-          y: rect.bottom + window.scrollY,
-        });
-        setShowPopup(true);
-      } else {
+
+        if (rect.width > 0 && rect.height > 0) {
+          setSelectionPosition({
+            x: rect.left + rect.width / 2,
+            y: rect.bottom + window.scrollY,
+          });
+          setShowPopup(true);
+        }
+      }, 100);
+    };
+
+    const handleClickOutside = (e) => {
+      if (popupRef.current && !popupRef.current.contains(e.target)) {
         setShowPopup(false);
+        clearSelection();
       }
     };
 
-    // Listen for all possible selection events
-    document.addEventListener('selectionchange', handleSelection);
-    document.addEventListener('touchend', handleSelection);
-    document.addEventListener('mouseup', handleSelection);
+    document.addEventListener('selectionchange', handleSelectionChange);
+    document.addEventListener('mouseup', handleSelectionEnd);
+    document.addEventListener('touchend', handleSelectionEnd);
+    document.addEventListener('click', handleClickOutside);
 
     return () => {
-      document.removeEventListener('selectionchange', handleSelection);
-      document.removeEventListener('touchend', handleSelection);
-      document.removeEventListener('mouseup', handleSelection);
+      document.removeEventListener('selectionchange', handleSelectionChange);
+      document.removeEventListener('mouseup', handleSelectionEnd);
+      document.removeEventListener('touchend', handleSelectionEnd);
+      document.removeEventListener('click', handleClickOutside);
+      if (selectionTimeoutRef.current) {
+        clearTimeout(selectionTimeoutRef.current);
+      }
     };
   }, []);
 
