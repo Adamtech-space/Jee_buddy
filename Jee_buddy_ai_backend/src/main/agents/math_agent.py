@@ -195,13 +195,22 @@ class MathAgent:
     def _get_model_config(self, deep_think: bool) -> Dict[str, Any]:
         """Get model configuration based on mode"""
         try:
-            # Try to use DeepSeek models first
-            return {
-                "model": "llama3-70b-8192" if deep_think else "deepseek-r1-distill-llama-70b",
-                "temperature": 0.6 if deep_think else 0.6,
-                "max_tokens": 3000 if deep_think else 2000,
-                "stream": False
-            }
+            # Use DeepSeek models if deep_think is True
+            if deep_think:
+                return {
+                    "model": "deepseek-r1-distill-llama-70b",  # Use the DeepSeek model
+                    "temperature": 0.6,
+                    "max_tokens": 3000,
+                    "stream": False,
+                }
+            else:
+                # Default to LLaMA models if deep_think is False
+                return {
+                    "model": "llama3-70b-8192",  # Use the LLaMA model
+                    "temperature": 0.6,
+                    "max_tokens": 2000,
+                    "stream": False,
+                }
         except Exception:
             # Fallback to OpenAI models
             return {
@@ -210,6 +219,8 @@ class MathAgent:
                 "max_tokens": 3000 if deep_think else 2000,
                 "stream": False
             }
+
+
 
     async def _save_uploaded_image(self, base64_image: str) -> str:
         """Save base64 image and return the file path"""
