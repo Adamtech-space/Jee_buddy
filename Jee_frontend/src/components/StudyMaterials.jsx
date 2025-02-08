@@ -147,6 +147,9 @@ const StudyMaterials = () => {
     checkAccess();
   }, []);
 
+  // Check if user can perform actions
+  const canPerformActions = hasAccess && remainingTokens > 0;
+
   // Add UpgradeModal component
   const UpgradeModal = () => {
     if (!showUpgradeModal) return null;
@@ -278,7 +281,7 @@ const StudyMaterials = () => {
 
   // Modify handleCreateFolder to check access
   const handleCreateFolder = async () => {
-    if (!hasAccess) {
+    if (!canPerformActions) {
       setShowUpgradeModal(true);
       return;
     }
@@ -314,7 +317,7 @@ const StudyMaterials = () => {
 
   // Modify handleFileUpload to check access
   const handleFileUpload = async (event) => {
-    if (!hasAccess) {
+    if (!canPerformActions) {
       setShowUpgradeModal(true);
       return;
     }
@@ -867,18 +870,16 @@ const StudyMaterials = () => {
               <div className="flex items-center gap-3 w-full sm:w-auto justify-center sm:justify-end">
                 <button
                   onClick={() =>
-                    hasAccess
+                    canPerformActions
                       ? setIsCreatingFolder(true)
                       : setShowUpgradeModal(true)
                   }
                   className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200 border text-sm font-medium justify-center flex-1 sm:flex-initial
-                    ${
-                      hasAccess
-                        ? 'bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white border-gray-700 hover:border-gray-600 hover:shadow-lg'
-                        : 'bg-gray-800/50 text-gray-500 border-gray-800 cursor-not-allowed'
-                    }`}
+                    ${canPerformActions ? 'bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white border-gray-700 hover:border-gray-600 hover:shadow-lg' : 'bg-gray-800/50 text-gray-500 border-gray-800 cursor-not-allowed'}`}
                   title={
-                    hasAccess ? 'Create Folder' : 'Upgrade to create folders'
+                    canPerformActions
+                      ? 'Create Folder'
+                      : 'Upgrade to create folders'
                   }
                 >
                   <FolderPlusIcon className="w-5 h-5" />
@@ -886,17 +887,17 @@ const StudyMaterials = () => {
                 </button>
                 <button
                   onClick={() =>
-                    hasAccess
+                    canPerformActions
                       ? fileInputRef.current?.click()
                       : setShowUpgradeModal(true)
                   }
                   className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200 border text-sm font-medium justify-center flex-1 sm:flex-initial
-                    ${
-                      hasAccess
-                        ? 'bg-blue-600 hover:bg-blue-500 text-white border-blue-500 hover:border-blue-400 hover:shadow-lg'
-                        : 'bg-blue-900/20 text-blue-300/50 border-blue-900/50 cursor-not-allowed'
-                    }`}
-                  title={hasAccess ? 'Upload Files' : 'Upgrade to upload files'}
+                    ${canPerformActions ? 'bg-blue-600 hover:bg-blue-500 text-white border-blue-500 hover:border-blue-400 hover:shadow-lg' : 'bg-blue-900/20 text-blue-300/50 border-blue-900/50 cursor-not-allowed'}`}
+                  title={
+                    canPerformActions
+                      ? 'Upload Files'
+                      : 'Upgrade to upload files'
+                  }
                 >
                   <CloudArrowUpIcon className="w-5 h-5" />
                   <span>Upload</span>
