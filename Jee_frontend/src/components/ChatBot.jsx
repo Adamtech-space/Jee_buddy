@@ -581,7 +581,9 @@ const ChatBot = ({
           throw new Error('No valid session ID found');
         }
 
-        const questionWithInteraction = `${chatMessage} (${activeHelpType || ''})`;
+        const questionWithInteraction = activeHelpType 
+          ? `${chatMessage} (${activeHelpType})`
+          : chatMessage;
 
         // Create FormData for the request
         const formData = new FormData();
