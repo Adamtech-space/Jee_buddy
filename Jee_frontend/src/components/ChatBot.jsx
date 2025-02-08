@@ -348,7 +348,7 @@ const ChatBot = ({
       });
     };
 
-    // Scroll on new messages, typing updates, or when keyboard appears
+    // Scroll on new messages or typing updates
     if (isTyping || messages.length > 0) {
       scrollToBottom();
     }
@@ -356,16 +356,8 @@ const ChatBot = ({
     // Add scroll listener
     container.addEventListener('scroll', handleScroll, { passive: true });
 
-    // Add keyboard event listeners for mobile
-    const handleKeyboardShow = () => {
-      setTimeout(scrollToBottom, 100);
-    };
-
-    window.visualViewport?.addEventListener('resize', handleKeyboardShow);
-
     return () => {
       container.removeEventListener('scroll', handleScroll);
-      window.visualViewport?.removeEventListener('resize', handleKeyboardShow);
     };
   }, [messages, isTyping, shouldAutoScroll, handleScroll]);
 
@@ -1467,120 +1459,98 @@ const ChatBot = ({
         }
       }}
     >
-      {/* Resize Handle - Only show on desktop */}
-      {!isFullScreen && window.innerWidth >= 1024 && (
-        <>
-          {isResizing && (
-            <div className="fixed inset-0 bg-black bg-opacity-0 " />
-          )}
-          <div
-            ref={resizeRef}
-            className="absolute left-0 top-0 bottom-0 w-2 hover:w-1 group z-50 transition-all"
-            style={{ cursor: 'ew-resize' }}
-            onMouseDown={(e) => {
-              e.preventDefault();
-              setIsResizing(true);
-              document.body.style.cursor = 'ew-resize';
-              document.body.style.userSelect = 'none';
-            }}
-          >
-            <div className="absolute left-0 top-0 bottom-0 w-1 bg-transparent group-hover:bg-blue-500 transition-colors" />
-            {isResizing && (
-              <div className="absolute left-0 top-0 bottom-0 w-1 bg-blue-500" />
-            )}
-          </div>
-        </>
-      )}
-
-      {/* Header */}
-      <div
-        className={`flex items-center justify-between p-2 sm:p-3 md:p-4 border-b border-gray-800 ${
-          isFullScreen ? 'px-3 sm:px-5 md:px-6' : ''
-        } bg-gray-900`}
-      >
-        <div className="flex items-center space-x-2">
-          <div className="flex flex-col">
-            <h3 className="text-sm sm:text-lg md:text-xl font-bold text-white">
-              AI Study Assistant
-            </h3>
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-gray-400">
-                {currentPlan === 'Free' ? (
-                  <>
-                    <span className="text-blue-400">{remainingTokens}</span>{' '}
-                    tokens remaining
-                  </>
-                ) : (
-                  <span className="text-green-400">{currentPlan} Plan</span>
+      {/* Create a fixed header container */}
+      <div className="sticky top-0 z-10 bg-gray-900">
+        {/* Header */}
+        <div
+          className={`flex items-center justify-between p-2 sm:p-3 md:p-4 border-b border-gray-800 ${
+            isFullScreen ? 'px-3 sm:px-5 md:px-6' : ''
+          }`}
+        >
+          <div className="flex items-center space-x-2">
+            <div className="flex flex-col">
+              <h3 className="text-sm sm:text-lg md:text-xl font-bold text-white">
+                AI Study Assistant
+              </h3>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-400">
+                  {currentPlan === 'Free' ? (
+                    <>
+                      <span className="text-blue-400">{remainingTokens}</span>{' '}
+                      tokens remaining
+                    </>
+                  ) : (
+                    <span className="text-green-400">{currentPlan} Plan</span>
+                  )}
+                </span>
+                {currentPlan === 'Free' && (
+                  <button
+                    onClick={() => setShowUpgradeModal(true)}
+                    className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
+                  >
+                    Upgrade
+                  </button>
                 )}
-              </span>
-              {currentPlan === 'Free' && (
-                <button
-                  onClick={() => setShowUpgradeModal(true)}
-                  className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
-                >
-                  Upgrade
-                </button>
-              )}
+              </div>
             </div>
           </div>
-        </div>
-        <div className="flex items-center space-x-1.5">
-          {/* New Chat Button */}
-          <button
-            onClick={handleNewChat}
-            className="p-1.5 hover:bg-gray-800 rounded-lg transition-colors flex items-center gap-1 text-gray-400 hover:text-white"
-            title="New Chat"
-          >
-            <PlusIcon className="w-4 h-4 sm:w-5 sm:h-5" />
-          </button>
+          <div className="flex items-center space-x-1.5">
+            {/* New Chat Button */}
+            <button
+              onClick={handleNewChat}
+              className="p-1.5 hover:bg-gray-800 rounded-lg transition-colors flex items-center gap-1 text-gray-400 hover:text-white"
+              title="New Chat"
+            >
+              <PlusIcon className="w-4 h-4 sm:w-5 sm:h-5" />
+            </button>
 
-          {/* Chat History Button */}
-          <button
-            onClick={() => setShowHistory(!showHistory)}
-            className={`p-1.5 hover:bg-gray-800 rounded-lg transition-colors flex items-center gap-1
-              ${showHistory ? 'bg-gray-800 text-white' : 'text-gray-400 hover:text-white'}`}
-            title="Chat History"
-          >
-            <ChatBubbleLeftRightIcon className="w-4 h-4 sm:w-5 sm:h-5" />
-          </button>
+            {/* Chat History Button */}
+            <button
+              onClick={() => setShowHistory(!showHistory)}
+              className={`p-1.5 hover:bg-gray-800 rounded-lg transition-colors flex items-center gap-1
+                ${showHistory ? 'bg-gray-800 text-white' : 'text-gray-400 hover:text-white'}`}
+              title="Chat History"
+            >
+              <ChatBubbleLeftRightIcon className="w-4 h-4 sm:w-5 sm:h-5" />
+            </button>
 
-          <button
-            onClick={() => setIsFullScreen(!isFullScreen)}
-            className="p-1.5 hover:bg-gray-800 rounded-lg transition-colors"
-            aria-label={isFullScreen ? 'Exit full screen' : 'Enter full screen'}
-          >
-            {isFullScreen ? (
-              <ArrowsPointingInIcon className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
-            ) : (
-              <ArrowsPointingOutIcon className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
-            )}
-          </button>
-          <button
-            onClick={() => {
-              setIsOpen(false);
-              if (isFullScreen) {
-                setIsFullScreen(false);
-              }
-            }}
-            className="p-1.5 hover:bg-gray-800 rounded-lg transition-colors"
-            aria-label="Close chat"
-          >
-            <XMarkIcon className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
-          </button>
+            <button
+              onClick={() => setIsFullScreen(!isFullScreen)}
+              className="p-1.5 hover:bg-gray-800 rounded-lg transition-colors"
+              aria-label={isFullScreen ? 'Exit full screen' : 'Enter full screen'}
+            >
+              {isFullScreen ? (
+                <ArrowsPointingInIcon className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
+              ) : (
+                <ArrowsPointingOutIcon className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
+              )}
+            </button>
+            <button
+              onClick={() => {
+                setIsOpen(false);
+                if (isFullScreen) {
+                  setIsFullScreen(false);
+                }
+              }}
+              className="p-1.5 hover:bg-gray-800 rounded-lg transition-colors"
+              aria-label="Close chat"
+            >
+              <XMarkIcon className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
+            </button>
+          </div>
         </div>
+
+        {/* Help Carousel - Now part of the fixed header */}
+        <HelpCarousel
+          activeHelpType={activeHelpType}
+          handleHelpClick={handleHelpClick}
+        />
       </div>
 
-      {/* Replace the old chat history sidebar with the new component */}
+      {/* Chat History Sidebar */}
       <ChatHistorySidebar />
 
-      {/* Help Buttons - Always visible */}
-      <HelpCarousel
-        activeHelpType={activeHelpType}
-        handleHelpClick={handleHelpClick}
-      />
-
-      {/* Messages */}
+      {/* Messages container - Add padding-top to account for fixed header */}
       <div
         ref={messagesContainerRef}
         className="flex-1 overflow-y-auto p-2 sm:p-3 md:p-4 bg-gray-900 hide-scrollbar scroll-smooth"
@@ -1652,13 +1622,7 @@ const ChatBot = ({
         {/* Input Form */}
         <form
           onSubmit={handleSubmit}
-          className="relative bg-gray-900 border-t border-gray-800"
-          style={{
-            position: 'sticky',
-            bottom: 0,
-            paddingBottom: 'env(safe-area-inset-bottom, 16px)',
-            zIndex: 1,
-          }}
+          className="relative pb-[env(safe-area-inset-bottom,0px)]"
         >
           <textarea
             ref={inputRef}
