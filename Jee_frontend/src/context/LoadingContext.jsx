@@ -32,8 +32,14 @@ const validateAuthTokens = async () => {
   try {
     const tokens = getDecryptedItem('tokens');
     const user = getDecryptedItem('user');
-
-    return !!(tokens?.access?.token && user); // Check both tokens and user exist
+    
+    // Add token expiration check
+    if (tokens?.access?.expires) {
+      const isTokenValid = new Date(tokens.access.expires) > new Date();
+      if (!isTokenValid) throw new Error('Token expired');
+    }
+    
+    return !!(tokens?.access?.token && user);
   } catch (error) {
     console.error('Auth validation error:', error);
     return false;

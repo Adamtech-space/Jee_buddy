@@ -60,6 +60,14 @@ const BooksList = () => {
     [navigate, subject, createRipple]
   );
 
+  // Add prefetch handler
+  const handleMouseEnter = useCallback((url) => {
+    const link = document.createElement('link');
+    link.rel = 'prefetch';
+    link.href = url;
+    document.head.appendChild(link);
+  }, []);
+
   // Memoize animation variants
   const containerVariants = useMemo(
     () => ({
@@ -131,6 +139,7 @@ const BooksList = () => {
                 <div className="mt-4">
                   <motion.button
                     onClick={(e) => handlePdfClick(book.storage_url, e)}
+                    onMouseEnter={() => handleMouseEnter(book.storage_url)}
                     className={`w-full p-2 mx-2 mb-4 rounded-xl relative overflow-hidden
                             transition-all duration-300 bg-gradient-to-r from-blue-500 to-blue-700
                             flex items-center justify-between group pr-4`}
@@ -162,7 +171,7 @@ const BooksList = () => {
         </div>
       </div>
     ),
-    [selectedBook, itemVariants, handleBookClick, handlePdfClick]
+    [selectedBook, itemVariants, handleBookClick, handlePdfClick, handleMouseEnter]
   );
 
   if (loading) {

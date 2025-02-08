@@ -147,6 +147,9 @@ const StudyMaterials = () => {
     checkAccess();
   }, []);
 
+  // Check if user can perform actions
+  const canPerformActions = hasAccess && remainingTokens > 0;
+
   // Add UpgradeModal component
   const UpgradeModal = () => {
     if (!showUpgradeModal) return null;
@@ -157,9 +160,9 @@ const StudyMaterials = () => {
         color: 'from-blue-500 to-blue-600',
         icon: '⚡',
         features: [
-          'Essential AI features',
-          'Basic question solving',
-          'Standard response time',
+          'Access to Basic AI Features',
+          'Limited Queries',
+          'Email Support',
         ],
         gradient: 'from-blue-500/10 to-blue-600/10',
         border: 'border-blue-500/20',
@@ -170,26 +173,28 @@ const StudyMaterials = () => {
         color: 'from-purple-500 to-purple-600',
         icon: '🚀',
         features: [
-          'Advanced AI capabilities',
-          'Complex problem solving',
-          'Faster response time',
+          'All Basic Features +',
+          'Unlimited Queries',
+          'Priority Support',
         ],
         gradient: 'from-purple-500/10 to-purple-600/10',
         border: 'border-purple-500/20',
-        planId: 'plan_PhmnlqjWH24hwy',
+        planId: import.meta.env.VITE_PRO_PLAN_ID,
       },
       {
         name: 'Premium',
         color: 'from-amber-500 to-amber-600',
         icon: '👑',
         features: [
-          'Full AI capabilities',
-          'Priority support',
-          'Instant responses',
+          'Unlimited AI Usage',
+          'Advanced Study Materials',
+          'AI Generated Question Bank',
+          'Performance Analytics',
+          'Priority Support',
         ],
         gradient: 'from-amber-500/10 to-amber-600/10',
         border: 'border-amber-500/20',
-        planId: 'plan_Phmo9yOZAKb0P8',
+        planId: import.meta.env.VITE_PREMIUM_PLAN_ID,
       },
     ];
 
@@ -276,7 +281,7 @@ const StudyMaterials = () => {
 
   // Modify handleCreateFolder to check access
   const handleCreateFolder = async () => {
-    if (!hasAccess) {
+    if (!canPerformActions) {
       setShowUpgradeModal(true);
       return;
     }
@@ -312,7 +317,7 @@ const StudyMaterials = () => {
 
   // Modify handleFileUpload to check access
   const handleFileUpload = async (event) => {
-    if (!hasAccess) {
+    if (!canPerformActions) {
       setShowUpgradeModal(true);
       return;
     }
@@ -435,7 +440,7 @@ const StudyMaterials = () => {
 
   // Rename item
   const handleRename = async (itemId, newName) => {
-    const originalItem = items.find(item => item.id === itemId);
+    const originalItem = items.find((item) => item.id === itemId);
     let finalName = newName;
 
     // Preserve extension for files
@@ -663,14 +668,17 @@ const StudyMaterials = () => {
                 {editingItem?.id === item.id ? (
                   <input
                     type="text"
-                    value={item.type === 'file' 
-                      ? editingItem.name.split('.').slice(0, -1).join('.')
-                      : editingItem.name}
+                    value={
+                      item.type === 'file'
+                        ? editingItem.name.split('.').slice(0, -1).join('.')
+                        : editingItem.name
+                    }
                     onChange={(e) => {
-                      const newName = item.type === 'file'
-                        ? `${e.target.value}.${item.name.split('.').pop()}` 
-                        : e.target.value;
-                      
+                      const newName =
+                        item.type === 'file'
+                          ? `${e.target.value}.${item.name.split('.').pop()}`
+                          : e.target.value;
+
                       setEditingItem({ ...editingItem, name: newName });
                     }}
                     onKeyDown={(e) => {
@@ -774,7 +782,7 @@ const StudyMaterials = () => {
     }
   };
 
-  const handleSaveToFlashCard = (text) => {
+  const handleSaveToFlashCard = () => {
     // Implement flash card saving logic
   };
 
@@ -862,18 +870,16 @@ const StudyMaterials = () => {
               <div className="flex items-center gap-3 w-full sm:w-auto justify-center sm:justify-end">
                 <button
                   onClick={() =>
-                    hasAccess
+                    canPerformActions
                       ? setIsCreatingFolder(true)
                       : setShowUpgradeModal(true)
                   }
                   className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200 border text-sm font-medium justify-center flex-1 sm:flex-initial
-                    ${
-                      hasAccess
-                        ? 'bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white border-gray-700 hover:border-gray-600 hover:shadow-lg'
-                        : 'bg-gray-800/50 text-gray-500 border-gray-800 cursor-not-allowed'
-                    }`}
+                    ${canPerformActions ? 'bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white border-gray-700 hover:border-gray-600 hover:shadow-lg' : 'bg-gray-800/50 text-gray-500 border-gray-800 cursor-not-allowed'}`}
                   title={
-                    hasAccess ? 'Create Folder' : 'Upgrade to create folders'
+                    canPerformActions
+                      ? 'Create Folder'
+                      : 'Upgrade to create folders'
                   }
                 >
                   <FolderPlusIcon className="w-5 h-5" />
@@ -881,17 +887,17 @@ const StudyMaterials = () => {
                 </button>
                 <button
                   onClick={() =>
-                    hasAccess
+                    canPerformActions
                       ? fileInputRef.current?.click()
                       : setShowUpgradeModal(true)
                   }
                   className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200 border text-sm font-medium justify-center flex-1 sm:flex-initial
-                    ${
-                      hasAccess
-                        ? 'bg-blue-600 hover:bg-blue-500 text-white border-blue-500 hover:border-blue-400 hover:shadow-lg'
-                        : 'bg-blue-900/20 text-blue-300/50 border-blue-900/50 cursor-not-allowed'
-                    }`}
-                  title={hasAccess ? 'Upload Files' : 'Upgrade to upload files'}
+                    ${canPerformActions ? 'bg-blue-600 hover:bg-blue-500 text-white border-blue-500 hover:border-blue-400 hover:shadow-lg' : 'bg-blue-900/20 text-blue-300/50 border-blue-900/50 cursor-not-allowed'}`}
+                  title={
+                    canPerformActions
+                      ? 'Upload Files'
+                      : 'Upgrade to upload files'
+                  }
                 >
                   <CloudArrowUpIcon className="w-5 h-5" />
                   <span>Upload</span>

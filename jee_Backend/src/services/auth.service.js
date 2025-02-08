@@ -142,16 +142,9 @@ const handleGoogleCallback = async (code) => {
 
       if (createError) {
         console.error('Error creating profile:', createError);
-        // Try to get more detailed error information
-        const { data: errorDetails, error: errorCheckError } = await supabase
-          .rpc('get_last_error');
-        if (!errorCheckError) {
-          console.error('Additional error details:', errorDetails);
-        }
-        throw new ApiError(httpStatus.INTERNAL_SERVER_ERROR, `Failed to create profile: ${createError.message}`);
+        throw new ApiError(httpStatus.INTERNAL_SERVER_ERROR, 'Failed to create profile');
       }
 
-      console.log('Successfully created new profile:', newProfile);
       profile = newProfile;
     } else {
       // Update existing profile with new session ID

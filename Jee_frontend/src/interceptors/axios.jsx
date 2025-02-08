@@ -6,6 +6,8 @@ import {
 } from '../utils/encryption';
 
 let activeRequests = 0;
+let isRefreshing = false;
+let failedQueue = [];
 
 const apiInstance = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
@@ -25,6 +27,17 @@ const setGlobalLoading = (loading, url) => {
   }
 
   window.setGlobalLoading?.({ loading, url });
+};
+
+const processQueue = (error, token = null) => {
+  failedQueue.forEach(prom => {
+    if (error) {
+      prom.reject(error);
+    } else {
+      prom.resolve(token);
+    }
+  });
+  failedQueue = [];
 };
 
 apiInstance.interceptors.request.use(
@@ -73,43 +86,56 @@ apiInstance.interceptors.response.use(
     return response;
   },
   async (error) => {
-    console.error('Response error:', {
-      status: error.response?.status,
-      url: error.config?.url,
-      message: error.message,
-      data: error.response?.data,
-    });
-
     const originalRequest = error.config;
+    
+    // Skip handling for non-API errors and specific routes
+    if (!error.config || !error.response || 
+        ['/auth/login', '/auth/register', '/auth/refresh-token', '/auth/google/callback']
+        .some(path => originalRequest.url.includes(path))) {
+      activeRequests--;
+      return Promise.reject(error);
+    }
 
-    // If error is 401 and we haven't tried to refresh the token yet
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    if (error.response.status === 401 && !originalRequest._retry) {
+      if (isRefreshing) {
+        return new Promise((resolve, reject) => {
+          failedQueue.push({ resolve, reject });
+        }).then((token) => {
+            originalRequest.headers.Authorization = `Bearer ${token}`;
+            return apiInstance(originalRequest);
+          })
+          .catch(err => Promise.reject(err));
+      }
+
       originalRequest._retry = true;
+      isRefreshing = true;
 
       try {
         const tokens = getDecryptedItem('tokens');
+        if (!tokens?.refresh?.token) throw new Error('No refresh token available');
+        
+        const { data } = await apiInstance.post('/auth/refresh-token', {
+          refreshToken: tokens.refresh.token
+        });
 
-        if (tokens?.refresh?.token) {
-          const response = await apiInstance.post('/auth/refresh-token', {
-            refreshToken: tokens.refresh.token,
-          });
-
-          if (response.data.tokens) {
-            setEncryptedItem('tokens', response.data.tokens);
-            apiInstance.defaults.headers.common['Authorization'] =
-              `Bearer ${response.data.tokens.access.token}`;
-
-            return apiInstance(originalRequest);
-          }
-        }
-        console.warn('No refresh token available');
-        throw new Error('No refresh token available');
+        setEncryptedItem('tokens', data.tokens);
+        apiInstance.defaults.headers.common['Authorization'] = `Bearer ${data.tokens.access.token}`;
+        
+        processQueue(null, data.tokens.access.token);
+        return apiInstance(originalRequest);
       } catch (refreshError) {
-        console.error('Token refresh failed:', refreshError);
-        removeItem('tokens');
-        removeItem('user');
-        window.location.href = '/login';
+        processQueue(refreshError, null);
+        
+        // Only logout for non-auth related routes
+        if (!originalRequest.url.includes('/auth/')) {
+          removeItem('tokens');
+          removeItem('user');
+          window.location.href = `/login?redirect=${encodeURIComponent(window.location.pathname)}`;
+        }
+        
         return Promise.reject(refreshError);
+      } finally {
+        isRefreshing = false;
       }
     }
 
@@ -117,6 +143,7 @@ apiInstance.interceptors.response.use(
     if (activeRequests === 0) {
       setGlobalLoading(false, error.config?.url);
     }
+    
     return Promise.reject(error);
   }
 );

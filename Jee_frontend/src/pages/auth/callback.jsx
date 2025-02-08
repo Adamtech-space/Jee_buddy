@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import apiInstance from '../../interceptors/axios';
 import { useLoading } from '../../context/LoadingContext';
 import AuthLoader from '../../components/AuthLoader';
-import { setEncryptedItem } from '../../utils/encryption';
+import { setEncryptedItem, getDecryptedItem } from '../../utils/encryption';
 
 const AuthCallback = () => {
   const navigate = useNavigate();
@@ -35,14 +35,23 @@ const AuthCallback = () => {
           `/auth/google/callback?code=${code}`
         );
 
-        if (!data?.tokens || !data?.user) {
-          throw new Error('Invalid authentication response');
+        if (!data?.tokens?.access?.token || !data.user) {
+          throw new Error('Invalid token response from server');
+        }
+
+        // Delay state update to ensure token is set
+        await new Promise(resolve => setTimeout(resolve, 100));
+        setEncryptedItem('tokens', data.tokens);
+        setEncryptedItem('user', data.user);
+
+        // Verify token was stored correctly
+        const storedTokens = getDecryptedItem('tokens');
+        if (!storedTokens?.access?.token) {
+          throw new Error('Failed to persist authentication tokens');
         }
 
         // Atomic state update before navigation
         setIsAuthenticated(true);
-        setEncryptedItem('tokens', data.tokens);
-        setEncryptedItem('user', data.user);
 
         // Immediate navigation with state flag
         navigate('/subject-selection', {
