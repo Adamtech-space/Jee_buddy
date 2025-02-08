@@ -581,10 +581,7 @@ const ChatBot = ({
           throw new Error('No valid session ID found');
         }
 
-        // Modified question formatting
-        const questionWithInteraction = activeHelpType 
-          ? `${chatMessage} (${activeHelpType})`
-          : chatMessage;
+        const questionWithInteraction = `${chatMessage} (${activeHelpType || ''})`;
 
         // Create FormData for the request
         const formData = new FormData();
@@ -1577,11 +1574,6 @@ const ChatBot = ({
       <div
         ref={messagesContainerRef}
         className="flex-1 overflow-y-auto p-2 sm:p-3 md:p-4 bg-gray-900 hide-scrollbar scroll-smooth"
-        style={{ 
-          height: 'calc(100vh - 200px)',
-          marginTop: '112px',
-          paddingBottom: 'env(safe-area-inset-bottom, 16px)'
-        }}
       >
         {isLoadingHistory ? (
           <div className="flex flex-col items-center justify-center h-full space-y-3">
