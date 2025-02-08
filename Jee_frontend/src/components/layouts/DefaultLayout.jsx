@@ -43,18 +43,18 @@ const Sidebar = ({ isMobileOpen, setIsMobileOpen }) => {
   if (!location.pathname.includes('/dashboard')) return null;
 
   return (
-    <div className="fixed inset-y-0 left-0 z-40 flex md:z-0 pt-16">
+    <div className="fixed inset-y-0 left-0 z-50 flex pt-16">
       {/* Mobile overlay */}
       {isMobileOpen && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-[70] md:hidden"
+          className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
           onClick={() => setIsMobileOpen(false)}
         />
       )}
 
       {/* Sidebar */}
       <div
-        className={`fixed top-0 left-0 w-64 bg-gray-900 border-r border-gray-800 transform transition-transform duration-300 ease-in-out md:translate-x-0 h-screen pt-16 z-[80] ${
+        className={`fixed top-0 left-0 w-64 bg-gray-900 border-r border-gray-800 transform transition-transform duration-300 ease-in-out md:translate-x-0 h-screen pt-16 z-50 ${
           isMobileOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
@@ -263,7 +263,7 @@ const DefaultLayout = ({ children }) => {
             <div
               className={`fixed inset-y-0 left-0 transform transition-transform duration-300 ease-in-out ${
                 !isSidebarOpen ? '-translate-x-64' : 'translate-x-0'
-              } ${isMobileOpen ? 'z-40' : 'z-0'}`}
+              } ${isMobileOpen ? 'z-40' : 'z-10'}`}
             >
               <Sidebar
                 isMobileOpen={isMobileOpen}

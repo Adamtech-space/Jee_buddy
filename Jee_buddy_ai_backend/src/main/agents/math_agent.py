@@ -12,6 +12,9 @@ import base64
 from io import BytesIO
 from .math_image_agent import MathSolver
 from groq import Groq
+from langchain.memory import ConversationBufferMemory
+
+
 
 logger = logging.getLogger(__name__)
 
@@ -152,6 +155,7 @@ class MathAgent:
         self.templates = ResponseTemplates()
         self._setup_agent()
         self.image_solver = MathSolver(api_key)
+        self.memory = ConversationBufferMemory()
 
     @classmethod
     async def create(cls):
@@ -253,6 +257,8 @@ class MathAgent:
 
             # Extract context first
             context_data = self._extract_context(context)
+
+            self.memory.save_context({"input": question}, {"output": ""})
             
             # Get system message
             system_message = self._get_system_message(context_data)
@@ -267,7 +273,11 @@ class MathAgent:
             # print("model_config", model_config)
             # print("context", context)
             # Make API call
+            
+
+
             solution = await self._make_api_call(messages, model_config, context)
+            self.memory.save_context({"input": question}, {"output": solution})
             print("solution", solution)
 
             
@@ -313,16 +323,26 @@ class MathAgent:
             context_data['interaction_type']
         )
 
+    
+
     def _prepare_messages(self, question: str, system_message: str, context_data: Dict[Any, Any]) -> list:
         """Prepare messages for API call"""
         messages = [{"role": "system", "content": system_message}]
         
-        # Add chat history
-        for chat in context_data['chat_history']:
-            messages.extend([
-                {"role": "user", "content": chat['question']},
-                {"role": "assistant", "content": chat['response']}
-            ])
+        # Add previous conversation from memory
+        previous_memory = self.memory.load_memory_variables({})
+        if previous_memory and 'history' in previous_memory:
+            # Convert memory string to list of messages
+            memory_entries = previous_memory['history'].split('\n')
+            for entry in memory_entries:
+                if 'Human:' in entry and 'AI:' in entry:
+                    # Split into user and assistant messages
+                    user_msg, assistant_msg = entry.split('AI:')
+                    user_content = user_msg.replace('Human:', '').strip()
+                    assistant_content = assistant_msg.strip()
+                    
+                    messages.append({"role": "user", "content": user_content})
+                    messages.append({"role": "assistant", "content": assistant_content})
 
         # Add current question
         question_content = (
@@ -333,6 +353,7 @@ class MathAgent:
         messages.append({"role": "user", "content": question_content})
         
         return messages
+
 
     async def _make_api_call(self, messages: list, model_config: Dict[str, Any], context: Dict[Any, Any] = None) -> str:
         """Make API call and get response"""
