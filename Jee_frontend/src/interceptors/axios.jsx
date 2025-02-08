@@ -32,6 +32,12 @@ apiInstance.interceptors.request.use(
     activeRequests++;
     setGlobalLoading(true, config.url);
 
+    // Skip token check for authentication callback routes
+    const skipTokenPaths = ['/auth/google/callback'];
+    if (skipTokenPaths.some(path => config.url.includes(path))) {
+      return config;
+    }
+
     try {
       const tokens = getDecryptedItem('tokens');
      
