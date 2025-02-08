@@ -353,6 +353,7 @@ const DefaultLayout = ({ children }) => {
                       setIsChatOpen,
                       isChatOpen,
                       filteredBooks,
+                      setIsSidebarOpen,
                     }}
                   />
                 </div>

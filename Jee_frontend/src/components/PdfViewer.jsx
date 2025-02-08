@@ -30,7 +30,7 @@ const PdfViewer = ({ pdfUrl: propsPdfUrl, subject: propsSubject, onBack }) => {
   const navigate = useNavigate();
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
-  const { isChatOpen, isSidebarOpen, setIsChatOpen } = useOutletContext();
+  const { isChatOpen, isSidebarOpen, setIsChatOpen, setIsSidebarOpen } = useOutletContext();
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [selectionPosition, setSelectionPosition] = useState(null);
   const { handleTextSelection } = useSelection();
@@ -175,26 +175,20 @@ const PdfViewer = ({ pdfUrl: propsPdfUrl, subject: propsSubject, onBack }) => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Check PDF URL and load document
+  // Optimized Viewer configuration
+  const viewerLayout = {
+    margin: 0,
+    renderSpinner: () => <></>, // Remove custom spinner for faster initial render
+  };
+
+  // Remove the HEAD request check - let PDF.js handle loading directly
   useEffect(() => {
     if (!pdfUrl) {
       setError('PDF URL not found');
       message.error('PDF URL not found');
       navigate(`/dashboard/${subject}/books`);
     } else {
-      setLoading(true);
-      fetch(pdfUrl, { method: 'HEAD' })
-        .then((response) => {
-          if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-          }
-          setLoading(false);
-        })
-        .catch((err) => {
-          console.error('Error checking PDF URL:', err);
-          setError(`Failed to access PDF: ${err.message}`);
-          setLoading(false);
-        });
+      setLoading(false); // Directly set loading to false since we're not pre-checking
     }
   }, [pdfUrl, navigate, subject]);
 
@@ -340,6 +334,19 @@ const PdfViewer = ({ pdfUrl: propsPdfUrl, subject: propsSubject, onBack }) => {
   const handleCancelAreaSelection = () => {
     setIsAreaSelecting(false);
   };
+
+  useEffect(() => {
+    if (pdfUrl) {
+      setIsSidebarOpen(false);
+    }
+
+    // Cleanup function to reopen sidebar when unmounting
+    return () => {
+      if (pdfUrl) {
+        setIsSidebarOpen(true);
+      }
+    };
+  }, [pdfUrl, setIsSidebarOpen]);
 
   if (!pdfUrl) return null;
 
@@ -523,17 +530,29 @@ const PdfViewer = ({ pdfUrl: propsPdfUrl, subject: propsSubject, onBack }) => {
             defaultScale={isMobile ? 1 : 'PageWidth'}
             theme="dark"
             className="h-full"
-            renderTextLayer={true}
+            renderTextLayer={false}
             enableSmoothScroll={false}
             useWorkerFetch={true}
-            renderLoader={(percentages) => (
-              <div className="flex items-center justify-center h-full">
-                <div className="text-center text-white">
-                  <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-500 mb-4"></div>
-                  <p>Loading PDF... {Math.round(percentages)}%</p>
-                </div>
-              </div>
-            )}
+            withCredentials={false}
+            renderForms={false}
+            renderAnnotationLayer={false}
+            pageLayout={isMobile ? { buildPageLayout: () => ({}) } : null}
+            pageIndex={0}
+            initialPage={0}
+            loading={<div className="h-full bg-gray-900" />}
+            layout={viewerLayout}
+            onError={(error) => {
+              console.error('PDF loading error:', error);
+              setError(`Failed to load PDF: ${error.message}`);
+            }}
+            onDocumentLoad={() => {
+              setLoading(false);
+              // Enable text layer after initial render
+              setTimeout(() => {
+                const viewer = containerRef.current?.querySelector('.rpv-core__viewer');
+                if (viewer) viewer.style.visibility = 'visible';
+              }, 100);
+            }}
           />
         </Worker>
       </div>
