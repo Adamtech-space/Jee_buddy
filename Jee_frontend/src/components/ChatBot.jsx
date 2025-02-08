@@ -581,7 +581,10 @@ const ChatBot = ({
           throw new Error('No valid session ID found');
         }
 
-        const questionWithInteraction = `${chatMessage} (${activeHelpType || ''})`;
+        // Modified question formatting
+        const questionWithInteraction = activeHelpType 
+          ? `${chatMessage} (${activeHelpType})`
+          : chatMessage;
 
         // Create FormData for the request
         const formData = new FormData();
@@ -1482,98 +1485,104 @@ const ChatBot = ({
         </>
       )}
 
-      {/* Header */}
-      <div
-        className={`flex items-center justify-between p-2 sm:p-3 md:p-4 border-b border-gray-800 ${
-          isFullScreen ? 'px-3 sm:px-5 md:px-6' : ''
-        } bg-gray-900`}
-      >
-        <div className="flex items-center space-x-2">
-          <div className="flex flex-col">
-            <h3 className="text-sm sm:text-lg md:text-xl font-bold text-white">
-              AI Study Assistant
-            </h3>
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-gray-400">
-                {currentPlan === 'Free' ? (
-                  <>
-                    <span className="text-blue-400">{remainingTokens}</span>{' '}
-                    tokens remaining
-                  </>
-                ) : (
-                  <span className="text-green-400">{currentPlan} Plan</span>
+      {/* Sticky Header and Carousel Container */}
+      <div className="sticky top-0 z-10 bg-gray-900">
+        {/* Header */}
+        <div
+          className={`flex items-center justify-between p-2 sm:p-3 md:p-4 border-b border-gray-800 ${
+            isFullScreen ? 'px-3 sm:px-5 md:px-6' : ''
+          } bg-gray-900`}
+        >
+          <div className="flex items-center space-x-2">
+            <div className="flex flex-col">
+              <h3 className="text-sm sm:text-lg md:text-xl font-bold text-white">
+                AI Study Assistant
+              </h3>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-400">
+                  {currentPlan === 'Free' ? (
+                    <>
+                      <span className="text-blue-400">{remainingTokens}</span>{' '}
+                      tokens remaining
+                    </>
+                  ) : (
+                    <span className="text-green-400">{currentPlan} Plan</span>
+                  )}
+                </span>
+                {currentPlan === 'Free' && (
+                  <button
+                    onClick={() => setShowUpgradeModal(true)}
+                    className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
+                  >
+                    Upgrade
+                  </button>
                 )}
-              </span>
-              {currentPlan === 'Free' && (
-                <button
-                  onClick={() => setShowUpgradeModal(true)}
-                  className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
-                >
-                  Upgrade
-                </button>
-              )}
+              </div>
             </div>
           </div>
-        </div>
-        <div className="flex items-center space-x-1.5">
-          {/* New Chat Button */}
-          <button
-            onClick={handleNewChat}
-            className="p-1.5 hover:bg-gray-800 rounded-lg transition-colors flex items-center gap-1 text-gray-400 hover:text-white"
-            title="New Chat"
-          >
-            <PlusIcon className="w-4 h-4 sm:w-5 sm:h-5" />
-          </button>
+          <div className="flex items-center space-x-1.5">
+            {/* New Chat Button */}
+            <button
+              onClick={handleNewChat}
+              className="p-1.5 hover:bg-gray-800 rounded-lg transition-colors flex items-center gap-1 text-gray-400 hover:text-white"
+              title="New Chat"
+            >
+              <PlusIcon className="w-4 h-4 sm:w-5 sm:h-5" />
+            </button>
 
-          {/* Chat History Button */}
-          <button
-            onClick={() => setShowHistory(!showHistory)}
-            className={`p-1.5 hover:bg-gray-800 rounded-lg transition-colors flex items-center gap-1
-              ${showHistory ? 'bg-gray-800 text-white' : 'text-gray-400 hover:text-white'}`}
-            title="Chat History"
-          >
-            <ChatBubbleLeftRightIcon className="w-4 h-4 sm:w-5 sm:h-5" />
-          </button>
+            {/* Chat History Button */}
+            <button
+              onClick={() => setShowHistory(!showHistory)}
+              className={`p-1.5 hover:bg-gray-800 rounded-lg transition-colors flex items-center gap-1
+                ${showHistory ? 'bg-gray-800 text-white' : 'text-gray-400 hover:text-white'}`}
+              title="Chat History"
+            >
+              <ChatBubbleLeftRightIcon className="w-4 h-4 sm:w-5 sm:h-5" />
+            </button>
 
-          <button
-            onClick={() => setIsFullScreen(!isFullScreen)}
-            className="p-1.5 hover:bg-gray-800 rounded-lg transition-colors"
-            aria-label={isFullScreen ? 'Exit full screen' : 'Enter full screen'}
-          >
-            {isFullScreen ? (
-              <ArrowsPointingInIcon className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
-            ) : (
-              <ArrowsPointingOutIcon className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
-            )}
-          </button>
-          <button
-            onClick={() => {
-              setIsOpen(false);
-              if (isFullScreen) {
-                setIsFullScreen(false);
+            <button
+              onClick={() => setIsFullScreen(!isFullScreen)}
+              className="p-1.5 hover:bg-gray-800 rounded-lg transition-colors"
+              aria-label={
+                isFullScreen ? 'Exit full screen' : 'Enter full screen'
               }
-            }}
-            className="p-1.5 hover:bg-gray-800 rounded-lg transition-colors"
-            aria-label="Close chat"
-          >
-            <XMarkIcon className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
-          </button>
+            >
+              {isFullScreen ? (
+                <ArrowsPointingInIcon className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
+              ) : (
+                <ArrowsPointingOutIcon className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
+              )}
+            </button>
+            <button
+              onClick={() => {
+                setIsOpen(false);
+                if (isFullScreen) {
+                  setIsFullScreen(false);
+                }
+              }}
+              className="p-1.5 hover:bg-gray-800 rounded-lg transition-colors"
+              aria-label="Close chat"
+            >
+              <XMarkIcon className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
+            </button>
+          </div>
         </div>
+
+        {/* Help Carousel - Always visible */}
+        <HelpCarousel
+          activeHelpType={activeHelpType}
+          handleHelpClick={handleHelpClick}
+        />
       </div>
 
       {/* Replace the old chat history sidebar with the new component */}
       <ChatHistorySidebar />
 
-      {/* Help Buttons - Always visible */}
-      <HelpCarousel
-        activeHelpType={activeHelpType}
-        handleHelpClick={handleHelpClick}
-      />
-
-      {/* Messages */}
+      {/* Messages - Flex grow and scrollable */}
       <div
         ref={messagesContainerRef}
         className="flex-1 overflow-y-auto p-2 sm:p-3 md:p-4 bg-gray-900 hide-scrollbar scroll-smooth"
+        style={{ height: '0px' }} /* This forces the flex item to scroll */
       >
         {isLoadingHistory ? (
           <div className="flex flex-col items-center justify-center h-full space-y-3">
@@ -1598,8 +1607,8 @@ const ChatBot = ({
         )}
       </div>
 
-      {/* Input with Pinned Content */}
-      <div className="p-2 border-t border-gray-800 bg-gray-900">
+      {/* Input with Pinned Content - Sticky at bottom */}
+      <div className="sticky bottom-0 p-2 border-t border-gray-800 bg-gray-900">
         {/* Selected Text Preview */}
         {selectedTextPreview && (
           <div className="mb-2 flex items-start bg-gray-800/50 rounded-lg p-1.5">

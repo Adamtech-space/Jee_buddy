@@ -523,6 +523,9 @@ const PdfViewer = ({ pdfUrl: propsPdfUrl, subject: propsSubject, onBack }) => {
             defaultScale={isMobile ? 1 : 'PageWidth'}
             theme="dark"
             className="h-full"
+            renderTextLayer={true}
+            enableSmoothScroll={false}
+            useWorkerFetch={true}
             renderLoader={(percentages) => (
               <div className="flex items-center justify-center h-full">
                 <div className="text-center text-white">
@@ -540,6 +543,7 @@ const PdfViewer = ({ pdfUrl: propsPdfUrl, subject: propsSubject, onBack }) => {
         onSaveToFlashCard={handleSaveToFlashCard}
         onAskAI={handleAskAI}
         position={selectionPosition}
+        isMobile={isMobile}
       />
 
       {/* Confirmation Modal */}
