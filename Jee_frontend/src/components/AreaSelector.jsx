@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, memo } from 'react';
+import { useState, useEffect, useCallback, memo, useMemo } from 'react';
 import PropTypes from 'prop-types';
 import debounce from 'lodash.debounce'; // Import debounce from lodash
 
@@ -37,18 +37,31 @@ const AreaSelector = memo(({ onAreaSelected, onCancel, isMobile }) => {
     [getEventCoordinates]
   );
 
-  const handleMove = useCallback(
-    debounce((e) => {
-      if (!isSelecting) return;
-      e.preventDefault();
-
-      // Use requestAnimationFrame for smoother updates
-      requestAnimationFrame(() => {
-        setCurrentPos(getEventCoordinates(e));
-      });
-    }, 16), // Optimize for 60fps (1000ms/60 ≈ 16ms)
-    [isSelecting, getEventCoordinates]
-  );
+  const handleMove = useMemo(() => {
+    if (isMobile) {
+      // For mobile, call immediately without debounce for better responsiveness
+      return (e) => {
+        if (!isSelecting) return;
+        e.preventDefault();
+        requestAnimationFrame(() => {
+          setCurrentPos(getEventCoordinates(e));
+        });
+      };
+    } else {
+      // For non-mobile, use debounce to throttle events
+      return debounce(
+        (e) => {
+          if (!isSelecting) return;
+          e.preventDefault();
+          requestAnimationFrame(() => {
+            setCurrentPos(getEventCoordinates(e));
+          });
+        },
+        16,
+        { leading: true, trailing: false }
+      );
+    }
+  }, [isSelecting, getEventCoordinates, isMobile]);
 
   const handleEnd = useCallback(() => {
     if (!isSelecting) return;
@@ -116,10 +129,12 @@ const AreaSelector = memo(({ onAreaSelected, onCancel, isMobile }) => {
     }
   }, [isSelecting]);
 
-  // Cleanup debounce on unmount
+  // Add cleanup effect to cancel debounce if applicable
   useEffect(() => {
     return () => {
-      handleMove.cancel();
+      if (handleMove.cancel) {
+        handleMove.cancel();
+      }
     };
   }, [handleMove]);
 
