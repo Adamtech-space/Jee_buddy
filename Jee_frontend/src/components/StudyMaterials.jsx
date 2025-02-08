@@ -157,9 +157,9 @@ const StudyMaterials = () => {
         color: 'from-blue-500 to-blue-600',
         icon: '⚡',
         features: [
-          'Essential AI features',
-          'Basic question solving',
-          'Standard response time',
+          'Access to Basic AI Features',
+          'Limited Queries',
+          'Email Support',
         ],
         gradient: 'from-blue-500/10 to-blue-600/10',
         border: 'border-blue-500/20',
@@ -170,9 +170,9 @@ const StudyMaterials = () => {
         color: 'from-purple-500 to-purple-600',
         icon: '🚀',
         features: [
-          'Advanced AI capabilities',
-          'Complex problem solving',
-          'Faster response time',
+          'All Basic Features +',
+          'Unlimited Queries',
+          'Priority Support',
         ],
         gradient: 'from-purple-500/10 to-purple-600/10',
         border: 'border-purple-500/20',
@@ -183,9 +183,11 @@ const StudyMaterials = () => {
         color: 'from-amber-500 to-amber-600',
         icon: '👑',
         features: [
-          'Full AI capabilities',
-          'Priority support',
-          'Instant responses',
+          'Unlimited AI Usage',
+          'Advanced Study Materials',
+          'AI Generated Question Bank',
+          'Performance Analytics',
+          'Priority Support',
         ],
         gradient: 'from-amber-500/10 to-amber-600/10',
         border: 'border-amber-500/20',
@@ -435,7 +437,7 @@ const StudyMaterials = () => {
 
   // Rename item
   const handleRename = async (itemId, newName) => {
-    const originalItem = items.find(item => item.id === itemId);
+    const originalItem = items.find((item) => item.id === itemId);
     let finalName = newName;
 
     // Preserve extension for files
@@ -663,14 +665,17 @@ const StudyMaterials = () => {
                 {editingItem?.id === item.id ? (
                   <input
                     type="text"
-                    value={item.type === 'file' 
-                      ? editingItem.name.split('.').slice(0, -1).join('.')
-                      : editingItem.name}
+                    value={
+                      item.type === 'file'
+                        ? editingItem.name.split('.').slice(0, -1).join('.')
+                        : editingItem.name
+                    }
                     onChange={(e) => {
-                      const newName = item.type === 'file'
-                        ? `${e.target.value}.${item.name.split('.').pop()}` 
-                        : e.target.value;
-                      
+                      const newName =
+                        item.type === 'file'
+                          ? `${e.target.value}.${item.name.split('.').pop()}`
+                          : e.target.value;
+
                       setEditingItem({ ...editingItem, name: newName });
                     }}
                     onKeyDown={(e) => {
@@ -774,7 +779,7 @@ const StudyMaterials = () => {
     }
   };
 
-  const handleSaveToFlashCard = (text) => {
+  const handleSaveToFlashCard = () => {
     // Implement flash card saving logic
   };
 
