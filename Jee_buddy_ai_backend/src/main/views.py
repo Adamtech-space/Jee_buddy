@@ -213,7 +213,7 @@ def solve_math_problem(request):
         user_id = request.data.get('user_id')
         prompt = request.data.get('question')
         token_response = token_agent.process_query(user_id, prompt)
-        print("token_response", token_response)
+        # print("token_response", token_response)
 
         # If there's an error in token processing, return it
         if isinstance(token_response, tuple) and len(token_response) == 2:

@@ -262,9 +262,9 @@ class MathAgent:
             # Get model configuration
             model_config = self._get_model_config(context_data['deep_think'])
             
-            print("messages", messages)
-            print("model_config", model_config)
-            print("context", context)
+            # print("messages", messages)
+            # print("model_config", model_config)
+            # print("context", context)
             # Make API call
             solution = await self._make_api_call(messages, model_config, context)
             print("solution", solution)
@@ -345,8 +345,8 @@ class MathAgent:
                 # Process the image using MathSolver
                 image_file = context.get('image')  # Get the image from context
                 question = messages[0]['content'] 
-                print("question", question)
-                print("image_file", image_file) # Assuming the question is in the first message
+                # print("question", question)
+                # print("image_file", image_file) # Assuming the question is in the first message
                 
                 # Call the MathSolver to process the image and generate a solution
                 solution = await self.image_solver.solve(image_file)
@@ -397,8 +397,8 @@ class MathAgent:
                 "max_tokens": model_config.get("max_tokens", 380),
                 "stream": False
             }
-            print("openai_config", openai_config)
-            print("messages", messages)
+            # print("openai_config", openai_config)
+            # print("messages", messages)
             async with AsyncOpenAI(api_key=openai_key) as openai_client:
                 response = await openai_client.chat.completions.create(
                     messages=messages,
