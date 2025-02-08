@@ -197,8 +197,8 @@ class MathAgent:
         try:
             # Try to use DeepSeek models first
             return {
-                "model": "deepseek-r1-distill-llama-70b" if deep_think else "deepseek-r1-distill-llama-70b",
-                "temperature": 0.9 if deep_think else 0.7,
+                "model": "llama3-70b-8192" if deep_think else "deepseek-r1-distill-llama-70b",
+                "temperature": 0.6 if deep_think else 0.6,
                 "max_tokens": 3000 if deep_think else 2000,
                 "stream": False
             }
@@ -330,6 +330,18 @@ class MathAgent:
         # Check if this is an image-based request
         is_image_request = bool(context and context.get('image'))
         
+        # Handle image requests first
+        if is_image_request:
+            try:
+                # Use the MathSolver to process the image
+                image_data = context['image']
+                solution = await self.image_solver.solve(image_data)
+                return solution
+            except Exception as image_error:
+                logger.error(f"Image processing failed: {str(image_error)}")
+                last_error = image_error
+                # Fall through to text-based processing
+
         # Remove provider from config as it's not needed for the API call
         api_config = {k: v for k, v in model_config.items() if k != "provider"}
         
