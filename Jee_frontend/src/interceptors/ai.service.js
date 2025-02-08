@@ -81,7 +81,7 @@ const getHelpResponse = async (type, context) => {
   try {
     const requestData = {
       question: context.question
-        ? `${context.question} (${type})`
+        ? type ? `${context.question} (${type})` : `${context.question}`
         : `Help me with: ${type}`,
       context: {
         user_id: context.user_id,
