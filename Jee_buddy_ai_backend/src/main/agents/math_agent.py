@@ -11,6 +11,8 @@ import uuid
 import base64
 from io import BytesIO
 from .math_image_agent import MathSolver
+from groq import Groq
+
 logger = logging.getLogger(__name__)
 
 class ResponseTemplates:
@@ -153,61 +155,49 @@ class MathAgent:
 
     @classmethod
     async def create(cls):
-        """Factory method to create a MathAgent instance"""
-        try:
-            # Get API key from environment
-            api_key = os.getenv('DEEPSEEK_CHAT_API_KEY')
-            if not api_key:
-                raise ValueError("DEEPSEEK_CHAT_API_KEY environment variable is not set")
-            
-            # Create instance
-            return cls(api_key=api_key)
-        except Exception as e:
-            logger.error(f"Error creating MathAgent: {str(e)}")
-            raise
+        api_key = os.getenv('GROQ_DEEPSEEK_API_KEY')
+        if not api_key:
+            raise ValueError("GROQ_DEEPSEEK_API_KEY environment variable is not set")
+                
+        # Create instance asynchronously
+        return await sync_to_async(cls)(api_key=api_key)
 
     def _setup_agent(self):
         """Initialize agent settings"""
         if not self.api_key:
-            raise ValueError("DEEPSEEK_CHAT_API_KEY is not set")
+            raise ValueError("GROQ_DEEPSEEK_API_KEY is not set")
         self.chat_history = []
         self.max_history = 100
+
 
     @asynccontextmanager
     async def _get_client(self):
         """Context manager for API client"""
+        client = None
         try:
-            # Try DeepSeek first
-            client = AsyncOpenAI(
-                api_key=self.api_key,
-                base_url="https://api.deepseek.com"
-            )
-            print("DeepSeek client created")
-            try:
-                yield client
-            finally:
-                await client.close()
+            # Try Groq first
+            client = Groq(api_key=self.api_key)
+            print("Groq client created")
+            yield client
         except Exception as e:
-            logger.warning(f"DeepSeek API failed, falling back to OpenAI: {str(e)}")
-            # Fallback to OpenAI
+            logger.warning(f"Groq API failed, falling back to OpenAI: {str(e)}")
             openai_key = os.getenv('OPENAI_API_KEY')
-            print("OpenAI fallback client created")
             if not openai_key:
                 raise ValueError("OPENAI_API_KEY environment variable is not set")
             
+            # Initialize OpenAI client
             client = AsyncOpenAI(api_key=openai_key)
             print("OpenAI fallback client created")
-            try:
-                yield client
-            finally:
-                await client.close()
-
+            yield client
+        finally:
+            if client is not None:  # Ensure client is not None before closing
+                client.close()
     def _get_model_config(self, deep_think: bool) -> Dict[str, Any]:
         """Get model configuration based on mode"""
         try:
             # Try to use DeepSeek models first
             return {
-                "model": "deepseek-reasoner" if deep_think else "deepseek-chat",
+                "model": "deepseek-r1-distill-llama-70b" if deep_think else "deepseek-r1-distill-llama-70b",
                 "temperature": 0.9 if deep_think else 0.7,
                 "max_tokens": 3000 if deep_think else 2000,
                 "stream": False
@@ -339,32 +329,33 @@ class MathAgent:
         
         # Check if this is an image-based request
         is_image_request = bool(context and context.get('image'))
-        print("is_image_request", is_image_request)
-        if is_image_request:
+        
+        # Remove provider from config as it's not needed for the API call
+        api_config = {k: v for k, v in model_config.items() if k != "provider"}
+        
+        # Try Groq first for deep think mode
+        if model_config.get("provider") == "groq":
             try:
-                # Process the image using MathSolver
-                image_file = context.get('image')  # Get the image from context
-                question = messages[0]['content'] 
-                # print("question", question)
-                # print("image_file", image_file) # Assuming the question is in the first message
+                # Disable streaming for now to avoid await issues
+                api_config["stream"] = False
                 
-                # Call the MathSolver to process the image and generate a solution
-                solution = await self.image_solver.solve(image_file)
-                print("solution", solution)
-                return solution  # Return the solution directly for image requests
-                
-            except Exception as e:
-                logger.error(f"Error processing image request: {str(e)}")
-                raise ValueError("Failed to process image request.")
-    
-    # For non-image requests, proceed with the API call
-    
-        # Try DeepSeek first for non-image requests
+                # Make the Groq API call synchronously (no await)
+                response = self.groq_client.chat.completions.create(
+                messages=messages,
+                model=model_config["model"],  # Pass model here
+                **api_config
+            )
+                return response.choices[0].message.content
+            except Exception as groq_error:
+                logger.warning(f"Groq API failed, falling back to DeepSeek: {str(groq_error)}")
+                last_error = groq_error
+
+        # For non-image requests, proceed with the API call
         if not is_image_request:
             try:
                 async with self._get_client() as client:
                     try:
-                        response = await client.chat.completions.create(
+                        response = client.chat.completions.create(
                             messages=messages,
                             **model_config
                         )
@@ -375,12 +366,13 @@ class MathAgent:
                         return response.choices[0].message.content
                     except Exception as api_error:
                         last_error = api_error
-                        logger.error(f"DeepSeek API call failed: {str(api_error)}")
+                        logger.error(f"Groq API call failed: {str(api_error)}")
                         raise
             except Exception as e:
-                logger.warning(f"DeepSeek API failed, falling back to OpenAI: {str(e)}")
+                logger.warning(f"Groq API failed, falling back to OpenAI: {str(e)}")
+
         
-        # For image requests or if DeepSeek fails, use OpenAI
+        # For image requests or if Groq fails, use OpenAI
         try:
             openai_key = os.getenv('OPENAI_API_KEY')
             if not openai_key:
@@ -413,7 +405,7 @@ class MathAgent:
         except Exception as openai_error:
             error_msg = f"API calls failed. "
             if last_error:
-                error_msg += f"DeepSeek error: {last_error}, "
+                error_msg += f"Groq error: {last_error}, "
             error_msg += f"OpenAI error: {openai_error}"
             logger.error(error_msg)
             raise ValueError(error_msg)
