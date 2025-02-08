@@ -201,7 +201,7 @@ AUTH_PASSWORD_VALIDATORS = [
     {
         'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
     },
-]               
+]
 
 
 # Internationalization
@@ -233,7 +233,7 @@ if 'LAMBDA_TASK_ROOT' in os.environ:
     ALLOWED_HOSTS = [
         'python.jeebuddy.in',
         'python-backend-env-1.eba-5hzqwm2u.ap-south-1.elasticbeanstalk.com',
-        
+
         # Add additional domains as needed.
     ]
     DEBUG = False
