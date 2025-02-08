@@ -47,14 +47,14 @@ const Sidebar = ({ isMobileOpen, setIsMobileOpen }) => {
       {/* Mobile overlay */}
       {isMobileOpen && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-30 md:hidden"
+          className="fixed inset-0 bg-black bg-opacity-50 z-[70] md:hidden"
           onClick={() => setIsMobileOpen(false)}
         />
       )}
 
       {/* Sidebar */}
       <div
-        className={`fixed top-0 left-0 w-64 bg-gray-900 border-r border-gray-800 transform transition-transform duration-300 ease-in-out md:translate-x-0 h-screen pt-16 ${
+        className={`fixed top-0 left-0 w-64 bg-gray-900 border-r border-gray-800 transform transition-transform duration-300 ease-in-out md:translate-x-0 h-screen pt-16 z-[80] ${
           isMobileOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
@@ -121,7 +121,7 @@ const Sidebar = ({ isMobileOpen, setIsMobileOpen }) => {
 
 Sidebar.propTypes = {
   isMobileOpen: PropTypes.bool.isRequired,
-  setIsMobileOpen: PropTypes.func.isRequired
+  setIsMobileOpen: PropTypes.func.isRequired,
 };
 
 const DefaultLayout = ({ children }) => {
@@ -144,30 +144,32 @@ const DefaultLayout = ({ children }) => {
   useEffect(() => {
     const fetchBooks = async () => {
       if (!subject) return;
-      
+
       try {
         const response = await getBooksList(subject);
         const booksData = response.data;
 
         // Group books by class (XI or XII)
         const groupedBooks = booksData.reduce((acc, book) => {
-          const isClass12 = book.topic.toLowerCase().includes('xii') || 
-                          book.file_name.toLowerCase().includes('xii');
+          const isClass12 =
+            book.topic.toLowerCase().includes('xii') ||
+            book.file_name.toLowerCase().includes('xii');
           const className = isClass12 ? 'Class XII' : 'Class XI';
-          
+
           if (!acc[className]) {
             acc[className] = [];
           }
-          
+
           acc[className].push({
             ...book,
-            displayName: book.file_name.replace('.pdf', '')
-                                     .replace('Unit', 'Unit:')
-                                     .split('Unit:')
-                                     .map(part => part.trim())
-                                     .filter(Boolean)
+            displayName: book.file_name
+              .replace('.pdf', '')
+              .replace('Unit', 'Unit:')
+              .split('Unit:')
+              .map((part) => part.trim())
+              .filter(Boolean),
           });
-          
+
           return acc;
         }, {});
 
@@ -187,12 +189,12 @@ const DefaultLayout = ({ children }) => {
       // Toggle chat with Ctrl+Shift+L
       if (e.ctrlKey && e.shiftKey && (e.key === 'l' || e.key === 'L')) {
         e.preventDefault();
-        setIsChatOpen(prev => !prev);
+        setIsChatOpen((prev) => !prev);
       }
       // Toggle sidebar with Ctrl+Shift+B
       if (e.ctrlKey && e.shiftKey && (e.key === 'b' || e.key === 'B')) {
         e.preventDefault();
-        setIsSidebarOpen(prev => !prev);
+        setIsSidebarOpen((prev) => !prev);
       }
     };
 
@@ -207,32 +209,39 @@ const DefaultLayout = ({ children }) => {
 
   const handleSearch = (query) => {
     setSearchQuery(query);
-    
+
     if (!query.trim()) {
       setFilteredBooks(allBooks);
       return;
     }
 
     // Filter books based on search query
-    const filtered = Object.entries(allBooks).reduce((acc, [className, classBooks]) => {
-      const filteredClassBooks = classBooks.filter(book => 
-        book.topic.toLowerCase().includes(query.toLowerCase()) ||
-        book.file_name.toLowerCase().includes(query.toLowerCase())
-      );
+    const filtered = Object.entries(allBooks).reduce(
+      (acc, [className, classBooks]) => {
+        const filteredClassBooks = classBooks.filter(
+          (book) =>
+            book.topic.toLowerCase().includes(query.toLowerCase()) ||
+            book.file_name.toLowerCase().includes(query.toLowerCase())
+        );
 
-      if (filteredClassBooks.length > 0) {
-        acc[className] = filteredClassBooks;
-      }
+        if (filteredClassBooks.length > 0) {
+          acc[className] = filteredClassBooks;
+        }
 
-      return acc;
-    }, {});
+        return acc;
+      },
+      {}
+    );
 
     setFilteredBooks(filtered);
   };
 
   return (
     <SelectionProvider>
-      <div className="min-h-screen bg-black overflow-x-hidden">
+      <div
+        className="min-h-screen bg-black overflow-x-hidden"
+        style={{ minHeight: '100vh', height: 'auto' }}
+      >
         {/* Fixed navbar at top */}
         <div className="fixed top-0 left-0 right-0 z-50">
           <Navbar
@@ -245,7 +254,10 @@ const DefaultLayout = ({ children }) => {
           />
         </div>
 
-        <div className="flex min-h-screen pt-16 relative">
+        <div
+          className="flex min-h-screen pt-16 relative"
+          style={{ minHeight: '-webkit-fill-available' }}
+        >
           {/* Sidebar */}
           {isDashboard && !isFullScreen && (
             <div
@@ -262,7 +274,7 @@ const DefaultLayout = ({ children }) => {
 
           {/* Main content */}
           <main
-            className={`flex-1 w-full transition-all duration-300 ease-in-out ${
+            className={`flex-1 w-full transition-all duration-300 ease-in-out relative z-0 ${
               isDashboard && !isFullScreen && isSidebarOpen ? 'md:pl-64' : ''
             } `}
             style={{
@@ -280,7 +292,7 @@ const DefaultLayout = ({ children }) => {
             {/* Search Bar - Only show in books route */}
             {isDashboard && location.pathname.includes('/books') && (
               <div
-                className={`fixed z-40 transition-all duration-300 ease-in-out bg-black/95 backdrop-blur-sm ${
+                className={`fixed transition-all duration-300 ease-in-out bg-black/95 backdrop-blur-sm z-20 ${
                   scrollDirection === 'down'
                     ? '-translate-y-full'
                     : 'translate-y-0'
