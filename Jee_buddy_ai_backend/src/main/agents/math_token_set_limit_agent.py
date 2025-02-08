@@ -14,7 +14,7 @@ class MathTokenLimitAgent:
 
         # Free User Limits
         self.FREE_USER_MAX_QUERIES = 5
-        self.FREE_USER_MAX_TOKENS = 1000
+        self.FREE_USER_MAX_TOKENS = 100
         self.TOKENS_PER_75_WORDS = 100  # Token ratio
 
     def connect_db(self):
