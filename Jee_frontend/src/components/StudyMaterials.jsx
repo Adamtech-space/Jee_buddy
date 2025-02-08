@@ -176,7 +176,7 @@ const StudyMaterials = () => {
         ],
         gradient: 'from-purple-500/10 to-purple-600/10',
         border: 'border-purple-500/20',
-        planId: 'plan_PhmnlqjWH24hwy',
+        planId: import.meta.env.VITE_PRO_PLAN_ID,
       },
       {
         name: 'Premium',
@@ -191,7 +191,7 @@ const StudyMaterials = () => {
         ],
         gradient: 'from-amber-500/10 to-amber-600/10',
         border: 'border-amber-500/20',
-        planId: 'plan_Phmo9yOZAKb0P8',
+        planId: import.meta.env.VITE_PREMIUM_PLAN_ID,
       },
     ];
 
