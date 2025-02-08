@@ -2,7 +2,7 @@ import PropTypes from 'prop-types';
 import { useSelection } from '../hooks/useSelection';
 import { useRef, useEffect } from 'react';
 
-const SelectionPopup = ({ onSaveToFlashCard, onAskAI }) => {
+const SelectionPopup = ({ onSaveToFlashCard, onAskAI, position, isMobile }) => {
   const {
     selectedText,
     selectionPosition,
@@ -16,32 +16,52 @@ const SelectionPopup = ({ onSaveToFlashCard, onAskAI }) => {
   useEffect(() => {
     const handleSelectionChange = () => {
       const selection = window.getSelection();
-      if (!selection || selection.rangeCount === 0) {
+      
+      if (!selection || selection.isCollapsed) {
         if (showPopup) setShowPopup(false);
         return;
       }
 
-      const selectedText = selection.toString().trim();
-      if (!selectedText) {
-        if (showPopup) setShowPopup(false);
-        return;
-      }
-
-      const range = selection.getRangeAt(0);
-      const rect = range.getBoundingClientRect();
-
-      if (rect.width > 0 && rect.height > 0) {
-        setSelectionPosition({
-          x: rect.left + rect.width / 2,
-          y: rect.bottom + window.scrollY,
+      const handleFinalSelection = () => {
+        requestAnimationFrame(() => {
+          try {
+            const updatedSelection = window.getSelection();
+            if (!updatedSelection || updatedSelection.rangeCount === 0) return;
+            
+            const range = updatedSelection.getRangeAt(0);
+            const rect = range.getBoundingClientRect();
+            
+            if (rect.width > 0 && rect.height > 0) {
+              setSelectionPosition({
+                x: rect.left + rect.width / 2,
+                y: rect.bottom + window.scrollY + 5
+              });
+              setShowPopup(true);
+            }
+          } catch (err) {
+            console.error('Selection error:', err);
+            setShowPopup(false);
+          }
         });
-        if (!showPopup) setShowPopup(true);
+      };
+
+      if (!isMobile) {
+        const handleMouseUp = () => {
+          handleFinalSelection();
+          document.removeEventListener('mouseup', handleMouseUp);
+        };
+        document.addEventListener('mouseup', handleMouseUp);
+      } else {
+        const handleTouchEnd = () => {
+          setTimeout(handleFinalSelection, 300);
+        };
+        document.addEventListener('touchend', handleTouchEnd, { once: true });
       }
     };
 
     const handleClickOutside = (e) => {
       if (popupRef.current && !popupRef.current.contains(e.target)) {
-        if (showPopup) setShowPopup(false);
+        setShowPopup(false);
       }
     };
 
@@ -52,33 +72,37 @@ const SelectionPopup = ({ onSaveToFlashCard, onAskAI }) => {
       document.removeEventListener('selectionchange', handleSelectionChange);
       document.removeEventListener('click', handleClickOutside);
     };
-  }, [showPopup]);
+  }, [showPopup, isMobile, setShowPopup, setSelectionPosition]);
 
   useEffect(() => {
     if (!popupRef.current || !selectionPosition) return;
 
     const popup = popupRef.current;
     const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
 
-    if (window.innerWidth <= 768) {
-      popup.style.bottom = '100px';
-      popup.style.right = '18px';
+    popup.style.transform = 'translateZ(0)';
+    popup.style.willChange = 'transform';
+
+    if (isMobile) {
+      popup.style.position = 'fixed';
       popup.style.left = 'auto';
+      popup.style.right = '18px';
+      popup.style.bottom = '75px';
       popup.style.top = 'auto';
     } else {
       const rect = popup.getBoundingClientRect();
-      const top = selectionPosition.y - rect.height - 24;
+      let top = selectionPosition.y - rect.height - 10;
       let left = selectionPosition.x - rect.width / 2;
 
-      if (left < 10) left = 10;
-      if (left + rect.width > viewportWidth - 10) {
-        left = viewportWidth - rect.width - 10;
-      }
+      top = Math.max(10, Math.min(top, viewportHeight - rect.height - 10));
+      left = Math.max(10, Math.min(left, viewportWidth - rect.width - 10));
 
       popup.style.top = `${top}px`;
       popup.style.left = `${left}px`;
+      popup.style.transform = 'none';
     }
-  }, [selectionPosition]);
+  }, [selectionPosition, isMobile]);
 
   if (!showPopup || !selectionPosition) return null;
 
@@ -137,17 +161,18 @@ const SelectionPopup = ({ onSaveToFlashCard, onAskAI }) => {
       ref={popupRef}
       className={`
         selection-popup fixed z-[99999] transition-all duration-200 ease-in-out
-        ${
-          window.innerWidth <= 768
-            ? 'flex flex-col gap-2 right-10 w-auto touch-none'
-            : 'flex flex-row gap-1.5 p-1.5 rounded-full shadow-lg bg-gray-900/90 backdrop-blur-sm border border-gray-700/50'
+        ${isMobile 
+          ? 'flex flex-col gap-2 w-auto touch-none' 
+          : 'flex flex-row gap-1.5 p-1.5 rounded-full shadow-lg bg-gray-900/90 backdrop-blur-sm border border-gray-700/50'
         }
       `}
       style={{
         pointerEvents: 'auto',
         WebkitTouchCallout: 'none',
-        WebkitUserSelect: 'none',
         userSelect: 'none',
+        opacity: showPopup ? 1 : 0,
+        transform: 'translateZ(0)',
+        transition: 'opacity 0.15s ease-out, transform 0.15s ease-out'
       }}
     >
       <button
@@ -155,26 +180,26 @@ const SelectionPopup = ({ onSaveToFlashCard, onAskAI }) => {
         onTouchEnd={handleAIClick}
         className={`
           ${
-            window.innerWidth <= 768
+            isMobile
               ? 'w-12 h-12 rounded-full bg-blue-500 hover:bg-blue-600 shadow-lg flex items-center justify-center text-white'
               : 'flex items-center justify-center gap-1.5 px-4 py-1.5 bg-gray-800/50 hover:bg-gray-700 rounded-full text-sm text-white hover:shadow-md transition-all duration-200'
           }
         `}
       >
-        {window.innerWidth <= 768 ? 'AI' : '🤖 Ask AI'}
+        {isMobile ? 'AI' : '🤖 Ask AI'}
       </button>
       <button
         onClick={handleSaveClick}
         onTouchEnd={handleSaveClick}
         className={`
           ${
-            window.innerWidth <= 768
+            isMobile
               ? 'w-12 h-12 rounded-full bg-blue-500 hover:bg-blue-600 shadow-lg flex items-center justify-center text-white'
               : 'flex items-center justify-center gap-1.5 px-4 py-1.5 bg-gray-800/50 hover:bg-gray-700 rounded-full text-sm text-white hover:shadow-md transition-all duration-200'
           }
         `}
       >
-        {window.innerWidth <= 768 ? '💾' : '💾 Save'}
+        {isMobile ? '💾' : '💾 Save'}
       </button>
     </div>
   );
@@ -182,7 +207,12 @@ const SelectionPopup = ({ onSaveToFlashCard, onAskAI }) => {
 
 SelectionPopup.propTypes = {
   onSaveToFlashCard: PropTypes.func.isRequired,
-  onAskAI: PropTypes.func.isRequired
+  onAskAI: PropTypes.func.isRequired,
+  position: PropTypes.shape({
+    x: PropTypes.number,
+    y: PropTypes.number,
+  }),
+  isMobile: PropTypes.bool.isRequired
 };
 
 export default SelectionPopup;
