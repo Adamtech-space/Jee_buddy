@@ -238,7 +238,10 @@ const DefaultLayout = ({ children }) => {
 
   return (
     <SelectionProvider>
-      <div className="min-h-screen bg-black overflow-x-hidden">
+      <div
+        className="min-h-screen bg-black overflow-x-hidden"
+        style={{ minHeight: '100vh', height: 'auto' }}
+      >
         {/* Fixed navbar at top */}
         <div className="fixed top-0 left-0 right-0 z-50">
           <Navbar
@@ -251,7 +254,10 @@ const DefaultLayout = ({ children }) => {
           />
         </div>
 
-        <div className="flex min-h-screen pt-16 relative">
+        <div
+          className="flex min-h-screen pt-16 relative"
+          style={{ minHeight: '-webkit-fill-available' }}
+        >
           {/* Sidebar */}
           {isDashboard && !isFullScreen && (
             <div

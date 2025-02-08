@@ -348,7 +348,7 @@ const ChatBot = ({
       });
     };
 
-    // Scroll on new messages or typing updates
+    // Scroll on new messages, typing updates, or when keyboard appears
     if (isTyping || messages.length > 0) {
       scrollToBottom();
     }
@@ -356,8 +356,16 @@ const ChatBot = ({
     // Add scroll listener
     container.addEventListener('scroll', handleScroll, { passive: true });
 
+    // Add keyboard event listeners for mobile
+    const handleKeyboardShow = () => {
+      setTimeout(scrollToBottom, 100);
+    };
+
+    window.visualViewport?.addEventListener('resize', handleKeyboardShow);
+
     return () => {
       container.removeEventListener('scroll', handleScroll);
+      window.visualViewport?.removeEventListener('resize', handleKeyboardShow);
     };
   }, [messages, isTyping, shouldAutoScroll, handleScroll]);
 
@@ -1436,7 +1444,9 @@ const ChatBot = ({
       style={{
         width: isFullScreen || window.innerWidth < 640 ? '100%' : `${width}px`,
         zIndex: isFullScreen ? 60 : 40,
-        paddingBottom: 'env(safe-area-inset-bottom, 16px)',
+        height: '100%',
+        position: 'fixed',
+        bottom: 0,
       }}
       onMouseUp={(e) => {
         if (
@@ -1642,7 +1652,13 @@ const ChatBot = ({
         {/* Input Form */}
         <form
           onSubmit={handleSubmit}
-          className="relative pb-[env(safe-area-inset-bottom,0px)]"
+          className="relative bg-gray-900 border-t border-gray-800"
+          style={{
+            position: 'sticky',
+            bottom: 0,
+            paddingBottom: 'env(safe-area-inset-bottom, 16px)',
+            zIndex: 1,
+          }}
         >
           <textarea
             ref={inputRef}
