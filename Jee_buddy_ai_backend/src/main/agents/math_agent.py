@@ -13,6 +13,7 @@ from io import BytesIO
 from .math_image_agent import MathSolver
 from groq import Groq
 from langchain.memory import ConversationBufferMemory
+from mem0 import MemoryClient
 
 
 
@@ -156,6 +157,7 @@ class MathAgent:
         self._setup_agent()
         self.image_solver = MathSolver(api_key)
         self.memory = ConversationBufferMemory()
+        self.memory_client = MemoryClient(api_key=os.getenv('LONG_TERM_MEMORY_API_KEY'))
 
     @classmethod
     async def create(cls):
@@ -258,11 +260,9 @@ class MathAgent:
             # Extract context first
             context_data = self._extract_context(context)
 
-            self.memory.save_context({"input": question}, {"output": ""})
-            
+            self.memory_client.add([{"role": "user", "content": question}], user_id=context_data['user_id'])
             # Get system message
             system_message = self._get_system_message(context_data)
-            
             # Prepare messages
             messages = self._prepare_messages(question, system_message, context_data)
             
@@ -277,7 +277,7 @@ class MathAgent:
 
 
             solution = await self._make_api_call(messages, model_config, context)
-            self.memory.save_context({"input": question}, {"output": solution})
+            self.memory_client.add([{"role": "assistant", "content": solution}], user_id=context_data['user_id'])
             print("solution", solution)
 
             
@@ -330,19 +330,27 @@ class MathAgent:
         messages = [{"role": "system", "content": system_message}]
         
         # Add previous conversation from memory
-        previous_memory = self.memory.load_memory_variables({})
-        if previous_memory and 'history' in previous_memory:
-            # Convert memory string to list of messages
-            memory_entries = previous_memory['history'].split('\n')
-            for entry in memory_entries:
-                if 'Human:' in entry and 'AI:' in entry:
-                    # Split into user and assistant messages
-                    user_msg, assistant_msg = entry.split('AI:')
-                    user_content = user_msg.replace('Human:', '').strip()
-                    assistant_content = assistant_msg.strip()
-                    
-                    messages.append({"role": "user", "content": user_content})
-                    messages.append({"role": "assistant", "content": assistant_content})
+        try:
+            if context_data['user_id']:
+                # Retrieve memories for the specific user
+                previous_memory = self.memory_client.get_all(user_id=context_data['user_id'])
+                
+                if previous_memory:
+                    for interaction in previous_memory:
+                        # Handle the mem0 data format
+                        if isinstance(interaction, dict) and 'memory' in interaction:
+                            # Extract the memory content
+                            memory_content = interaction['memory']
+                            
+                            # Append as a user message (or split into user/assistant if needed)
+                            messages.append({
+                                "role": "user",  # Default to 'user' role
+                                "content": memory_content
+                            })
+                        else:
+                            logger.warning(f"Skipping invalid interaction: {interaction}")
+        except Exception as e:
+            logger.warning(f"Error retrieving from mem0: {str(e)}")
 
         # Add current question
         question_content = (
@@ -353,6 +361,8 @@ class MathAgent:
         messages.append({"role": "user", "content": question_content})
         
         return messages
+
+
 
 
     async def _make_api_call(self, messages: list, model_config: Dict[str, Any], context: Dict[Any, Any] = None) -> str:
