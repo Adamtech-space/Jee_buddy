@@ -8,10 +8,9 @@ const SelectionPopup = ({ onSaveToFlashCard, onAskAI, isMobile }) => {
     selectionPosition,
     showPopup,
     setSelectionPosition,
-
-
     setShowPopup,
   } = useSelection();
+
   const popupRef = useRef(null);
   // State to store computed popup style:
   // - For desktop, it's based on the selected text's bounding rect.
@@ -63,7 +62,7 @@ const SelectionPopup = ({ onSaveToFlashCard, onAskAI, isMobile }) => {
       // Mobile: fixed positioning on the right side.
       setPopupStyle({
         bottom: '90px',
-        right: '22px',
+        right: '10px',
         left: 'auto',
         transform: 'none',
         position: 'fixed',
@@ -111,56 +110,27 @@ const SelectionPopup = ({ onSaveToFlashCard, onAskAI, isMobile }) => {
     <div
       ref={popupRef}
       onContextMenu={(e) => e.preventDefault()}
-      className={`selection-popup fixed z-[99999] transition-opacity duration-150 ${
-        isMobile
-          ? 'flex flex-col gap-3 p-2 rounded-lg backdrop-blur-sm border'
-          : 'flex flex-row gap-2 p-1.5 rounded-md shadow-lg bg-gray-900/90 backdrop-blur-sm border border-gray-700/50'
-      }`}
+      className="custom-selection-popup"
       style={{
         ...popupStyle,
         opacity: showPopup ? 1 : 0,
         pointerEvents: showPopup ? 'auto' : 'none',
-        transition: 'opacity 0.15s ease-out',
-        WebkitTouchCallout: 'none',
-        msTouchAction: 'none',
-        touchAction: 'none',
       }}
     >
-      {isMobile ? (
-        <>
-          <button
-            onClick={handleAIClick}
-            onTouchEnd={handleAIClick}
-            className="flex items-center justify-center p-2 rounded-lg bg-purple-600/90 hover:bg-purple-700 text-white"
-          >
-            🤖
-          </button>
-          <button
-            onClick={handleSaveClick}
-            onTouchEnd={handleSaveClick}
-            className="flex items-center justify-center p-2 rounded-lg bg-green-600/90 hover:bg-green-700 text-white"
-          >
-            💾
-          </button>
-        </>
-      ) : (
-        <>
-          <button
-            onClick={handleSaveClick}
-            onTouchEnd={handleSaveClick}
-            className="flex items-center justify-center px-3 py-1.5 text-sm hover:bg-green-600/30 rounded-md text-white"
-          >
-            💾 Save
-          </button>
-          <button
-            onClick={handleAIClick}
-            onTouchEnd={handleAIClick}
-            className="flex items-center justify-center px-3 py-1.5 text-sm hover:bg-purple-600/30 rounded-md text-white"
-          >
-            🤖 Ask AI
-          </button>
-        </>
-      )}
+      <button
+        onClick={handleAIClick}
+        onTouchEnd={handleAIClick}
+        className="flex items-center justify-center p-2 rounded-lg bg-purple-600/90 hover:bg-purple-700 text-white"
+      >
+        🤖 Ask AI
+      </button>
+      <button
+        onClick={handleSaveClick}
+        onTouchEnd={handleSaveClick}
+        className="flex items-center justify-center p-2 rounded-lg bg-green-600/90 hover:bg-green-700 text-white"
+      >
+        💾 Save
+      </button>
     </div>
   );
 };
