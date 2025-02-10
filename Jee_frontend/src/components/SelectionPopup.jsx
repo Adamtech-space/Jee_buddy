@@ -1,220 +1,143 @@
 import PropTypes from 'prop-types';
 import { useSelection } from '../hooks/useSelection';
-import { useRef, useEffect } from 'react';
-import { message } from 'antd';
+import { useRef, useLayoutEffect, useState, useEffect } from 'react';
 
 const SelectionPopup = ({ onSaveToFlashCard, onAskAI, isMobile }) => {
   const {
     selectedText,
     selectionPosition,
     showPopup,
-    clearSelection,
+
     setSelectionPosition,
     setShowPopup,
   } = useSelection();
   const popupRef = useRef(null);
-  const isMounted = useRef(true);
+  // State to store computed popup style:
+  // - On desktop, it's based on the selection's coordinates.
+  // - On mobile, it's fixed above the chat icon.
+  const [popupStyle, setPopupStyle] = useState({});
 
+  // Automatically hide the popup if no text is selected.
   useEffect(() => {
     const handleSelectionChange = () => {
-      const selection = window.getSelection();
-      
-      if (!selection || selection.rangeCount === 0 || selection.isCollapsed) {
+      const text = window.getSelection()?.toString();
+      if (!text || text.trim() === '') {
         setShowPopup(false);
-        return;
-      }
-
-      const handleFinalSelection = () => {
-        if (!isMounted.current) return;
-        
-        requestAnimationFrame(() => {
-          try {
-            const updatedSelection = window.getSelection();
-            if (!updatedSelection || updatedSelection.rangeCount === 0 || updatedSelection.isCollapsed) {
-              setShowPopup(false);
-              return;
-            }
-
-            const range = updatedSelection.getRangeAt(0);
-            if (!range.collapsed && range.toString().trim().length > 0) {
-              const rect = range.getBoundingClientRect();
-              
-              const viewportWidth = window.innerWidth;
-              const viewportHeight = window.innerHeight;
-              const popupWidth = 120;
-              const popupHeight = 50;
-
-              setSelectionPosition({
-                x: Math.max(10, Math.min(rect.left + rect.width / 2, viewportWidth - popupWidth - 10)),
-                y: Math.max(10, Math.min(
-                  rect.bottom + window.scrollY + (isMobile ? 10 : 5),
-                  viewportHeight + window.scrollY - popupHeight - 10
-                ))
-              });
-              setShowPopup(true);
-            } else {
-              setShowPopup(false);
-            }
-          } catch  {
-            setShowPopup(false);
-          }
-        });
-      };
-
-      if (isMobile) {
-        const handleTouchEnd = (e) => {
-          e.preventDefault();
-          setTimeout(handleFinalSelection, 50);
-        };
-        
-        document.addEventListener('touchend', handleTouchEnd, { 
-          once: true,
-          passive: false
-        });
-      } else {
-        handleFinalSelection();
-      }
-    };
-
-    const handleClickOutside = (e) => {
-      if (popupRef.current && !popupRef.current.contains(e.target)) {
-        setShowPopup(false);
+        setSelectionPosition(null);
       }
     };
 
     document.addEventListener('selectionchange', handleSelectionChange);
-    document.addEventListener('click', handleClickOutside);
-
     return () => {
       document.removeEventListener('selectionchange', handleSelectionChange);
-      document.removeEventListener('click', handleClickOutside);
-      isMounted.current = false;
     };
-  }, [showPopup, isMobile, setShowPopup, setSelectionPosition]);
+  }, [setShowPopup, setSelectionPosition]);
 
-  useEffect(() => {
-    if (!popupRef.current || !selectionPosition) return;
+  // For desktop: update the position based on the selected text.
 
-    const popup = popupRef.current;
-    const viewportWidth = window.innerWidth;
-    const viewportHeight = window.innerHeight;
-    const popupRect = popup.getBoundingClientRect();
 
+  // Position the popup:
+  useLayoutEffect(() => {
     if (isMobile) {
-      const bottomOffset = 100;
-      popup.style.position = 'fixed';
-      popup.style.left = '50%';
-      popup.style.bottom = `${bottomOffset}px`;
-      popup.style.transform = 'translateX(-50%)';
+      // Mobile: fix the popup above the chat icon—vertically stacked.
+      setPopupStyle({
+        bottom: '90px', // Adjust this value as needed.
+        right: '10px',
+        left: 'auto',
+        transform: 'none',
+      });
     } else {
-      let top = selectionPosition.y - popupRect.height - 10;
-      let left = selectionPosition.x - popupRect.width / 2;
-      top = Math.max(10, Math.min(top, viewportHeight - popupRect.height - 10));
-      left = Math.max(10, Math.min(left, viewportWidth - popupRect.width - 10));
-      
-      popup.style.top = `${top}px`;
-      popup.style.left = `${left}px`;
+      // Desktop: position based on selectionPosition.
+      if (!popupRef.current || !selectionPosition) return;
+      requestAnimationFrame(() => {
+        const popup = popupRef.current;
+        if (!popup) return;
+        const popupRect = popup.getBoundingClientRect();
+        if (popupRect.width === 0 || popupRect.height === 0) return;
+        // Calculate the top so that the popup appears 5px above the selection.
+        const top = Math.max(10, selectionPosition.y - popupRect.height - 5);
+        const left = selectionPosition.x - popupRect.width / 2;
+        setPopupStyle({ top: `${top}px`, left: `${left}px` });
+      });
     }
   }, [selectionPosition, isMobile]);
 
-  if (!showPopup || !selectionPosition) return null;
-
+  // Button click handlers.
   const handleAIClick = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    const selectedText = window.getSelection().toString();
-    if (selectedText) {
+    const text = window.getSelection()?.toString();
+    if (text) {
       setShowPopup(false);
-      onAskAI(selectedText);
+      onAskAI(text);
     }
   };
 
   const handleSaveClick = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    const selectedText = window.getSelection().toString();
-    if (selectedText) {
+    const text = window.getSelection()?.toString();
+    if (text) {
       setShowPopup(false);
-      onSaveToFlashCard(selectedText);
+      onSaveToFlashCard(text);
     }
   };
 
-  const handleCopy = async (e) => {
-    e.preventDefault();
-    try {
-      await navigator.clipboard.writeText(selectedText);
-      message.success('Copied to clipboard!');
-      clearSelection();
-    } catch{
-      message.error('Failed to copy');
-    }
-  };
-
-  const handlePaste = async (e) => {
-    e.preventDefault();
-    try {
-      const text = await navigator.clipboard.readText();
-      console.log('Pasted content:', text);
-    } catch  {
-      message.error('Failed to paste');
-    }
-  };
+  // Render the popup only when text is selected.
+  if ((isMobile && !selectedText) || (!isMobile && !selectionPosition)) return null;
+  if (!showPopup) return null;
 
   return (
     <div
       ref={popupRef}
-      className={`
-        selection-popup fixed z-[99999] transition-all duration-200 ease-in-out
-        ${isMobile ? 
-          'flex flex-row gap-2 p-2 rounded-2xl bg-gray-900/95 backdrop-blur-lg border border-gray-700 shadow-xl' : 
-          'flex flex-row gap-1.5 p-1.5 rounded-full bg-gray-900/90 backdrop-blur-sm border border-gray-700/50'
-        }`}
+      className={`selection-popup fixed z-[99999] transition-opacity duration-150 ${
+        isMobile
+          ? // Mobile: Fixed above the chat icon, vertically stacked.
+            'flex flex-col gap-3 p-2 backdrop-blur rounded-xl shadow-xl border'
+          : // Desktop: Positioned above the selected text with horizontal buttons.
+            'flex flex-row gap-2 p-1.5 rounded-md shadow-lg bg-gray-900/90 backdrop-blur-sm border border-gray-700/50'
+      }`}
       style={{
-        pointerEvents: 'auto',
-        WebkitTouchCallout: 'none',
-        userSelect: 'none',
+        ...popupStyle,
         opacity: showPopup ? 1 : 0,
-        bottom: isMobile ? '100px' : 'auto',
-        maxWidth: isMobile ? '90vw' : 'none'
+        pointerEvents: showPopup ? 'auto' : 'none',
+        transition: 'opacity 0.15s ease-out',
       }}
     >
-      <button
-        onClick={handleCopy}
-        className={`flex items-center justify-center p-2 ${
-          isMobile ? 
-            'text-sm bg-gray-800/50 hover:bg-gray-700 rounded-xl' : 
-            'rounded-full hover:bg-gray-800'
-        }`}
-      >
-        {isMobile ? '📋 Copy' : '📋'}
-      </button>
-      <button
-        onClick={handleAIClick}
-        className={`flex items-center justify-center p-2 ${
-          isMobile ? 
-            'text-sm bg-blue-600/90 hover:bg-blue-700 rounded-xl' : 
-            'rounded-full hover:bg-blue-600/50'
-        }`}
-      >
-        {isMobile ? '🤖 AI' : '🤖'}
-      </button>
-      <button
-        onClick={handleSaveClick}
-        className={`flex items-center justify-center p-2 ${
-          isMobile ? 
-            'text-sm bg-green-600/90 hover:bg-green-700 rounded-xl' : 
-            'rounded-full hover:bg-green-600/50'
-        }`}
-      >
-        {isMobile ? '💾 Save' : '💾'}
-      </button>
-      {isMobile && (
-        <button
-          onClick={handlePaste}
-          className="flex items-center justify-center p-2 text-sm bg-gray-800/50 hover:bg-gray-700 rounded-xl"
-        >
-          📥 Paste
-        </button>
+      {isMobile ? (
+        <>
+          <button
+            onClick={handleAIClick}
+            onTouchEnd={handleAIClick}
+            className="flex items-center justify-center p-2 rounded-lg bg-purple-600/90 hover:bg-purple-700 text-white"
+          >
+            🤖
+          </button>
+          <button
+            onClick={handleSaveClick}
+            onTouchEnd={handleSaveClick}
+            className="flex items-center justify-center p-2 rounded-lg bg-green-600/90 hover:bg-green-700 text-white"
+          >
+            💾
+          </button>
+        </>
+      ) : (
+        <>
+          <button
+            onClick={handleSaveClick}
+            onTouchEnd={handleSaveClick}
+            className="flex items-center justify-center px-3 py-1.5 text-sm hover:bg-green-600/30 rounded-md text-white"
+          >
+            💾 Save
+          </button>
+          <button
+            onClick={handleAIClick}
+            onTouchEnd={handleAIClick}
+            className="flex items-center justify-center px-3 py-1.5 text-sm hover:bg-purple-600/30 rounded-md text-white"
+          >
+            🤖 Ask AI
+          </button>
+        </>
       )}
     </div>
   );
@@ -223,7 +146,11 @@ const SelectionPopup = ({ onSaveToFlashCard, onAskAI, isMobile }) => {
 SelectionPopup.propTypes = {
   onSaveToFlashCard: PropTypes.func.isRequired,
   onAskAI: PropTypes.func.isRequired,
-  isMobile: PropTypes.bool.isRequired
+  position: PropTypes.shape({
+    x: PropTypes.number,
+    y: PropTypes.number,
+  }),
+  isMobile: PropTypes.bool.isRequired,
 };
 
 export default SelectionPopup;

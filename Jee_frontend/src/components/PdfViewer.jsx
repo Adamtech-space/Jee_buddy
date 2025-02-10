@@ -352,12 +352,22 @@ const PdfViewer = ({ pdfUrl: propsPdfUrl, subject: propsSubject, onBack }) => {
 
   return (
     <div
-      className="fixed bg-gray-900 transition-all duration-300 ease-in-out"
+      className={`fixed bg-gray-900 transition-all duration-300 ease-in-out ${isMobile ? 'h-screen' : ''}`}
       style={{
-        top: isMobile ? '0' : '64px',
-        left: isMobile ? '0' : isSidebarOpen ? '256px' : '0',
-        right: isMobile ? '0' : isChatOpen ? '450px' : '0',
-        bottom: '0',
+        ...(isMobile
+          ? {
+              top: "0",
+              left: "0",
+              right: "0",
+              bottom: "0",
+              height: "100vh",
+            }
+          : {
+              top: "64px",
+              left: isSidebarOpen ? "256px" : "0",
+              right: isChatOpen ? "450px" : "0",
+              bottom: "0",
+            }),
       }}
       ref={setViewerContainerRef}
     >
@@ -515,19 +525,25 @@ const PdfViewer = ({ pdfUrl: propsPdfUrl, subject: propsSubject, onBack }) => {
       {/* PDF Viewer */}
       <div
         ref={containerRef}
-        className="absolute inset-0 overflow-auto bg-gray-900 scroll-smooth"
-        style={{
-          top: isMobile ? '56px' : 0,
-          paddingTop: '1rem',
-          paddingBottom: '1rem',
-        }}
+        className={`absolute inset-0 bg-gray-900 ${
+          isMobile ? "overflow-hidden" : "overflow-auto scroll-smooth"
+        }`}
+        style={
+          isMobile
+            ? {} // No extra padding for mobile
+            : {
+                top: 0,
+                paddingTop: "1rem",
+                paddingBottom: "1rem",
+              }
+        }
         onMouseUp={handleSelection}
         onTouchEnd={handleSelection}
       >
         <Worker workerUrl="https://unpkg.com/pdfjs-dist@3.4.120/build/pdf.worker.min.js">
           <Viewer
             fileUrl={pdfUrl}
-            defaultScale={isMobile ? 1 : 'PageWidth'}
+            defaultScale={isMobile ? "PageFit" : "PageWidth"}
             theme="dark"
             className="h-full"
             renderTextLayer={false}
@@ -542,16 +558,20 @@ const PdfViewer = ({ pdfUrl: propsPdfUrl, subject: propsSubject, onBack }) => {
             loading={<div className="h-full bg-gray-900" />}
             layout={viewerLayout}
             onError={(error) => {
-              console.error('PDF loading error:', error);
+              console.error("PDF loading error:", error);
               setError(`Failed to load PDF: ${error.message}`);
             }}
             onDocumentLoad={() => {
               setLoading(false);
-              // Enable text layer after initial render
-              setTimeout(() => {
-                const viewer = containerRef.current?.querySelector('.rpv-core__viewer');
-                if (viewer) viewer.style.visibility = 'visible';
-              }, 100);
+              const viewer = containerRef.current?.querySelector(".rpv-core__viewer");
+              if (viewer) {
+                viewer.style.visibility = "visible";
+                viewer.style.width = "100%";
+              }
+            }}
+            style={{
+              width: "100%",
+              willChange: "transform",
             }}
           />
         </Worker>
