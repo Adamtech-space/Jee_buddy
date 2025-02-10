@@ -1,8 +1,9 @@
 import PropTypes from 'prop-types';
 import { useSelection } from '../hooks/useSelection';
 import { useRef, useEffect } from 'react';
+import { message } from 'antd';
 
-const SelectionPopup = ({ onSaveToFlashCard, onAskAI, position, isMobile }) => {
+const SelectionPopup = ({ onSaveToFlashCard, onAskAI, isMobile }) => {
   const {
     selectedText,
     selectionPosition,
@@ -12,50 +13,66 @@ const SelectionPopup = ({ onSaveToFlashCard, onAskAI, position, isMobile }) => {
     setShowPopup,
   } = useSelection();
   const popupRef = useRef(null);
+  const isMounted = useRef(true);
 
   useEffect(() => {
     const handleSelectionChange = () => {
       const selection = window.getSelection();
       
-      if (!selection || selection.isCollapsed) {
-        if (showPopup) setShowPopup(false);
+      if (!selection || selection.rangeCount === 0 || selection.isCollapsed) {
+        setShowPopup(false);
         return;
       }
 
       const handleFinalSelection = () => {
+        if (!isMounted.current) return;
+        
         requestAnimationFrame(() => {
           try {
             const updatedSelection = window.getSelection();
-            if (!updatedSelection || updatedSelection.rangeCount === 0) return;
-            
+            if (!updatedSelection || updatedSelection.rangeCount === 0 || updatedSelection.isCollapsed) {
+              setShowPopup(false);
+              return;
+            }
+
             const range = updatedSelection.getRangeAt(0);
-            const rect = range.getBoundingClientRect();
-            
-            if (rect.width > 0 && rect.height > 0) {
+            if (!range.collapsed && range.toString().trim().length > 0) {
+              const rect = range.getBoundingClientRect();
+              
+              const viewportWidth = window.innerWidth;
+              const viewportHeight = window.innerHeight;
+              const popupWidth = 120;
+              const popupHeight = 50;
+
               setSelectionPosition({
-                x: rect.left + rect.width / 2,
-                y: rect.bottom + window.scrollY + 5
+                x: Math.max(10, Math.min(rect.left + rect.width / 2, viewportWidth - popupWidth - 10)),
+                y: Math.max(10, Math.min(
+                  rect.bottom + window.scrollY + (isMobile ? 10 : 5),
+                  viewportHeight + window.scrollY - popupHeight - 10
+                ))
               });
               setShowPopup(true);
+            } else {
+              setShowPopup(false);
             }
-          } catch (err) {
-            console.error('Selection error:', err);
+          } catch  {
             setShowPopup(false);
           }
         });
       };
 
-      if (!isMobile) {
-        const handleMouseUp = () => {
-          handleFinalSelection();
-          document.removeEventListener('mouseup', handleMouseUp);
+      if (isMobile) {
+        const handleTouchEnd = (e) => {
+          e.preventDefault();
+          setTimeout(handleFinalSelection, 50);
         };
-        document.addEventListener('mouseup', handleMouseUp);
+        
+        document.addEventListener('touchend', handleTouchEnd, { 
+          once: true,
+          passive: false
+        });
       } else {
-        const handleTouchEnd = () => {
-          setTimeout(handleFinalSelection, 300);
-        };
-        document.addEventListener('touchend', handleTouchEnd, { once: true });
+        handleFinalSelection();
       }
     };
 
@@ -71,6 +88,7 @@ const SelectionPopup = ({ onSaveToFlashCard, onAskAI, position, isMobile }) => {
     return () => {
       document.removeEventListener('selectionchange', handleSelectionChange);
       document.removeEventListener('click', handleClickOutside);
+      isMounted.current = false;
     };
   }, [showPopup, isMobile, setShowPopup, setSelectionPosition]);
 
@@ -80,61 +98,26 @@ const SelectionPopup = ({ onSaveToFlashCard, onAskAI, position, isMobile }) => {
     const popup = popupRef.current;
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
-
-    popup.style.transform = 'translateZ(0)';
-    popup.style.willChange = 'transform';
+    const popupRect = popup.getBoundingClientRect();
 
     if (isMobile) {
+      const bottomOffset = 100;
       popup.style.position = 'fixed';
-      popup.style.left = 'auto';
-      popup.style.right = '18px';
-      popup.style.bottom = '75px';
-      popup.style.top = 'auto';
+      popup.style.left = '50%';
+      popup.style.bottom = `${bottomOffset}px`;
+      popup.style.transform = 'translateX(-50%)';
     } else {
-      const rect = popup.getBoundingClientRect();
-      let top = selectionPosition.y - rect.height - 10;
-      let left = selectionPosition.x - rect.width / 2;
-
-      top = Math.max(10, Math.min(top, viewportHeight - rect.height - 10));
-      left = Math.max(10, Math.min(left, viewportWidth - rect.width - 10));
-
+      let top = selectionPosition.y - popupRect.height - 10;
+      let left = selectionPosition.x - popupRect.width / 2;
+      top = Math.max(10, Math.min(top, viewportHeight - popupRect.height - 10));
+      left = Math.max(10, Math.min(left, viewportWidth - popupRect.width - 10));
+      
       popup.style.top = `${top}px`;
       popup.style.left = `${left}px`;
-      popup.style.transform = 'none';
     }
   }, [selectionPosition, isMobile]);
 
   if (!showPopup || !selectionPosition) return null;
-
-  const handleAction = (action) => {
-    if (!selectedText) {
-      return;
-    }
-
-    const selection = window.getSelection();
-    const sourceElement = selection?.focusNode?.parentElement;
-    let source = 'Selected Text';
-
-    if (sourceElement) {
-      const nearestHeading = sourceElement.closest('h1, h2, h3, h4, h5, h6');
-      if (nearestHeading) {
-        source = `${nearestHeading.tagName}: ${nearestHeading.textContent}`;
-      } else if (sourceElement.dataset.source) {
-        source = sourceElement.dataset.source;
-      } else {
-        const article = sourceElement.closest('article');
-        const section = sourceElement.closest('section');
-        if (article?.dataset.title) {
-          source = article.dataset.title;
-        } else if (section?.dataset.title) {
-          source = section.dataset.title;
-        }
-      }
-    }
-
-    action(selectedText, source);
-    clearSelection();
-  };
 
   const handleAIClick = (e) => {
     e.preventDefault();
@@ -156,51 +139,83 @@ const SelectionPopup = ({ onSaveToFlashCard, onAskAI, position, isMobile }) => {
     }
   };
 
+  const handleCopy = async (e) => {
+    e.preventDefault();
+    try {
+      await navigator.clipboard.writeText(selectedText);
+      message.success('Copied to clipboard!');
+      clearSelection();
+    } catch{
+      message.error('Failed to copy');
+    }
+  };
+
+  const handlePaste = async (e) => {
+    e.preventDefault();
+    try {
+      const text = await navigator.clipboard.readText();
+      console.log('Pasted content:', text);
+    } catch  {
+      message.error('Failed to paste');
+    }
+  };
+
   return (
     <div
       ref={popupRef}
       className={`
         selection-popup fixed z-[99999] transition-all duration-200 ease-in-out
-        ${isMobile 
-          ? 'flex flex-col gap-2 w-auto touch-none' 
-          : 'flex flex-row gap-1.5 p-1.5 rounded-full shadow-lg bg-gray-900/90 backdrop-blur-sm border border-gray-700/50'
-        }
-      `}
+        ${isMobile ? 
+          'flex flex-row gap-2 p-2 rounded-2xl bg-gray-900/95 backdrop-blur-lg border border-gray-700 shadow-xl' : 
+          'flex flex-row gap-1.5 p-1.5 rounded-full bg-gray-900/90 backdrop-blur-sm border border-gray-700/50'
+        }`}
       style={{
         pointerEvents: 'auto',
         WebkitTouchCallout: 'none',
         userSelect: 'none',
         opacity: showPopup ? 1 : 0,
-        transform: 'translateZ(0)',
-        transition: 'opacity 0.15s ease-out, transform 0.15s ease-out'
+        bottom: isMobile ? '100px' : 'auto',
+        maxWidth: isMobile ? '90vw' : 'none'
       }}
     >
       <button
-        onClick={handleAIClick}
-        onTouchEnd={handleAIClick}
-        className={`
-          ${
-            isMobile
-              ? 'w-12 h-12 rounded-full bg-blue-500 hover:bg-blue-600 shadow-lg flex items-center justify-center text-white'
-              : 'flex items-center justify-center gap-1.5 px-4 py-1.5 bg-gray-800/50 hover:bg-gray-700 rounded-full text-sm text-white hover:shadow-md transition-all duration-200'
-          }
-        `}
+        onClick={handleCopy}
+        className={`flex items-center justify-center p-2 ${
+          isMobile ? 
+            'text-sm bg-gray-800/50 hover:bg-gray-700 rounded-xl' : 
+            'rounded-full hover:bg-gray-800'
+        }`}
       >
-        {isMobile ? 'AI' : '🤖 Ask AI'}
+        {isMobile ? '📋 Copy' : '📋'}
+      </button>
+      <button
+        onClick={handleAIClick}
+        className={`flex items-center justify-center p-2 ${
+          isMobile ? 
+            'text-sm bg-blue-600/90 hover:bg-blue-700 rounded-xl' : 
+            'rounded-full hover:bg-blue-600/50'
+        }`}
+      >
+        {isMobile ? '🤖 AI' : '🤖'}
       </button>
       <button
         onClick={handleSaveClick}
-        onTouchEnd={handleSaveClick}
-        className={`
-          ${
-            isMobile
-              ? 'w-12 h-12 rounded-full bg-blue-500 hover:bg-blue-600 shadow-lg flex items-center justify-center text-white'
-              : 'flex items-center justify-center gap-1.5 px-4 py-1.5 bg-gray-800/50 hover:bg-gray-700 rounded-full text-sm text-white hover:shadow-md transition-all duration-200'
-          }
-        `}
+        className={`flex items-center justify-center p-2 ${
+          isMobile ? 
+            'text-sm bg-green-600/90 hover:bg-green-700 rounded-xl' : 
+            'rounded-full hover:bg-green-600/50'
+        }`}
       >
-        {isMobile ? '💾' : '💾 Save'}
+        {isMobile ? '💾 Save' : '💾'}
       </button>
+      {isMobile && (
+        <button
+          onClick={handlePaste}
+          className="flex items-center justify-center p-2 text-sm bg-gray-800/50 hover:bg-gray-700 rounded-xl"
+        >
+          📥 Paste
+        </button>
+      )}
     </div>
   );
 };
@@ -208,10 +223,6 @@ const SelectionPopup = ({ onSaveToFlashCard, onAskAI, position, isMobile }) => {
 SelectionPopup.propTypes = {
   onSaveToFlashCard: PropTypes.func.isRequired,
   onAskAI: PropTypes.func.isRequired,
-  position: PropTypes.shape({
-    x: PropTypes.number,
-    y: PropTypes.number,
-  }),
   isMobile: PropTypes.bool.isRequired
 };
 
