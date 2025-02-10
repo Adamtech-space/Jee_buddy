@@ -2,6 +2,12 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer components {
+  .item-click-effect:active {
+    @apply transform scale-[0.98] bg-gray-800;
+  }
+}
+
 :root {
   --primary: #007bff;
   --primary-dark: #0056b3;
@@ -84,10 +90,6 @@ body {
   @apply transition-all duration-150;
 }
 
-.item-click-effect:active {
-  @apply transform scale-[0.98] bg-gray-800;
-}
-
 .no-native-callout {
   -webkit-touch-callout: none;
   -webkit-user-select: text;
@@ -140,5 +142,6 @@ body {
   * {
     -webkit-touch-callout: none !important;
     -webkit-user-select: text !important;
+    user-select: text !important;
   }
 }
