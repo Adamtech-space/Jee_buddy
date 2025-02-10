@@ -527,34 +527,16 @@ const PdfViewer = ({ pdfUrl: propsPdfUrl, subject: propsSubject, onBack }) => {
       <div
         ref={containerRef}
         onMouseUp={handleSelection}
-        onTouchEnd={(e) => {
+        onTouchEnd={handleSelection}
+        onContextMenu={(e) => {
           e.preventDefault();
-          e.stopPropagation();
-          handleSelection(e);
         }}
-        onTouchStart={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-        }}
-        onContextMenu={(e) => e.preventDefault()}
-        className={`no-native-callout absolute inset-0 bg-gray-900 ${
+        className={`absolute inset-0 bg-gray-900 ${
           isMobile ? "overflow-hidden" : "overflow-auto scroll-smooth"
         }`}
         style={{
-          ...(isMobile
-            ? {
-                top: "0",
-                left: "0",
-                right: "0",
-                bottom: "0",
-                height: "100vh",
-              }
-            : {
-                top: "64px",
-                left: isSidebarOpen ? "256px" : "0",
-                right: isChatOpen ? "450px" : "0",
-                bottom: "0",
-              }),
+          WebkitTouchCallout: 'none', // disables native selection pop-up on mobile
+          ...(isMobile ? {} : { top: 0, paddingTop: "1rem", paddingBottom: "1rem" })
         }}
       >
         <Worker workerUrl="https://unpkg.com/pdfjs-dist@3.4.120/build/pdf.worker.min.js">
@@ -569,11 +551,6 @@ const PdfViewer = ({ pdfUrl: propsPdfUrl, subject: propsSubject, onBack }) => {
             withCredentials={false}
             renderForms={false}
             renderAnnotationLayer={false}
-            pageLayout={isMobile ? { buildPageLayout: () => ({}) } : null}
-            pageIndex={0}
-            initialPage={0}
-            loading={<div className="w-full h-full bg-gray-900" />}
-            layout={viewerLayout}
             onError={(error) => {
               console.error("PDF loading error:", error);
               setError(`Failed to load PDF: ${error.message}`);
