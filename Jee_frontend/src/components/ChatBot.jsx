@@ -309,7 +309,7 @@ const ChatBot = ({
   const [showNotification, setShowNotification] = useState(null);
   const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-  const [remainingTokens, setRemainingTokens] = useState(1000);
+  const [remainingTokens, setRemainingTokens] = useState(100);
   const [currentPlan, setCurrentPlan] = useState('Free');
   const [hasAccess, setHasAccess] = useState(true);
 
