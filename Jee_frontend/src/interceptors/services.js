@@ -305,7 +305,7 @@ export const checkUserAccess = () => {
     }
 
     // If no paid plan, check token limit
-    return profile.total_tokens < 1000;
+    return profile.total_tokens < 100;
   } catch (error) {
     console.error('Error checking user access:', error);
     return false;
@@ -357,7 +357,7 @@ export const getRemainingTokens = () => {
   try {
     const profile = getDecryptedItem('profile');
     if (!profile) return 0;
-    return Math.max(1000 - profile.total_tokens, 0);
+    return Math.max(100 - profile.total_tokens, 0);
   } catch (error) {
     console.error('Error getting remaining tokens:', error);
     return 0;
