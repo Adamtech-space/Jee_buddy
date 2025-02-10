@@ -21,7 +21,6 @@ import { useSelection } from '../hooks/useSelection';
 import PropTypes from 'prop-types';
 import html2canvas from 'html2canvas';
 
-
 import '@react-pdf-viewer/core/lib/styles/index.css';
 
 const PdfViewer = ({ pdfUrl: propsPdfUrl, subject: propsSubject, onBack }) => {
@@ -86,7 +85,7 @@ const PdfViewer = ({ pdfUrl: propsPdfUrl, subject: propsSubject, onBack }) => {
         const rect = range.getBoundingClientRect();
         const position = {
           x: rect.left + rect.width / 2,
-          y: rect.bottom
+          y: rect.top - 10, // viewport-relative coordinate
         };
         setSelectionPosition(position);
         
@@ -352,23 +351,24 @@ const PdfViewer = ({ pdfUrl: propsPdfUrl, subject: propsSubject, onBack }) => {
 
   return (
     <div
-      className={`fixed bg-gray-900 transition-all duration-300 ease-in-out ${isMobile ? 'h-screen' : ''}`}
-      style={{
-        ...(isMobile
+      className={`fixed bg-gray-900 transition-all duration-300 ease-in-out ${
+        isMobile ? 'w-screen h-screen' : ''
+      }`}
+      style={
+        isMobile
           ? {
               top: "0",
               left: "0",
               right: "0",
               bottom: "0",
-              height: "100vh",
             }
           : {
               top: "64px",
               left: isSidebarOpen ? "256px" : "0",
               right: isChatOpen ? "450px" : "0",
               bottom: "0",
-            }),
-      }}
+            }
+      }
       ref={setViewerContainerRef}
     >
       {/* Back button - Left side */}
@@ -545,7 +545,7 @@ const PdfViewer = ({ pdfUrl: propsPdfUrl, subject: propsSubject, onBack }) => {
             fileUrl={pdfUrl}
             defaultScale={isMobile ? "PageFit" : "PageWidth"}
             theme="dark"
-            className="h-full"
+            className="w-full h-full"
             renderTextLayer={false}
             enableSmoothScroll={false}
             useWorkerFetch={true}
@@ -555,7 +555,7 @@ const PdfViewer = ({ pdfUrl: propsPdfUrl, subject: propsSubject, onBack }) => {
             pageLayout={isMobile ? { buildPageLayout: () => ({}) } : null}
             pageIndex={0}
             initialPage={0}
-            loading={<div className="h-full bg-gray-900" />}
+            loading={<div className="w-full h-full bg-gray-900" />}
             layout={viewerLayout}
             onError={(error) => {
               console.error("PDF loading error:", error);
@@ -571,6 +571,7 @@ const PdfViewer = ({ pdfUrl: propsPdfUrl, subject: propsSubject, onBack }) => {
             }}
             style={{
               width: "100%",
+              height: "100%",
               willChange: "transform",
             }}
           />
