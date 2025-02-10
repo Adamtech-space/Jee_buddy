@@ -1,7 +1,9 @@
 import PropTypes from 'prop-types';
 import { useSelection } from '../hooks/useSelection';
 import { useRef, useLayoutEffect, useState, useEffect } from 'react';
-import { SaveOutlined, QuestionCircleOutlined } from '@ant-design/icons';
+import { SaveOutlined } from '@ant-design/icons';
+import { message } from 'antd';
+
 
 const SelectionPopup = ({ onSaveToFlashCard, onAskAI, isMobile }) => {
   const {
@@ -85,9 +87,51 @@ const SelectionPopup = ({ onSaveToFlashCard, onAskAI, isMobile }) => {
     });
   }, [selectionPosition]);
 
-  if (!showPopup) return null;
+  if (!showPopup && !isMobile) return null;
 
-  return (
+  return isMobile ? (
+    <div className="fixed bottom-32 right-4 z-[60]">
+      <div className="flex flex-col gap-y-3 items-center">
+        <button
+          onClick={(e) => {
+            e.preventDefault();
+            const selection = window.getSelection();
+            const selectedText = selection.toString().trim();
+            
+            if (!selectedText) {
+              message.warning('Please select some text first');
+              return;
+            }
+            onAskAI(selectedText);
+            setShowPopup(false);
+          }}
+          className="p-3 bg-gray-800 hover:bg-gray-700 rounded-lg shadow-lg transition-colors"
+          title="Ask AI"
+        >
+          🤖
+        </button>
+        
+        <button
+          onClick={(e) => {
+            e.preventDefault();
+            const selection = window.getSelection();
+            const selectedText = selection.toString().trim();
+            
+            if (!selectedText) {
+              message.warning('Please select some text first');
+              return;
+            }
+            onSaveToFlashCard(selectedText);
+            setShowPopup(false);
+          }}
+          className="p-3 bg-gray-800 hover:bg-gray-700 rounded-lg shadow-lg transition-colors"
+          title="Save to Flashcards"
+        >
+          <SaveOutlined className="text-base text-green-400" />
+        </button>
+      </div>
+    </div>
+  ) : (
     <div
       ref={popupRef}
       className={`custom-selection-popup ${!showPopup ? 'opacity-0' : ''}`}
@@ -105,6 +149,13 @@ const SelectionPopup = ({ onSaveToFlashCard, onAskAI, isMobile }) => {
         <button
           onClick={(e) => {
             e.preventDefault();
+            const selection = window.getSelection();
+            const selectedText = selection.toString().trim();
+            
+            if (!selectedText) {
+              message.warning('Please select some text first');
+              return;
+            }
             onAskAI(selectedText);
             setShowPopup(false);
           }}
@@ -119,6 +170,13 @@ const SelectionPopup = ({ onSaveToFlashCard, onAskAI, isMobile }) => {
         <button
           onClick={(e) => {
             e.preventDefault();
+            const selection = window.getSelection();
+            const selectedText = selection.toString().trim();
+            
+            if (!selectedText) {
+              message.warning('Please select some text first');
+              return;
+            }
             onSaveToFlashCard(selectedText);
             setShowPopup(false);
           }}
