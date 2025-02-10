@@ -24,39 +24,12 @@ import html2canvas from 'html2canvas';
 
 import '@react-pdf-viewer/core/lib/styles/index.css';
 
-// Add these styles to your global CSS or a CSS module
-const globalStyles = `
-  .rpv-core__viewer {
-    width: 100% !important;
-    overflow-x: hidden !important;
-  }
-  
-  .rpv-core__inner-page {
-    width: 100% !important;
-    overflow-x: hidden !important;
-  }
-  
-  .rpv-core__page {
-    min-width: 100% !important;
-    max-width: 100% !important;
-    margin: 0 auto !important;
-    padding: 0 !important;
-  }
-  
-  .rpv-core__page-layer {
-    overflow: hidden !important;
-  }
-  
-  .rpv-core__text-layer {
-    white-space: pre-wrap !important;
-  }
-`;
-
 const PdfViewer = ({ pdfUrl: propsPdfUrl, subject: propsSubject, onBack }) => {
   const { pdfUrl: encodedUrl, subject: routeSubject } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
   const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(true);
   const { isChatOpen, isSidebarOpen, setIsChatOpen, setIsSidebarOpen } = useOutletContext();
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [selectionPosition, setSelectionPosition] = useState(null);
@@ -73,45 +46,52 @@ const PdfViewer = ({ pdfUrl: propsPdfUrl, subject: propsSubject, onBack }) => {
   // Memoized selection handler
   const handleSelection = useCallback(
     (e) => {
-      e.preventDefault();
-      
+      // Don't handle selection if clicking on controls or during loading
+      if (
+        loading ||
+        e.target instanceof HTMLButtonElement ||
+        e.target instanceof HTMLInputElement ||
+        e.target.closest('.rpv-core__viewer-navigation') ||
+        e.target.closest('.rpv-core__viewer-toolbar') ||
+        isAreaSelecting
+      ) {
+        return;
+      }
+
+      // Clear any existing timer
       if (selectionTimerRef.current) {
         clearTimeout(selectionTimerRef.current);
       }
 
-      const selection = window.getSelection();
-      const selectedText = selection?.toString()?.trim();
-      
-      if (!selectedText || selection.isCollapsed) {
-        setSelectionPosition(null);
-        return;
-      }
-
+      // Set a new timer to handle the selection
       selectionTimerRef.current = setTimeout(() => {
-        const updatedSelection = window.getSelection();
-        const updatedText = updatedSelection?.toString()?.trim();
-        
-        if (!updatedText || updatedSelection.isCollapsed) {
-          setSelectionPosition(null);
+        const selection = window.getSelection();
+        const selectedText = selection?.toString()?.trim();
+
+        // Different length thresholds for mobile and desktop
+        const minLength = isMobile ? 1 : 2;
+        const maxLength = isMobile ? 500 : 1000;
+
+        // Ignore if selection is too short or too long
+        if (
+          !selectedText ||
+          selectedText.length < minLength ||
+          selectedText.length > maxLength
+        ) {
           return;
         }
 
-        // Additional validation for empty selections
-        if (updatedText.length < 1) {
-          setSelectionPosition(null);
-          return;
-        }
-
-        // Calculate position
-        const range = updatedSelection.getRangeAt(0);
+        // Get selection coordinates for better popup positioning
+        const range = selection.getRangeAt(0);
         const rect = range.getBoundingClientRect();
-        setSelectionPosition({
+        const position = {
           x: rect.left + rect.width / 2,
           y: rect.bottom
-        });
+        };
+        setSelectionPosition(position);
         
         // Process mathematical notation
-        let processedText = updatedText
+        let processedText = selectedText
           .replace(/÷/g, '\\div')
           .replace(/×/g, '\\times')
           .replace(/√/g, '\\sqrt')
@@ -160,16 +140,11 @@ const PdfViewer = ({ pdfUrl: propsPdfUrl, subject: propsSubject, onBack }) => {
         }
 
         // Pass selection position to handleTextSelection
-        handleTextSelection(e, processedText, { x: rect.left + rect.width / 2, y: rect.bottom });
-      }, 200);
+        handleTextSelection(e, processedText, position);
+      }, 250); // Increased debounce time for better control
     },
-    [handleTextSelection]
+    [loading, isAreaSelecting, handleTextSelection, isMobile]
   );
-
-  // Add touch event preventions
-  const handleTouchStart = useCallback((e) => {
-    e.preventDefault();
-  }, []);
 
   // Cleanup timer on unmount
   useEffect(() => {
@@ -212,6 +187,8 @@ const PdfViewer = ({ pdfUrl: propsPdfUrl, subject: propsSubject, onBack }) => {
       setError('PDF URL not found');
       message.error('PDF URL not found');
       navigate(`/dashboard/${subject}/books`);
+    } else {
+      setLoading(false); // Directly set loading to false since we're not pre-checking
     }
   }, [pdfUrl, navigate, subject]);
 
@@ -371,14 +348,6 @@ const PdfViewer = ({ pdfUrl: propsPdfUrl, subject: propsSubject, onBack }) => {
     };
   }, [pdfUrl, setIsSidebarOpen]);
 
-  // Add style injection
-  useEffect(() => {
-    const style = document.createElement('style');
-    style.textContent = globalStyles;
-    document.head.appendChild(style);
-    return () => document.head.removeChild(style);
-  }, []);
-
   if (!pdfUrl) return null;
 
   return (
@@ -389,14 +358,8 @@ const PdfViewer = ({ pdfUrl: propsPdfUrl, subject: propsSubject, onBack }) => {
         left: isMobile ? '0' : isSidebarOpen ? '256px' : '0',
         right: isMobile ? '0' : isChatOpen ? '450px' : '0',
         bottom: '0',
-        WebkitTouchCallout: 'none',
-        userSelect: 'none',
-        touchAction: 'pan-y',
-        overflowX: 'hidden'
       }}
       ref={setViewerContainerRef}
-      onContextMenu={(e) => e.preventDefault()}
-      onTouchStart={handleTouchStart}
     >
       {/* Back button - Left side */}
       <div className="absolute top-4 left-4 z-10">
@@ -557,26 +520,15 @@ const PdfViewer = ({ pdfUrl: propsPdfUrl, subject: propsSubject, onBack }) => {
           top: isMobile ? '56px' : 0,
           paddingTop: '1rem',
           paddingBottom: '1rem',
-          userSelect: 'text', // Allow text selection in content area
-          WebkitUserSelect: 'text',
-          overflowX: 'hidden',
-          maxWidth: '100vw'
         }}
         onMouseUp={handleSelection}
         onTouchEnd={handleSelection}
-        onTouchCancel={handleSelection}
       >
         <Worker workerUrl="https://unpkg.com/pdfjs-dist@3.4.120/build/pdf.worker.min.js">
           <Viewer
             fileUrl={pdfUrl}
             defaultScale={isMobile ? 1 : 'PageWidth'}
-            theme={{
-              theme: 'dark',
-              root: {
-                width: '100%',
-                overflow: 'hidden'
-              }
-            }}
+            theme="dark"
             className="h-full"
             renderTextLayer={false}
             enableSmoothScroll={false}
@@ -594,6 +546,8 @@ const PdfViewer = ({ pdfUrl: propsPdfUrl, subject: propsSubject, onBack }) => {
               setError(`Failed to load PDF: ${error.message}`);
             }}
             onDocumentLoad={() => {
+              setLoading(false);
+              // Enable text layer after initial render
               setTimeout(() => {
                 const viewer = containerRef.current?.querySelector('.rpv-core__viewer');
                 if (viewer) viewer.style.visibility = 'visible';
