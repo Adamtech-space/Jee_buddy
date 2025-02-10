@@ -173,15 +173,21 @@ const Subscription = () => {
 
         if (profileResponse.data.payment_status === 'completed' && profileResponse.data.current_plan_id) {
           let planType = 'BASIC';
+          let planPrice = 0; // Default price for BASIC is free
+          
           if (profileResponse.data.current_plan_id === import.meta.env.VITE_PREMIUM_PLAN_ID) {
             planType = 'PREMIUM';
+            planPrice = 4999;
+          } else if (profileResponse.data.current_plan_id === import.meta.env.VITE_PRO_PLAN_ID) {
+            planType = 'PRO';
+            planPrice = 499;
           }
           
           setIsSubscribed(true);
           setCurrentPlan({
             type: planType,
             name: `${planType.charAt(0) + planType.slice(1).toLowerCase()} Plan`,
-            price: planType === 'BASIC' ? 499 : 4999
+            price: planPrice
           });
         } else {
           setIsSubscribed(false);
