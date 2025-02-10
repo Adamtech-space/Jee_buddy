@@ -1496,24 +1496,64 @@ const ChatBot = ({
               AI Study Assistant
             </h3>
             <div className="flex items-center gap-2">
-              <span className="text-xs text-gray-400">
-                {currentPlan === 'Free' ? (
-                  <>
-                    <span className="text-blue-400">{remainingTokens}</span>{' '}
-                    tokens remaining
-                  </>
-                ) : (
-                  <span className="text-green-400">{currentPlan} Plan</span>
-                )}
-              </span>
-              {currentPlan === 'Free' && (
-                <button
-                  onClick={() => setShowUpgradeModal(true)}
-                  className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
-                >
-                  Upgrade
-                </button>
-              )}
+              {(() => {
+                const profile = getDecryptedItem('profile');
+
+                // Free Plan Display
+                if (currentPlan === 'Free') {
+                  return (
+                    <>
+                      <span className="text-xs text-gray-400">
+                        <span className="text-blue-400">{remainingTokens}</span>{' '}
+                        tokens remaining
+                      </span>
+                      <button
+                        onClick={() => setShowUpgradeModal(true)}
+                        className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
+                      >
+                        Upgrade
+                      </button>
+                    </>
+                  );
+                }
+
+                // Paid Plan Display
+                const isPlanExpired = profile?.days_remaining <= 0;
+                const hasTokens = remainingTokens > 0;
+
+                return (
+                  <div className="flex items-center gap-2">
+                    {/* Status Badge */}
+                    <span
+                      className={`text-xs ${isPlanExpired ? 'text-red-400' : 'text-green-400'}`}
+                    >
+                      {currentPlan} {isPlanExpired ? 'Expired' : 'Plan'}
+                    </span>
+
+                    {/* Action Badge */}
+                    {isPlanExpired ? (
+                      hasTokens ? (
+                        <span className="text-xs text-blue-400">
+                          {remainingTokens} tokens left
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => setShowUpgradeModal(true)}
+                          className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
+                        >
+                          Renew Plan
+                        </button>
+                      )
+                    ) : (
+                      <span className="text-xs text-blue-400">
+                        {remainingTokens > 0
+                          ? `${remainingTokens} tokens left`
+                          : 'Active'}
+                      </span>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
           </div>
         </div>

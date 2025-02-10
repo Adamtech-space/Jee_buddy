@@ -19,11 +19,13 @@ import {
   deleteStudyMaterial,
   renameStudyMaterial,
   getFileDownloadUrl,
-  checkUserAccess,
   updateProfileCache,
   getCurrentPlanName,
   getRemainingTokens,
 } from '../interceptors/services';
+import {
+  getDecryptedItem,
+} from '../utils/encryption';
 import { useSelection } from '../hooks/useSelection';
 import SelectionPopup from './SelectionPopup';
 import PdfViewer from './PdfViewer';
@@ -48,9 +50,8 @@ const StudyMaterials = () => {
   const fileInputRef = useRef(null);
   const [isNavigating, setIsNavigating] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-  const [remainingTokens, setRemainingTokens] = useState(1000);
+  const [remainingTokens, setRemainingTokens] = useState(100);
   const [currentPlan, setCurrentPlan] = useState('Free');
-  const [hasAccess, setHasAccess] = useState(true);
 
   // Define fetchItems with useCallback before using it in useEffect
   const fetchItems = useCallback(async () => {
@@ -132,11 +133,9 @@ const StudyMaterials = () => {
     const checkAccess = async () => {
       try {
         await updateProfileCache();
-        const access = checkUserAccess();
         const tokens = getRemainingTokens();
         const plan = getCurrentPlanName();
 
-        setHasAccess(access);
         setRemainingTokens(tokens);
         setCurrentPlan(plan);
       } catch (error) {
@@ -148,7 +147,47 @@ const StudyMaterials = () => {
   }, []);
 
   // Check if user can perform actions
-  const canPerformActions = hasAccess && remainingTokens > 0;
+  const canPerformActions = () => {
+    try {
+      const profile = getDecryptedItem('profile');
+      if (!profile) return false;
+
+      // First check if user has free tokens remaining
+      if (profile.total_tokens < 100) {
+        return true;
+      }
+
+      // If no free tokens, check paid subscription
+      if (profile.current_plan_id) {
+        const PLAN_IDS = {
+          PRO: import.meta.env.VITE_PRO_PLAN_ID,
+          PREMIUM: import.meta.env.VITE_PREMIUM_PLAN_ID,
+        };
+
+        // Check if user has an active paid plan
+        const hasPaidPlan = Object.values(PLAN_IDS).includes(
+          profile.current_plan_id
+        );
+
+        // Grant access if:
+        // 1. Has a valid plan
+        // 2. Payment is completed
+        // 3. Has remaining subscription days
+        if (
+          hasPaidPlan &&
+          profile.payment_status === 'completed' &&
+          profile.days_remaining > 0
+        ) {
+          return true;
+        }
+      }
+
+      return false;
+    } catch (error) {
+      console.error('Error checking access:', error);
+      return false;
+    }
+  };
 
   // Add UpgradeModal component
   const UpgradeModal = () => {
@@ -279,9 +318,9 @@ const StudyMaterials = () => {
     );
   };
 
-  // Modify handleCreateFolder to check access
+  // Modify handleCreateFolder to use new access check
   const handleCreateFolder = async () => {
-    if (!canPerformActions) {
+    if (!canPerformActions()) {
       setShowUpgradeModal(true);
       return;
     }
@@ -305,9 +344,14 @@ const StudyMaterials = () => {
       const tokens = getRemainingTokens();
       setRemainingTokens(tokens);
 
-      // Check if tokens are exhausted
-      if (tokens === 0 && currentPlan === 'Free') {
-        setHasAccess(false);
+      // Check if tokens are exhausted and user is on free plan
+      const profile = getDecryptedItem('profile');
+      if (
+        tokens === 0 &&
+        (!profile?.current_plan_id ||
+          profile?.payment_status !== 'completed' ||
+          profile?.days_remaining <= 0)
+      ) {
         setShowUpgradeModal(true);
       }
     } catch (error) {
@@ -315,9 +359,9 @@ const StudyMaterials = () => {
     }
   };
 
-  // Modify handleFileUpload to check access
+  // Modify handleFileUpload to use new access check
   const handleFileUpload = async (event) => {
-    if (!canPerformActions) {
+    if (!canPerformActions()) {
       setShowUpgradeModal(true);
       return;
     }
@@ -341,9 +385,7 @@ const StudyMaterials = () => {
           const currentProgress = prev[fileName];
           if (currentProgress < 90) {
             allNearComplete = false;
-            // Random increment between 2 and 15
             const increment = Math.floor(Math.random() * 13) + 2;
-            // Slower progress as we get closer to 90%
             const factor = Math.max(0.1, 1 - currentProgress / 100);
             const adjustedIncrement = increment * factor;
             newProgress[fileName] = Math.min(
@@ -359,14 +401,13 @@ const StudyMaterials = () => {
         }
         return newProgress;
       });
-    }, 300); // Slightly slower interval for more realistic feeling
+    }, 300);
 
     try {
       await uploadFiles(files, currentFolder.id, subject);
 
       // Simulate final progress to 100% with a slight delay
       const finalizeProgress = async () => {
-        // First set to 95%
         setUploadProgress((prev) => {
           const almostComplete = {};
           Object.keys(prev).forEach((fileName) => {
@@ -375,7 +416,6 @@ const StudyMaterials = () => {
           return almostComplete;
         });
 
-        // Wait a moment then set to 100%
         await new Promise((resolve) => setTimeout(resolve, 400));
 
         setUploadProgress((prev) => {
@@ -386,7 +426,6 @@ const StudyMaterials = () => {
           return complete;
         });
 
-        // Wait a moment to show 100% completion
         await new Promise((resolve) => setTimeout(resolve, 500));
 
         setIsUploading(false);
@@ -402,21 +441,25 @@ const StudyMaterials = () => {
       const tokens = getRemainingTokens();
       setRemainingTokens(tokens);
 
-      // Check if tokens are exhausted
-      if (tokens === 0 && currentPlan === 'Free') {
-        setHasAccess(false);
+      // Check if tokens are exhausted and user is on free plan
+      const profile = getDecryptedItem('profile');
+      if (
+        tokens === 0 &&
+        (!profile?.current_plan_id ||
+          profile?.payment_status !== 'completed' ||
+          profile?.days_remaining <= 0)
+      ) {
         setShowUpgradeModal(true);
       }
     } catch (error) {
       message.error(error.message || 'Failed to upload file');
-      clearInterval(progressInterval);
-      setIsUploading(false);
-      setUploadProgress({});
     } finally {
       clearInterval(progressInterval);
       if (event.target) {
         event.target.value = '';
       }
+      setIsUploading(false);
+      setUploadProgress({});
     }
   };
 
@@ -870,14 +913,14 @@ const StudyMaterials = () => {
               <div className="flex items-center gap-3 w-full sm:w-auto justify-center sm:justify-end">
                 <button
                   onClick={() =>
-                    canPerformActions
+                    canPerformActions()
                       ? setIsCreatingFolder(true)
                       : setShowUpgradeModal(true)
                   }
                   className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200 border text-sm font-medium justify-center flex-1 sm:flex-initial
-                    ${canPerformActions ? 'bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white border-gray-700 hover:border-gray-600 hover:shadow-lg' : 'bg-gray-800/50 text-gray-500 border-gray-800 cursor-not-allowed'}`}
+                    ${canPerformActions() ? 'bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white border-gray-700 hover:border-gray-600 hover:shadow-lg' : 'bg-gray-800/50 text-gray-500 border-gray-800 cursor-not-allowed'}`}
                   title={
-                    canPerformActions
+                    canPerformActions()
                       ? 'Create Folder'
                       : 'Upgrade to create folders'
                   }
@@ -887,14 +930,14 @@ const StudyMaterials = () => {
                 </button>
                 <button
                   onClick={() =>
-                    canPerformActions
+                    canPerformActions()
                       ? fileInputRef.current?.click()
                       : setShowUpgradeModal(true)
                   }
                   className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200 border text-sm font-medium justify-center flex-1 sm:flex-initial
-                    ${canPerformActions ? 'bg-blue-600 hover:bg-blue-500 text-white border-blue-500 hover:border-blue-400 hover:shadow-lg' : 'bg-blue-900/20 text-blue-300/50 border-blue-900/50 cursor-not-allowed'}`}
+                    ${canPerformActions() ? 'bg-blue-600 hover:bg-blue-500 text-white border-blue-500 hover:border-blue-400 hover:shadow-lg' : 'bg-blue-900/20 text-blue-300/50 border-blue-900/50 cursor-not-allowed'}`}
                   title={
-                    canPerformActions
+                    canPerformActions()
                       ? 'Upload Files'
                       : 'Upgrade to upload files'
                   }

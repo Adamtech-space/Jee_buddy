@@ -1,4 +1,4 @@
-import apiInstance from "./axios.jsx";
+import apiInstance from './axios.jsx';
 import {
   setEncryptedItem,
   getDecryptedItem,
@@ -8,9 +8,8 @@ import {
 // User authentication services
 export const userLogin = async (data) => {
   try {
-    
-    const response = await apiInstance.post("/auth/login", data);
-    
+    const response = await apiInstance.post('/auth/login', data);
+
     if (response.data.tokens && response.data.user) {
       // Store tokens and user data with encryption
       setEncryptedItem('tokens', response.data.tokens);
@@ -27,79 +26,91 @@ export const userLogin = async (data) => {
     console.error('Login error:', {
       message: error.message,
       response: error.response?.data,
-      status: error.response?.status
+      status: error.response?.status,
     });
-    
+
     if (error.response?.data) {
       throw error.response.data;
     } else if (error.message.includes('Network Error')) {
-      throw { message: 'Unable to connect to server. Please check your internet connection.' };
+      throw {
+        message:
+          'Unable to connect to server. Please check your internet connection.',
+      };
     }
-    throw { message: error.message || "Login failed. Please try again." };
+    throw { message: error.message || 'Login failed. Please try again.' };
   }
 };
 
 export const userRegister = async (data) => {
   try {
-    const response = await apiInstance.post("/auth/register", data);
+    const response = await apiInstance.post('/auth/register', data);
     if (response.data.tokens) {
       setEncryptedItem('tokens', response.data.tokens);
       setEncryptedItem('user', response.data.user);
     }
     return response.data;
   } catch (error) {
-    throw error.response?.data || { message: "Registration failed" };
+    throw error.response?.data || { message: 'Registration failed' };
   }
 };
 
 export const googleSignIn = async () => {
   try {
-    const response = await apiInstance.get("/auth/google");
+    const response = await apiInstance.get('/auth/google');
     return response.data;
   } catch (error) {
-    throw error.response?.data || { message: "Failed to initiate Google sign in" };
+    throw (
+      error.response?.data || { message: 'Failed to initiate Google sign in' }
+    );
   }
 };
 
 export const handleGoogleCallback = async (code) => {
   try {
-    const response = await apiInstance.get(`/auth/google/callback?code=${code}`);
+    const response = await apiInstance.get(
+      `/auth/google/callback?code=${code}`
+    );
     if (response.data.tokens) {
       setEncryptedItem('tokens', response.data.tokens);
       return response.data;
     }
-    throw new Error("No tokens received");
+    throw new Error('No tokens received');
   } catch (error) {
-    throw error.response?.data || { message: "Failed to complete Google sign in" };
+    throw (
+      error.response?.data || { message: 'Failed to complete Google sign in' }
+    );
   }
 };
 
 export const forgotPassword = async (email) => {
   try {
-    const response = await apiInstance.post("/auth/forgot-password", { email });
+    const response = await apiInstance.post('/auth/forgot-password', { email });
     return response.data;
   } catch (error) {
-    throw error.response?.data || { message: "Failed to send reset email" };
+    throw error.response?.data || { message: 'Failed to send reset email' };
   }
 };
 
 export const resetPassword = async (token, password) => {
   try {
-    const response = await apiInstance.post(`/auth/reset-password?token=${token}`, { password });
+    const response = await apiInstance.post(
+      `/auth/reset-password?token=${token}`,
+      { password }
+    );
     return response.data;
   } catch (error) {
-    throw error.response?.data || { message: "Password reset failed" };
+    throw error.response?.data || { message: 'Password reset failed' };
   }
 };
 
 export const logout = async () => {
   try {
-    await apiInstance.post("/auth/logout");
+    await apiInstance.post('/auth/logout');
     removeItem('tokens');
-    window.location.href = "/login";
+    window.location.href = '/login';
   } catch {
     removeItem('tokens');
-    window.location.href = "/login";
+    window.location.href = '/login';
   }
 };
 
@@ -126,11 +137,11 @@ export const getBooksList = async (subject, topic) => {
     const params = new URLSearchParams();
     if (subject) params.append('subject', subject);
     if (topic) params.append('topic', topic);
-    
+
     const response = await apiInstance.get(`/books?${params.toString()}`);
     return response.data;
   } catch (error) {
-    throw error.response?.data || { message: "Failed to fetch books" };
+    throw error.response?.data || { message: 'Failed to fetch books' };
   }
 };
 
@@ -139,7 +150,7 @@ export const getBookById = async (bookId) => {
     const response = await apiInstance.get(`/books/${bookId}`);
     return response.data;
   } catch (error) {
-    throw error.response?.data || { message: "Failed to fetch book details" };
+    throw error.response?.data || { message: 'Failed to fetch book details' };
   }
 };
 
@@ -155,17 +166,24 @@ export const saveFlashCard = async (data) => {
 };
 
 export const getFlashCards = async (subject) => {
-  const response = await apiInstance.get(`/flashcards/getFlashCards?subject=${subject}`);
+  const response = await apiInstance.get(
+    `/flashcards/getFlashCards?subject=${subject}`
+  );
   return response.data;
 };
 
 export const updateFlashCard = async (cardId, data) => {
-  const response = await apiInstance.put(`/flashcards/updateFlashCard/${cardId}`, data);
+  const response = await apiInstance.put(
+    `/flashcards/updateFlashCard/${cardId}`,
+    data
+  );
   return response.data;
 };
 
 export const deleteFlashCard = async (cardId) => {
-  const response = await apiInstance.delete(`/flashcards/deleteFlashCard/${cardId}`);
+  const response = await apiInstance.delete(
+    `/flashcards/deleteFlashCard/${cardId}`
+  );
   return response.data;
 };
 
@@ -196,8 +214,6 @@ export const uploadFiles = async (files, parentId, subject) => {
     }
     formData.append('subject', subject);
 
-   
-
     const response = await apiInstance.post(
       '/study-materials/files',
       formData,
@@ -219,13 +235,10 @@ export const getStudyMaterials = async (parentId, subject) => {
     if (parentId) params.append('parentId', parentId);
     params.append('subject', subject); // Always include subject
 
-    
     const response = await apiInstance.get(
       `/study-materials?${params.toString()}`
     );
-    
-    
-    
+
     return response.data;
   } catch (error) {
     console.error('Error fetching study materials:', error);
@@ -246,7 +259,9 @@ export const deleteStudyMaterial = async (itemId) => {
 
 export const renameStudyMaterial = async (itemId, name) => {
   try {
-    const response = await apiInstance.put(`/study-materials/${itemId}`, { name });
+    const response = await apiInstance.put(`/study-materials/${itemId}`, {
+      name,
+    });
     return response.data;
   } catch (error) {
     throw error.response?.data || { message: 'Failed to rename item' };
@@ -255,7 +270,9 @@ export const renameStudyMaterial = async (itemId, name) => {
 
 export const getFileDownloadUrl = async (itemId) => {
   try {
-    const response = await apiInstance.get(`/study-materials/files/${itemId}/download`);
+    const response = await apiInstance.get(
+      `/study-materials/files/${itemId}/download`
+    );
     return response.data;
   } catch (error) {
     throw error.response?.data || { message: 'Failed to get download URL' };
@@ -285,27 +302,41 @@ export const getProfile = async () => {
 export const checkUserAccess = () => {
   try {
     const profile = getDecryptedItem('profile');
+    console.log(profile);
     if (!profile) return false;
 
-    // If user has any paid plan, they have access
+    // First check if user has free tokens remaining
+    if (profile.total_tokens < 100) {
+      return true;
+    }
+
+    // If no free tokens, check paid subscription
     if (profile.current_plan_id) {
       const PLAN_IDS = {
-        BASIC: import.meta.env.VITE_BASIC_PLAN_ID,
-        PREMIUM: import.meta.env.VITE_PREMIUM_PLAN_ID
+        PRO: import.meta.env.VITE_PRO_PLAN_ID,
+        PREMIUM: import.meta.env.VITE_PREMIUM_PLAN_ID,
       };
 
       // Check if user has an active paid plan
-      const hasPaidPlan = Object.values(PLAN_IDS).includes(profile.current_plan_id);
-      
-      // If user has paid plan and payment status is completed, grant access
+      const hasPaidPlan = Object.values(PLAN_IDS).includes(
+        profile.current_plan_id
+      );
 
-      if (hasPaidPlan && profile.payment_status === 'completed') {
+      // Grant access if:
+      // 1. Has a valid plan
+      // 2. Payment is completed
+      // 3. Has remaining subscription days
+      if (
+        hasPaidPlan &&
+        profile.payment_status === 'completed' &&
+        profile.days_remaining > 0
+      ) {
         return true;
       }
     }
 
-    // If no paid plan, check token limit
-    return profile.total_tokens < 100;
+    // Deny access if no free tokens and no valid subscription
+    return false;
   } catch (error) {
     console.error('Error checking user access:', error);
     return false;
@@ -334,13 +365,13 @@ export const getCurrentPlanName = () => {
     if (!profile?.current_plan_id) return 'Free';
 
     const PLAN_IDS = {
-      BASIC: import.meta.env.VITE_BASIC_PLAN_ID,
-      PREMIUM: import.meta.env.VITE_PREMIUM_PLAN_ID
+      PRO: import.meta.env.VITE_PRO_PLAN_ID,
+      PREMIUM: import.meta.env.VITE_PREMIUM_PLAN_ID,
     };
 
     switch (profile.current_plan_id) {
-      case PLAN_IDS.BASIC:
-        return 'Basic';
+      case PLAN_IDS.PRO:
+        return 'Pro';
       case PLAN_IDS.PREMIUM:
         return 'Premium';
       default:
@@ -363,4 +394,3 @@ export const getRemainingTokens = () => {
     return 0;
   }
 };
-
