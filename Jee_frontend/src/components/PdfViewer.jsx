@@ -63,6 +63,7 @@ const PdfViewer = ({ pdfUrl: propsPdfUrl, subject: propsSubject, onBack }) => {
       }
 
       // Set a new timer to handle the selection
+      const debounceTime = isMobile ? 100 : 250;
       selectionTimerRef.current = setTimeout(() => {
         const selection = window.getSelection();
         const selectedText = selection?.toString()?.trim();
@@ -140,7 +141,7 @@ const PdfViewer = ({ pdfUrl: propsPdfUrl, subject: propsSubject, onBack }) => {
 
         // Pass selection position to handleTextSelection
         handleTextSelection(e, processedText, position);
-      }, 250); // Increased debounce time for better control
+      }, debounceTime); // Adjusted debounce time based on device
     },
     [loading, isAreaSelecting, handleTextSelection, isMobile]
   );
@@ -526,7 +527,15 @@ const PdfViewer = ({ pdfUrl: propsPdfUrl, subject: propsSubject, onBack }) => {
       <div
         ref={containerRef}
         onMouseUp={handleSelection}
-        onTouchEnd={handleSelection}
+        onTouchEnd={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          handleSelection(e);
+        }}
+        onTouchStart={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+        }}
         onContextMenu={(e) => e.preventDefault()}
         className={`no-native-callout absolute inset-0 bg-gray-900 ${
           isMobile ? "overflow-hidden" : "overflow-auto scroll-smooth"

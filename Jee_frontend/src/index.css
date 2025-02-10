@@ -89,14 +89,13 @@ body {
 }
 
 .no-native-callout {
-  -webkit-touch-callout: none; /* Disables iOS native menu */
-  -webkit-user-select: text;   /* Allow text selection */
+  -webkit-touch-callout: none;
+  -webkit-user-select: text;
   -khtml-user-select: text;
   -moz-user-select: text;
   -ms-user-select: text;
   user-select: text;
-  touch-action: none;          /* Prevents long-press default actions */
-  -ms-touch-action: none;
+  touch-action: none;
 }
 
 .custom-selection-popup {
@@ -111,6 +110,14 @@ body {
   position: fixed;
   z-index: 99999;
   transition: opacity 0.15s ease-out;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.custom-selection-popup button {
+  -webkit-touch-callout: none;
+  user-select: auto;
+  touch-action: manipulation;
 }
 
 @media (max-width: 768px) {

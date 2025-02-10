@@ -1,6 +1,7 @@
 import PropTypes from 'prop-types';
 import { useSelection } from '../hooks/useSelection';
 import { useRef, useLayoutEffect, useState, useEffect } from 'react';
+import { SaveOutlined, QuestionCircleOutlined } from '@ant-design/icons';
 
 const SelectionPopup = ({ onSaveToFlashCard, onAskAI, isMobile }) => {
   const {
@@ -14,19 +15,60 @@ const SelectionPopup = ({ onSaveToFlashCard, onAskAI, isMobile }) => {
   const popupRef = useRef(null);
   const [popupStyle, setPopupStyle] = useState({});
 
-  // Hide popup if no text is selected.
+  // Modified effect to handle mobile selection
   useEffect(() => {
-    const handleSelectionChange = () => {
-      const text = window.getSelection()?.toString();
-      if (!text || text.trim() === '') {
-        setShowPopup(false);
-        setSelectionPosition(null);
-      }
+    const handleSelection = () => {
+      // Use requestAnimationFrame to ensure selection is ready
+      requestAnimationFrame(() => {
+        const selection = window.getSelection();
+        if (!selection || selection.rangeCount < 1 || selection.isCollapsed) {
+          setShowPopup(false);
+          return;
+        }
+
+        try {
+          const range = selection.getRangeAt(0);
+          const rect = range.getBoundingClientRect();
+          
+          // Add safety check for valid dimensions
+          if (rect.width === 0 && rect.height === 0) {
+            setShowPopup(false);
+            return;
+          }
+
+          const position = {
+            x: rect.left + rect.width / 2 + window.scrollX,
+            y: rect.top + window.scrollY
+          };
+          
+          setSelectionPosition(position);
+          setShowPopup(true);
+        } catch (error) {
+          console.log('Selection error:', error);
+          setShowPopup(false);
+        }
+      });
     };
 
-    document.addEventListener('selectionchange', handleSelectionChange);
+    const handleTouchEnd = (e) => {
+      e.preventDefault();
+      // Add small delay for Android selection stability
+      setTimeout(handleSelection, 50);
+    };
+
+    // Add context menu prevention for Android
+    const preventContextMenu = (e) => {
+      e.preventDefault();
+    };
+
+    document.addEventListener('mouseup', handleSelection);
+    document.addEventListener('touchend', handleTouchEnd);
+    document.addEventListener('contextmenu', preventContextMenu);
+
     return () => {
-      document.removeEventListener('selectionchange', handleSelectionChange);
+      document.removeEventListener('mouseup', handleSelection);
+      document.removeEventListener('touchend', handleTouchEnd);
+      document.removeEventListener('contextmenu', preventContextMenu);
     };
   }, [setShowPopup, setSelectionPosition]);
 
@@ -43,54 +85,49 @@ const SelectionPopup = ({ onSaveToFlashCard, onAskAI, isMobile }) => {
     });
   }, [selectionPosition]);
 
-  // Button click handlers.
-  const handleAIClick = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const text = window.getSelection()?.toString();
-    if (text) {
-      setShowPopup(false);
-      onAskAI(text);
-    }
-  };
-
-  const handleSaveClick = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const text = window.getSelection()?.toString();
-    if (text) {
-      setShowPopup(false);
-      onSaveToFlashCard(text);
-    }
-  };
-
   if (!showPopup) return null;
 
   return (
     <div
       ref={popupRef}
-      onContextMenu={(e) => e.preventDefault()} // disable native context menu
-      className="custom-selection-popup"
+      className={`custom-selection-popup ${!showPopup ? 'opacity-0' : ''}`}
       style={{
         ...popupStyle,
-        opacity: showPopup ? 1 : 0,
-        pointerEvents: showPopup ? 'auto' : 'none',
+        transform: `translate(-50%, ${isMobile ? '-125%' : '-120%'})`,
       }}
     >
-      <button
-        onClick={handleAIClick}
-        onTouchEnd={handleAIClick}
-        className="flex items-center justify-center p-2 rounded-lg bg-purple-600/90 hover:bg-purple-700 text-white"
-      >
-        🤖 Ask AI
-      </button>
-      <button
-        onClick={handleSaveClick}
-        onTouchEnd={handleSaveClick}
-        className="flex items-center justify-center p-2 rounded-lg bg-green-600/90 hover:bg-green-700 text-white"
-      >
-        💾 Save
-      </button>
+      {/* Add selection arrow indicator */}
+      <div className="absolute bottom-[-8px] left-1/2 -translate-x-1/2 w-4 h-4">
+        <div className="w-3 h-3 bg-gray-800 rotate-45 transform origin-center" />
+      </div>
+
+      <div className="flex items-center gap-3 px-2 py-1.5 bg-gray-800 rounded-lg shadow-lg">
+        <button
+          onClick={(e) => {
+            e.preventDefault();
+            onAskAI(selectedText);
+            setShowPopup(false);
+          }}
+          className="p-1.5 hover:bg-gray-700 rounded-md transition-colors"
+          title="🤖Ask AI"
+        >🤖Ask AI
+        </button>
+        
+
+        <div className="h-5 w-px bg-gray-500" />
+
+        <button
+          onClick={(e) => {
+            e.preventDefault();
+            onSaveToFlashCard(selectedText);
+            setShowPopup(false);
+          }}
+          className="p-1.5 hover:bg-gray-700 rounded-md transition-colors"
+          title="Save to Flashcards"
+        >
+          <SaveOutlined className="text-sm text-green-400" /> <span>save</span> 
+        </button>
+      </div>
     </div>
   );
 };
