@@ -102,7 +102,7 @@ const AppRoutes = () => {
             isAuthenticated ? (
               <Navigate to="/subject-selection" replace />
             ) : (
-              <Jeebuddy />
+              <Navigate to="/register" replace />
             )
           }
         />
