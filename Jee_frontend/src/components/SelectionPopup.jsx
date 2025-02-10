@@ -110,7 +110,6 @@ const SelectionPopup = ({ onSaveToFlashCard, onAskAI, isMobile }) => {
   return (
     <div
       ref={popupRef}
-      // Disable the native context menu for text (copy/paste etc.)
       onContextMenu={(e) => e.preventDefault()}
       className={`selection-popup fixed z-[99999] transition-opacity duration-150 ${
         isMobile
@@ -122,13 +121,12 @@ const SelectionPopup = ({ onSaveToFlashCard, onAskAI, isMobile }) => {
         opacity: showPopup ? 1 : 0,
         pointerEvents: showPopup ? 'auto' : 'none',
         transition: 'opacity 0.15s ease-out',
-        WebkitTouchCallout: 'none', // Disables native touch callout.
+        WebkitTouchCallout: 'none',
         msTouchAction: 'none',
         touchAction: 'none',
       }}
     >
       {isMobile ? (
-        // Mobile: Display both the Ask AI and Save buttons, stacked vertically.
         <>
           <button
             onClick={handleAIClick}

@@ -525,20 +525,18 @@ const PdfViewer = ({ pdfUrl: propsPdfUrl, subject: propsSubject, onBack }) => {
       {/* PDF Viewer */}
       <div
         ref={containerRef}
+        onMouseUp={handleSelection}
+        onTouchEnd={handleSelection}
+        onContextMenu={(e) => {
+          e.preventDefault();
+        }}
         className={`absolute inset-0 bg-gray-900 ${
           isMobile ? "overflow-hidden" : "overflow-auto scroll-smooth"
         }`}
-        style={
-          isMobile
-            ? {} // No extra padding for mobile
-            : {
-                top: 0,
-                paddingTop: "1rem",
-                paddingBottom: "1rem",
-              }
-        }
-        onMouseUp={handleSelection}
-        onTouchEnd={handleSelection}
+        style={{
+          WebkitTouchCallout: 'none', // disables native selection pop-up on mobile
+          ...(isMobile ? {} : { top: 0, paddingTop: "1rem", paddingBottom: "1rem" })
+        }}
       >
         <Worker workerUrl="https://unpkg.com/pdfjs-dist@3.4.120/build/pdf.worker.min.js">
           <Viewer
