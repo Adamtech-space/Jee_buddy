@@ -2,13 +2,14 @@ import PropTypes from 'prop-types';
 import { useSelection } from '../hooks/useSelection';
 import { useRef, useLayoutEffect, useState, useEffect } from 'react';
 
-const SelectionPopup = ({ onSaveToFlashCard, onAskAI, position, isMobile }) => {
+const SelectionPopup = ({ onSaveToFlashCard, onAskAI, isMobile }) => {
   const {
     selectedText,
     selectionPosition,
     showPopup,
-    clearSelection,
     setSelectionPosition,
+
+
     setShowPopup,
   } = useSelection();
   const popupRef = useRef(null);
@@ -33,28 +34,28 @@ const SelectionPopup = ({ onSaveToFlashCard, onAskAI, position, isMobile }) => {
     };
   }, [setShowPopup, setSelectionPosition]);
 
-  // For desktop: update position based on the selected text.
-  const handleFinalSelection = () => {
-    if (isMobile) return; // Mobile uses fixed positioning.
-    requestAnimationFrame(() => {
-      try {
-        const selection = window.getSelection();
-        if (!selection || selection.rangeCount === 0) return;
-        const range = selection.getRangeAt(0);
-        const rect = range.getBoundingClientRect();
-        if (rect.width > 0 && rect.height > 0) {
-          setSelectionPosition({
-            x: rect.left + rect.width / 2,
-            y: rect.top - 10, // 10px above the selection.
-          });
-          setShowPopup(true);
-        }
-      } catch (err) {
-        console.error('Selection error:', err);
-        setShowPopup(false);
-      }
-    });
-  };
+  // // For desktop: update position based on the selected text.
+  // const handleFinalSelection = () => {
+  //   if (isMobile) return; // Mobile uses fixed positioning.
+  //   requestAnimationFrame(() => {
+  //     try {
+  //       const selection = window.getSelection();
+  //       if (!selection || selection.rangeCount === 0) return;
+  //       const range = selection.getRangeAt(0);
+  //       const rect = range.getBoundingClientRect();
+  //       if (rect.width > 0 && rect.height > 0) {
+  //         setSelectionPosition({
+  //           x: rect.left + rect.width / 2,
+  //           y: rect.top - 10, // 10px above the selection.
+  //         });
+  //         setShowPopup(true);
+  //       }
+  //     } catch (err) {
+  //       console.error('Selection error:', err);
+  //       setShowPopup(false);
+  //     }
+  //   });
+  // };
 
   // Position the popup.
   useLayoutEffect(() => {
