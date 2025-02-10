@@ -112,3 +112,10 @@ body {
   z-index: 99999;
   transition: opacity 0.15s ease-out;
 }
+
+@media (max-width: 768px) {
+  .custom-selection-popup {
+    padding: 4px 8px;
+    font-size: 12px;
+  }
+}
