@@ -87,45 +87,47 @@ const SelectionPopup = ({ onSaveToFlashCard, onAskAI, isMobile }) => {
     });
   }, [selectionPosition]);
 
+  // Modified mobile button handlers
+  const handleMobileAction = (handler) => {
+    return (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      
+      setTimeout(() => {
+        const selection = window.getSelection();
+        const selectedText = selection.toString().trim();
+        
+        if (!selectedText) {
+          message.warning('Please select some text first');
+          return;
+        }
+        
+        handler(selectedText);
+        // Don't clear selection here - let browser handle it
+        setShowPopup(false);
+      }, 100);
+    };
+  };
+
   if (!showPopup && !isMobile) return null;
 
   return isMobile ? (
-    <div className="fixed bottom-32 right-4 z-[60]">
+    <div className="fixed bottom-32 right-4 z-[60] touch-manipulation">
       <div className="flex flex-col gap-y-3 items-center">
         <button
-          onClick={(e) => {
-            e.preventDefault();
-            const selection = window.getSelection();
-            const selectedText = selection.toString().trim();
-            
-            if (!selectedText) {
-              message.warning('Please select some text first');
-              return;
-            }
-            onAskAI(selectedText);
-            setShowPopup(false);
-          }}
-          className="p-3 bg-gray-800 hover:bg-gray-700 rounded-lg shadow-lg transition-colors"
+          onClick={handleMobileAction(onAskAI)}
+          className="p-3 bg-gray-800 hover:bg-gray-700 rounded-lg shadow-lg transition-colors touch-manipulation"
           title="Ask AI"
+          style={{ WebkitTapHighlightColor: 'transparent' }}
         >
           🤖
         </button>
         
         <button
-          onClick={(e) => {
-            e.preventDefault();
-            const selection = window.getSelection();
-            const selectedText = selection.toString().trim();
-            
-            if (!selectedText) {
-              message.warning('Please select some text first');
-              return;
-            }
-            onSaveToFlashCard(selectedText);
-            setShowPopup(false);
-          }}
-          className="p-3 bg-gray-800 hover:bg-gray-700 rounded-lg shadow-lg transition-colors"
+          onClick={handleMobileAction(onSaveToFlashCard)}
+          className="p-3 bg-gray-800 hover:bg-gray-700 rounded-lg shadow-lg transition-colors touch-manipulation"
           title="Save to Flashcards"
+          style={{ WebkitTapHighlightColor: 'transparent' }}
         >
           <SaveOutlined className="text-base text-green-400" />
         </button>

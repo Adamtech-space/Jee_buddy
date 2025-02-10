@@ -112,6 +112,8 @@ body {
   transition: opacity 0.15s ease-out;
   touch-action: none;
   -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-touch-callout: none;
 }
 
 .custom-selection-popup button {
@@ -124,5 +126,19 @@ body {
   .custom-selection-popup {
     padding: 4px 8px;
     font-size: 12px;
+  }
+}
+
+/* Prevent native text selection toolbar */
+::selection {
+  background: rgba(0, 123, 255, 0.2);
+  color: inherit;
+}
+
+/* Disable Google search popup */
+@media (hover: none) and (pointer: coarse) {
+  * {
+    -webkit-touch-callout: none !important;
+    -webkit-user-select: text !important;
   }
 }
