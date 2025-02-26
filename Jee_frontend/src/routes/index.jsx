@@ -13,7 +13,7 @@ import Jeebuddy from '../landingPage/JeeBuddy';
 
 // Auth Pages
 import Login from '../pages/Login';
-import Register from '../pages/Register';
+// import Register from '../pages/Register';
 import ForgotPassword from '../pages/ForgotPassword';
 import SubjectSelection from '../pages/SubjectSelection';
 import AuthCallback from '../pages/auth/callback';
@@ -102,7 +102,7 @@ const AppRoutes = () => {
             isAuthenticated ? (
               <Navigate to="/subject-selection" replace />
             ) : (
-              <Navigate to="/register" replace />
+              <Jeebuddy />
             )
           }
         />
@@ -124,7 +124,7 @@ const AppRoutes = () => {
             isAuthenticated ? (
               <Navigate to="/subject-selection" replace />
             ) : (
-              <Register />
+              <Jeebuddy />
             )
           }
         />

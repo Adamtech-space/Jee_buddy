@@ -50,9 +50,13 @@ const Navbar = () => {
                     to={`#${item.toLowerCase()}`}
                     onClick={(e) => {
                       e.preventDefault();
-                      document
-                        .getElementById(item.toLowerCase())
-                        .scrollIntoView({ behavior: 'smooth' });
+                      const element = document.getElementById(item.toLowerCase());
+                      if (element) {
+                        element.scrollIntoView({ 
+                          behavior: 'smooth',
+                          block: 'start'  
+                        });
+                      }
                     }}
                     className={`text-sm font-medium transition-all duration-300
                     ${

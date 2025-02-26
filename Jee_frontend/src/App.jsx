@@ -92,7 +92,7 @@ const App = () => {
         <LoadingProvider>
           <AuthProvider>
             <SubscriptionProvider>
-              <div className="min-h-screen bg-gray-900 text-white">
+              <div className="min-h-screen">
                 <AppRoutes />
               </div>
             </SubscriptionProvider>

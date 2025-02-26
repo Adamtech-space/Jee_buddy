@@ -1,8 +1,10 @@
 import { useState, useRef, useEffect, useCallback, memo } from 'react';
+import PropTypes from 'prop-types';
+import FluidBackground from '../../UI/FluidBackground';
 
 const Demo2 = () => {
   // Move input state to a separate component to isolate re-renders
-  const ChatInput = memo(({ onSubmit: handleSubmit }) => {
+  const ChatInput = memo(function ChatInput({ onSubmit: handleSubmit }) {
     const [inputValue, setInputValue] = useState('');
     const inputRef = useRef(null);
 
@@ -24,18 +26,18 @@ const Demo2 = () => {
           type="text"
           value={inputValue}
           onChange={handleInputChange}
-          className="flex-1 bg-[#1f1029]/40 border border-[#4a1942]/50 rounded-xl px-4 sm:px-6 py-2 sm:py-3
+          className="flex-1 rounded-xl px-4 sm:px-6 py-2 sm:py-3
                    text-gray-200 placeholder-gray-400 text-sm sm:text-base
-                   focus:outline-none focus:border-[#6366f1]/50 focus:ring-2 focus:ring-[#6366f1]/20 
+                   focus:outline-none focus:border-[#3b82f6]/50 focus:ring-2 focus:ring-[#3b82f6]/20 
                    transition-colors"
           placeholder="Type what you need"
           required
         />
         <button
           type="submit"
-          className="whitespace-nowrap bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] text-white 
+          className="whitespace-nowrap bg-gradient-to-r from-[#3b82f6] to-[#0ea5e9] text-white 
                    px-4 sm:px-8 py-2 sm:py-3 text-sm sm:text-base
-                   rounded-xl hover:from-[#5558e6] hover:to-[#7c4feb]
+                   rounded-xl hover:from-[#2563eb] hover:to-[#0284c7]
                    transition-all duration-300 ease-in-out transform hover:scale-105
                    shadow-md hover:shadow-lg min-w-[80px] sm:min-w-[100px]"
         >
@@ -44,6 +46,12 @@ const Demo2 = () => {
       </form>
     );
   });
+
+  ChatInput.propTypes = {
+    onSubmit: PropTypes.func.isRequired
+  };
+
+  ChatInput.displayName = 'ChatInput';
 
   // Main component state
   const [messages, setMessages] = useState([
@@ -55,7 +63,6 @@ const Demo2 = () => {
   
   const messagesEndRef = useRef(null);
   const [isTyping, setIsTyping] = useState(false);
-  const [isShowingSteps, setIsShowingSteps] = useState(false);
 
   // Handle message submission
   const handleSubmit = useCallback((message) => {
@@ -75,22 +82,31 @@ const Demo2 = () => {
   }, []);
 
   // Memoize the chat message component
-  const ChatMessage = memo(({ message, index }) => (
+  const ChatMessage = memo(({ message }) => (
     <div
       className={`chat-message ${message.type} mb-4 p-3 sm:p-4 rounded-xl backdrop-blur-lg message-appear
         ${
           message.type === 'user'
-            ? 'bg-gradient-to-r from-[#6366f1]/80 to-[#8b5cf6]/80 text-white border border-[#6366f1]/50 ml-auto max-w-[80%]'
-            : 'bg-[#2d1635]/60 border border-[#4a1942]/50 max-w-[80%] text-gray-200'
+            ? 'bg-gradient-to-r from-[#3b82f6]/80 to-[#0ea5e9]/80 text-white border border-[#3b82f6]/50 ml-auto max-w-[80%]'
+            : 'bg-[#0f172a]/60 border border-[#1e3a8a]/50 max-w-[80%] text-gray-200'
         }`}
     >
       {message.content}
     </div>
   ));
 
+  ChatMessage.propTypes = {
+    message: PropTypes.shape({
+      type: PropTypes.string.isRequired,
+      content: PropTypes.string.isRequired
+    }).isRequired
+  };
+
+  ChatMessage.displayName = 'ChatMessage';
+
   // Memoize the typing indicator
   const TypingIndicator = memo(() => (
-    <div className="chat-message assistant mb-4 p-3 sm:p-4 rounded-xl backdrop-blur-lg bg-[#2d1635]/60 border border-[#4a1942]/50 max-w-[80%] text-gray-200">
+    <div className="chat-message assistant mb-4 p-3 sm:p-4 rounded-xl backdrop-blur-lg bg-[#0f172a]/60 border border-[#1e3a8a]/50 max-w-[80%] text-gray-200">
       <div className="typing-indicator">
         <span></span>
         <span></span>
@@ -98,6 +114,8 @@ const Demo2 = () => {
       </div>
     </div>
   ));
+
+  TypingIndicator.displayName = 'TypingIndicator';
 
   // Optimize scroll handling
   const scrollToBottom = useCallback(() => {
@@ -115,6 +133,70 @@ const Demo2 = () => {
     const timeoutId = setTimeout(scrollToBottom, 100);
     return () => clearTimeout(timeoutId);
   }, [messages, scrollToBottom]);
+
+  // Add CSS for typing animation
+  useEffect(() => {
+    const styleSheet = document.createElement("style");
+    styleSheet.textContent = `
+      .typing-indicator {
+        display: flex;
+        gap: 4px;
+        padding: 4px 8px;
+      }
+      
+      .typing-indicator span {
+        width: 8px;
+        height: 8px;
+        background-color: #3b82f6;
+        border-radius: 50%;
+        animation: typing 1.4s infinite ease-in-out;
+        opacity: 0.4;
+      }
+      
+      .typing-indicator span:nth-child(1) {
+        animation-delay: 0s;
+      }
+      
+      .typing-indicator span:nth-child(2) {
+        animation-delay: 0.2s;
+      }
+      
+      .typing-indicator span:nth-child(3) {
+        animation-delay: 0.4s;
+      }
+      
+      @keyframes typing {
+        0%, 100% {
+          transform: scale(1);
+          opacity: 0.4;
+        }
+        50% {
+          transform: scale(1.2);
+          opacity: 1;
+        }
+      }
+      
+      .message-appear {
+        animation: messageAppear 0.3s ease-out;
+      }
+      
+      @keyframes messageAppear {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+    `;
+    document.head.appendChild(styleSheet);
+    
+    return () => {
+      document.head.removeChild(styleSheet);
+    };
+  }, []);
 
   const helpButtons = [
     { type: 'explain', icon: '📝', text: 'Step-by-Step' },
@@ -364,18 +446,19 @@ const Demo2 = () => {
   };
 
   return (
-    <section className="relative py-10 overflow-hidden">
+    <section id="demo" className="relative py-10 overflow-hidden">
+      <FluidBackground />
       <div className="container mx-auto px-4 relative">
-        <h2 className="text-4xl font-bold text-center mb-12 bg-clip-text text-transparent bg-gradient-to-r from-[#6366f1] to-[#8b5cf6]">
+        <h2 className="text-4xl font-bold text-center mb-12 bg-clip-text text-transparent bg-gradient-to-r from-[#3b82f6] to-[#0ea5e9]">
           Test your AI teacher now
         </h2>
         <div className="max-w-4xl mx-auto">
-          <div className="backdrop-blur-lg bg-[#2d1635]/40 rounded-2xl border border-[#4a1942]/50 shadow-xl">
+          <div className="backdrop-blur-lg bg-[#0f172a]/40 rounded-2xl border border-[#1e3a8a]/50 shadow-xl">
             <div className="p-4 sm:p-8">
               <div className="mb-8">
-                <div className="backdrop-blur-lg bg-[#1f1029]/40 rounded-xl border border-[#4a1942]/50 mb-6">
+                <div className="backdrop-blur-lg bg-[#0f172a]/40 rounded-xl border border-[#1e3a8a]/50 mb-6">
                   <div className="p-4 sm:p-6">
-                    <h6 className="text-lg font-semibold mb-3 text-[#6366f1]">
+                    <h6 className="text-lg font-semibold mb-3 text-[#3b82f6]">
                       Sample JEE Math Problem:
                     </h6>
                     <p className="text-gray-200" id="math-problem">
@@ -387,8 +470,8 @@ const Demo2 = () => {
                   {helpButtons.map((button) => (
                     <button
                       key={button.type}
-                      className="help-btn px-3 sm:px-4 py-2 rounded-lg bg-[#1f1029]/40 border border-[#4a1942]/50 
-                               text-gray-200 hover:bg-[#2d1635]/60 hover:border-[#6366f1]/50 hover:text-[#8b5cf6]
+                      className="help-btn px-3 sm:px-4 py-2 rounded-lg bg-[#0f172a]/40 border border-[#1e3a8a]/50 
+                               text-gray-200 hover:bg-[#0f172a]/60 hover:border-[#3b82f6]/50 hover:text-[#3b82f6]
                                transition-all duration-300 ease-in-out transform hover:scale-105
                                shadow-sm hover:shadow-md text-sm sm:text-base"
                       onClick={() => handleHelpClick(button.type)}
@@ -401,11 +484,11 @@ const Demo2 = () => {
               </div>
               <div className="chat-container">
                 <div
-                  className="chat-messages bg-[#1f1029]/40 border border-[#4a1942]/50 rounded-xl p-4 sm:p-6 h-[40vh] 
-                          overflow-y-auto mb-4 sm:mb-6 scrollbar-thin scrollbar-thumb-[#6366f1] scrollbar-track-[#2d1635]"
+                  className="chat-messages bg-[#0f172a]/40 border border-[#1e3a8a]/50 rounded-xl p-4 sm:p-6 h-[40vh] 
+                          overflow-y-auto mb-4 sm:mb-6 scrollbar-thin scrollbar-thumb-[#3b82f6] scrollbar-track-[#0f172a]"
                 >
                   {messages.map((message, index) => (
-                    <ChatMessage key={index} message={message} index={index} />
+                    <ChatMessage key={index} message={message} />
                   ))}
                   {isTyping && <TypingIndicator />}
                   <div ref={messagesEndRef} />
@@ -418,67 +501,6 @@ const Demo2 = () => {
       </div>
     </section>
   );
-};
-
-// Add CSS for typing animation
-const typingAnimationStyles = `
-.typing-indicator {
-  display: flex;
-  gap: 4px;
-  padding: 4px 8px;
 }
-
-.typing-indicator span {
-  width: 8px;
-  height: 8px;
-  background-color: #6366f1;
-  border-radius: 50%;
-  animation: typing 1.4s infinite ease-in-out;
-  opacity: 0.4;
-}
-
-.typing-indicator span:nth-child(1) {
-  animation-delay: 0s;
-}
-
-.typing-indicator span:nth-child(2) {
-  animation-delay: 0.2s;
-}
-
-.typing-indicator span:nth-child(3) {
-  animation-delay: 0.4s;
-}
-
-@keyframes typing {
-  0%, 100% {
-    transform: scale(1);
-    opacity: 0.4;
-  }
-  50% {
-    transform: scale(1.2);
-    opacity: 1;
-  }
-}
-
-.message-appear {
-  animation: messageAppear 0.3s ease-out;
-}
-
-@keyframes messageAppear {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-`;
-
-// Add the styles to the document
-const styleSheet = document.createElement("style");
-styleSheet.textContent = typingAnimationStyles;
-document.head.appendChild(styleSheet);
 
 export default memo(Demo2);

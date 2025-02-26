@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
+import FluidBackground from '../../UI/FluidBackground';
 
 const Hero = () => {
   const [isVisible, setIsVisible] = useState(false);
@@ -26,6 +27,7 @@ const Hero = () => {
       id="home"
       className="relative min-h-[55vh] flex items-center overflow-hidden"
     >
+      <FluidBackground />
       <div className="container mx-auto px-4 relative pt-12">
         <div className="max-w-4xl mx-auto text-center">
           <motion.h1
@@ -98,7 +100,7 @@ const Hero = () => {
           </div>
         </div>
       </div>
-    </section>
+    </section>    
   );
 };
 

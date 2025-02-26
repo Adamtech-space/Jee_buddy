@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
 import { useInView } from 'react-intersection-observer';
+import FluidBackground from '../../UI/FluidBackground';
 
 const Pricing = () => {
   const [ref, inView] = useInView({
@@ -35,6 +36,7 @@ const Pricing = () => {
 
   return (
     <section id="pricing" className="relative py-20 overflow-hidden">
+      <FluidBackground />
       <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/30" />
 
       <div className="container mx-auto px-4 relative">

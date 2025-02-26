@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
 import { useInView } from 'react-intersection-observer';
+import FluidBackground from '../../UI/FluidBackground';
 
 const Resources = () => {
   const resources = [
@@ -93,6 +94,7 @@ const Resources = () => {
       id="resources"
       className="relative py-20 overflow-hidden bg-transparent"
     >
+      <FluidBackground />
       <div className="container mx-auto px-4 relative">
         <motion.div
           initial={{ opacity: 0, y: 20 }}

@@ -18,6 +18,7 @@ body {
   margin: 0;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
     Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  overscroll-behavior: none;
 }
 
 .hero-section {
@@ -144,4 +145,36 @@ body {
     -webkit-user-select: text !important;
     user-select: text !important;
   }
+}
+
+/* Add to your global CSS */
+.fluid-container {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+/* Prevent body scrolling issues */
+html, body {
+  overscroll-behavior-x: none;
+}
+
+/* Add these optimizations for smoother animations */
+@keyframes fluid-animation {
+  0% {
+    transform: translateZ(0) scale(1.01);
+  }
+  50% {
+    transform: translateZ(0) scale(1);
+  }
+  100% {
+    transform: translateZ(0) scale(1.01);
+  }
+}
+
+#fluid {
+  will-change: transform;
+  animation: fluid-animation 20s infinite ease-in-out;
+  backface-visibility: hidden;
+  transform: translateZ(0);
+  transform-style: preserve-3d;
 }

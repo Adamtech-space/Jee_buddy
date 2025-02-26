@@ -1,6 +1,9 @@
+import FluidBackground from '../../UI/FluidBackground';
+
 const About = () => {
   return (
-    <section id="about" className="py-20">
+    <section id="about" className="relative py-20 overflow-hidden">
+      <FluidBackground />
       <div className="container mx-auto px-4">
         <div className="max-w-3xl mx-auto text-center">
           <h2 className="text-3xl font-bold mb-8">About Us</h2>

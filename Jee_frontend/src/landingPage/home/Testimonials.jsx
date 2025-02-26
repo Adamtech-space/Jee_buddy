@@ -3,6 +3,7 @@ import { useInView } from 'react-intersection-observer';
 import pic1 from '../images/pic1.png';
 import pic2 from '../images/pic2.png';
 import pic3 from '../images/pic3.png';
+import FluidBackground from '../../UI/FluidBackground';
 
 const Testimonials = () => {
   const testimonials = [
@@ -30,6 +31,7 @@ const Testimonials = () => {
 
   return (
     <section id="testimonials" className="relative overflow-hidden">
+      <FluidBackground />
       <div className="container mx-auto px-4 relative">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
