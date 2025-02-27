@@ -9,6 +9,7 @@ const Features = lazy(() => import('./home/Features'));
 const Demo2 = lazy(() => import('./home/Demo2'));
 const Resources = lazy(() => import('./home/Resources'));
 const Testimonials = lazy(() => import('./home/Testimonials'));
+const Blog = lazy(() => import('./home/BlogPage'));
 // const Pricing = lazy(() => import('./home/Pricing'));
 
 const JeeBuddy = () => {
@@ -23,6 +24,7 @@ const JeeBuddy = () => {
           <Resources />
           <Demo2 />
           <Testimonials />
+          <Blog />
           {/* <Pricing /> */}
         </Suspense>
       </main>

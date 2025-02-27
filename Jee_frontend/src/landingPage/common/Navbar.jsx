@@ -43,7 +43,7 @@ const Navbar = () => {
           {/* Desktop Menu */}
           <div className="hidden lg:flex items-center space-x-8">
             <div className="flex space-x-6">
-              {['Home', 'Features', 'Resources', 'Demo', 'Testimonials'].map(
+              {['Home', 'Features', 'Resources', 'Demo', 'Testimonials', 'Blog'].map(
                 (item) => (
                   <Link
                     key={item}
@@ -133,7 +133,7 @@ const Navbar = () => {
           ${isScrolled ? 'bg-black/95' : 'bg-black/90'}`}
         >
           <div className="py-6 space-y-4">
-            {['home', 'features', 'resources', 'demo', 'testimonials'].map(
+            {['home', 'features', 'resources', 'demo', 'testimonials', 'blog'].map(
               (item) => (
                 <Link
                   key={item}

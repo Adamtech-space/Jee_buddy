@@ -7,4 +7,5 @@ urlpatterns = [
     # path('api/auth/', include('user.urls')),
     path('', include('user.urls')),
     path('api/subscription/', include('subscription.urls')),
+    path('api/blog/', include('blog.urls')),
 ]
