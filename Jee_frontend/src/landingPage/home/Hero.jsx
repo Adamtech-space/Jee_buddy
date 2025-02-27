@@ -19,7 +19,7 @@ const Hero = () => {
   const words = 'Master JEE with AI'.split(' ');
 
   const handleTryNow = () => {
-    navigate('/login');
+    navigate('/register');
   };
 
   return (

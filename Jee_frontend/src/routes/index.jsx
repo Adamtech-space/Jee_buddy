@@ -13,7 +13,7 @@ import Jeebuddy from '../landingPage/JeeBuddy';
 
 // Auth Pages
 import Login from '../pages/Login';
-// import Register from '../pages/Register';
+import Register from '../pages/Register';
 import ForgotPassword from '../pages/ForgotPassword';
 import SubjectSelection from '../pages/SubjectSelection';
 import AuthCallback from '../pages/auth/callback';
@@ -71,11 +71,12 @@ const ProtectedRoute = () => {
 const AppRoutes = () => {
   const { isAuthenticated, isLoading } = useLoading();
   const [checkingPlan, setCheckingPlan] = useState(true);
+  const token = localStorage.getItem('token');
 
   useEffect(() => {
     const checkSubscription = async () => {
       try {
-        if (isAuthenticated) {
+        if (token && isAuthenticated) {
           await updateProfileCache();
         }
       } catch (error) {
@@ -86,7 +87,7 @@ const AppRoutes = () => {
     };
 
     checkSubscription();
-  }, [isAuthenticated]);
+  }, [isAuthenticated, token]);
 
   if (isLoading || checkingPlan) {
     return null;
@@ -95,11 +96,11 @@ const AppRoutes = () => {
   return (
     <>
       <Routes>
-        {/* Landing page as root route */}
+        {/* Root route - Show landing page or redirect to subject selection */}
         <Route
           path="/"
           element={
-            isAuthenticated ? (
+            token && isAuthenticated ? (
               <Navigate to="/subject-selection" replace />
             ) : (
               <Jeebuddy />
@@ -107,11 +108,11 @@ const AppRoutes = () => {
           }
         />
 
-        {/* Auth Routes */}
+        {/* Auth routes - accessible only when not authenticated */}
         <Route
           path="/login"
           element={
-            isAuthenticated ? (
+            token && isAuthenticated ? (
               <Navigate to="/subject-selection" replace />
             ) : (
               <Login />
@@ -121,17 +122,17 @@ const AppRoutes = () => {
         <Route
           path="/register"
           element={
-            isAuthenticated ? (
+            token && isAuthenticated ? (
               <Navigate to="/subject-selection" replace />
             ) : (
-              <Jeebuddy />
+              <Register />
             )
           }
         />
         <Route
           path="/forgot-password"
           element={
-            isAuthenticated ? (
+            token && isAuthenticated ? (
               <Navigate to="/subject-selection" replace />
             ) : (
               <ForgotPassword />
@@ -140,8 +141,16 @@ const AppRoutes = () => {
         />
         <Route path="/auth/callback" element={<AuthCallback />} />
 
-        {/* Protected Routes - Only accessible when logged in */}
-        <Route element={<ProtectedRoute />}>
+        {/* Protected routes - require authentication */}
+        <Route
+          element={
+            token && isAuthenticated ? (
+              <ProtectedRoute />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          }
+        >
           {/* Settings is accessible to all logged in users */}
           <Route
             path="/settings"
@@ -172,6 +181,7 @@ const AppRoutes = () => {
           >
             <Route index element={<BooksList />} />
             <Route path="books" element={<BooksList />} />
+            <Route path="register" element={<Register />} />
             <Route path="books/:topicId" element={<TopicContent />} />
             <Route path="flashcards" element={<FlashCards />} />
             <Route path="materials" element={<StudyMaterials />} />
@@ -182,11 +192,7 @@ const AppRoutes = () => {
           </Route>
         </Route>
 
-        {/* Redirects */}
-        <Route
-          path="/dashboard"
-          element={<Navigate to="/subject-selection" replace />}
-        />
+        {/* Catch all redirect */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       <Analytics />
