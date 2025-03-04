@@ -242,6 +242,15 @@ const getChatHistory = async (userId, sessionId) => {
   }
 };
 
+const getLatestBlogs = async () => {
+  try {
+    const response = await aiInstance.get('/blog/api/latest-blogs/');
+    return response.data;
+  } catch (error) {
+    handleApiError(error, 'Failed to fetch latest blogs');
+  }
+};
+
 export const aiService = {
   askQuestion,
   getHelpResponse,
@@ -250,5 +259,6 @@ export const aiService = {
   createSubscription,
   verifySubscription,
   getUserUsage,
-  getChatHistory
+  getChatHistory,
+  getLatestBlogs
 }; 

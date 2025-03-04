@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { parseContent } from "../lib/contentParser";
 import { formatDistance } from "date-fns";
 import { ArrowRight } from "lucide-react";
@@ -7,40 +7,54 @@ import blog1 from "../../assets/blog1.png";
 import blog2 from "../../assets/blog2.png";
 import blog3 from "../../assets/blog3.png";
 import { motion } from "framer-motion";
+import { aiService } from "../../interceptors/ai.service";
 
-// Using the actual JSON data
-const samplePosts = [
-  {
-    id: 1,
-    title: "Mastering the Chemistry Section of JEE Main: A Comprehensive Guide for Success",
-    content: `Title: Mastering the Chemistry Section of JEE Main: A Comprehensive Guide for Success\n\nMeta Description: Uncover effective strategies, tips, and resources to excel in the Chemistry section of JEE Main. Understand Physical, Inorganic, and Organic Chemistry to secure your admission into India's premier engineering and architecture programs.\n\nIntroduction:\n\nThe Joint Entrance Examination (JEE) Main, India's national level competitive exam, paves the way for undergraduate admissions in engineering a...`,
-    created_at: "2025-02-26 12:26:02",
-    author: "AI Assistant",
-    tags: "JEE, Exam Preparation, Study Tips",
-    is_published: false
-  },
-  {
-    id: 2,
-    title: "Mastering the Chemistry Section of JEE Main: A Comprehensive Guide for Success",
-    content: `Title: Mastering the Chemistry Section of JEE Main: A Comprehensive Guide for Success\n\nMeta Description: Uncover effective strategies, tips, and resources to excel in the Chemistry section of JEE Main. Understand Physical, Inorganic, and Organic Chemistry to secure your admission into India's premier engineering and architecture programs.\n\nIntroduction:\n\nThe Joint Entrance Examination (JEE) Main, India's national level competitive exam, paves the way for undergraduate admissions in engineering a...`,
-    created_at: "2025-02-26 12:26:02",
-    author: "AI Assistant",
-    tags: "JEE, Exam Preparation, Study Tips",
-    is_published: false
-  },
-  {
-    id: 3,
-    title: "Mastering the Chemistry Section of JEE Main: A Comprehensive Guide for Success",
-    content: `Title: Mastering the Chemistry Section of JEE Main: A Comprehensive Guide for Success\n\nMeta Description: Uncover effective strategies, tips, and resources to excel in the Chemistry section of JEE Main. Understand Physical, Inorganic, and Organic Chemistry to secure your admission into India's premier engineering and architecture programs.\n\nIntroduction:\n\nThe Joint Entrance Examination (JEE) Main, India's national level competitive exam, paves the way for undergraduate admissions in engineering a...`,
-    created_at: "2025-02-26 12:26:02",
-    author: "AI Assistant",
-    tags: "JEE, Exam Preparation, Study Tips",
-    is_published: false
+const extractDescription = (content) => {
+  // Find the text between "Meta Description:" and the next "\n\n"
+  const match = content.match(/Meta Description:(.*?)(?=\n\n)/s);
+  if (match && match[1]) {
+    return match[1].trim();
   }
-];
+  // Fallback to a shorter version of the content if no description found
+  return content.split('\n')[0].slice(0, 150) + '...';
+};
 
 export default function BlogPage() {
-  const [posts] = useState(samplePosts);
+  const [posts, setPosts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const fetchPosts = async () => {
+      try {
+        const data = await aiService.getLatestBlogs();
+        setPosts(data.latest_posts || []);
+      } catch (err) {
+        setError(err.message || 'Failed to fetch blog posts');
+        console.error('Error fetching blog posts:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPosts();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen backdrop-blur-xl flex items-center justify-center">
+        <div className="text-purple-400">Loading...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen backdrop-blur-xl flex items-center justify-center">
+        <div className="text-red-400">Error: {error}</div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen backdrop-blur-xl">
@@ -96,9 +110,9 @@ export default function BlogPage() {
                   {post.title}
                 </h3>
 
-                {/* Preview */}
+                {/* Updated Preview section */}
                 <p className="text-gray-400 line-clamp-3 text-sm leading-relaxed">
-                  {post.content.split('\n').slice(0, 3).join(' ')}
+                  {extractDescription(post.content)}
                 </p>
 
                 {/* Meta */}
