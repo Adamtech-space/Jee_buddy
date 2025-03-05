@@ -71,12 +71,11 @@ const ProtectedRoute = () => {
 const AppRoutes = () => {
   const { isAuthenticated, isLoading } = useLoading();
   const [checkingPlan, setCheckingPlan] = useState(true);
-  const token = localStorage.getItem('token');
 
   useEffect(() => {
     const checkSubscription = async () => {
       try {
-        if (token && isAuthenticated) {
+        if (isAuthenticated) {
           await updateProfileCache();
         }
       } catch (error) {
@@ -87,7 +86,7 @@ const AppRoutes = () => {
     };
 
     checkSubscription();
-  }, [isAuthenticated, token]);
+  }, [isAuthenticated]);
 
   if (isLoading || checkingPlan) {
     return null;
@@ -96,11 +95,11 @@ const AppRoutes = () => {
   return (
     <>
       <Routes>
-        {/* Root route - Show landing page or redirect to subject selection */}
+        {/* Landing page as root route */}
         <Route
           path="/"
           element={
-            token && isAuthenticated ? (
+            isAuthenticated ? (
               <Navigate to="/subject-selection" replace />
             ) : (
               <Jeebuddy />
@@ -108,11 +107,11 @@ const AppRoutes = () => {
           }
         />
 
-        {/* Auth routes - accessible only when not authenticated */}
+        {/* Auth Routes */}
         <Route
           path="/login"
           element={
-            token && isAuthenticated ? (
+            isAuthenticated ? (
               <Navigate to="/subject-selection" replace />
             ) : (
               <Login />
@@ -122,7 +121,7 @@ const AppRoutes = () => {
         <Route
           path="/register"
           element={
-            token && isAuthenticated ? (
+            isAuthenticated ? (
               <Navigate to="/subject-selection" replace />
             ) : (
               <Register />
@@ -132,7 +131,7 @@ const AppRoutes = () => {
         <Route
           path="/forgot-password"
           element={
-            token && isAuthenticated ? (
+            isAuthenticated ? (
               <Navigate to="/subject-selection" replace />
             ) : (
               <ForgotPassword />
@@ -141,16 +140,8 @@ const AppRoutes = () => {
         />
         <Route path="/auth/callback" element={<AuthCallback />} />
 
-        {/* Protected routes - require authentication */}
-        <Route
-          element={
-            token && isAuthenticated ? (
-              <ProtectedRoute />
-            ) : (
-              <Navigate to="/" replace />
-            )
-          }
-        >
+        {/* Protected Routes - Only accessible when logged in */}
+        <Route element={<ProtectedRoute />}>
           {/* Settings is accessible to all logged in users */}
           <Route
             path="/settings"
@@ -181,8 +172,8 @@ const AppRoutes = () => {
           >
             <Route index element={<BooksList />} />
             <Route path="books" element={<BooksList />} />
-            <Route path="register" element={<Register />} />
             <Route path="books/:topicId" element={<TopicContent />} />
+            <Route path="register " element={<Register />} />
             <Route path="flashcards" element={<FlashCards />} />
             <Route path="materials" element={<StudyMaterials />} />
             <Route path="question-bank" element={<QuestionBank />} />
@@ -192,7 +183,11 @@ const AppRoutes = () => {
           </Route>
         </Route>
 
-        {/* Catch all redirect */}
+        {/* Redirects */}
+        <Route
+          path="/dashboard"
+          element={<Navigate to="/subject-selection" replace />}
+        />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       <Analytics />
